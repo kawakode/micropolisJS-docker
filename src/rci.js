@@ -51,7 +51,8 @@ function RCI(parentNode, eventSource, id) {
 }
 
 
-var COLOURS = ['#4ade80', '#60a5fa', '#facc15'];
+var COLOURS = ['#4cc464', '#5a8cf0', '#f8c838'];
+var FONT = '"DotGothic16", system-ui, sans-serif';
 var LABELS = ['R', 'C', 'I'];
 
 
@@ -88,7 +89,7 @@ RCI.prototype.update = function(data) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, cssWidth, cssHeight);
 
-  var labelWidth = 44;
+  var labelWidth = 56;
   var midY = cssHeight / 2;
   var half = cssHeight / 2 - 4;
   var barArea = cssWidth - labelWidth;
@@ -96,12 +97,15 @@ RCI.prototype.update = function(data) {
   var barWidth = Math.min(28, slot * 0.6);
 
   // Axis and caption
-  ctx.fillStyle = 'rgba(148, 163, 184, 0.35)';
-  ctx.fillRect(labelWidth, midY - 0.5, barArea, 1);
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '600 10px system-ui, sans-serif';
+  ctx.fillStyle = '#070a1f';
+  ctx.fillRect(labelWidth, Math.round(midY) - 1, barArea, 2);
+  ctx.fillStyle = '#f8c838';
+  ctx.font = '14px ' + FONT;
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
+  ctx.fillStyle = '#070a1f';
+  ctx.fillText('Demand', 1, midY + 1);
+  ctx.fillStyle = '#f8c838';
   ctx.fillText('Demand', 0, midY);
 
   var values = [data.residential, data.commercial, data.industrial];
@@ -110,19 +114,23 @@ RCI.prototype.update = function(data) {
     var x = labelWidth + slot * i + (slot - barWidth) / 2;
     var barHeight = Math.max(1, Math.abs(value) * half);
 
+    // Bars are drawn on whole pixels, with a dark outline
+    x = Math.round(x);
+    var top = Math.round(value >= 0 ? midY - barHeight : midY);
+    var height = Math.max(2, Math.round(barHeight));
+    ctx.fillStyle = '#070a1f';
+    ctx.fillRect(x - 2, top - 2, Math.round(barWidth) + 4, height + 4);
     ctx.fillStyle = COLOURS[i];
-    ctx.globalAlpha = value >= 0 ? 1 : 0.55;
-    if (value >= 0)
-      ctx.fillRect(x, midY - barHeight, barWidth, barHeight);
-    else
-      ctx.fillRect(x, midY, barWidth, barHeight);
+    ctx.globalAlpha = value >= 0 ? 1 : 0.6;
+    ctx.fillRect(x, top, Math.round(barWidth), height);
     ctx.globalAlpha = 1;
 
-    ctx.fillStyle = '#0b1220';
     ctx.textAlign = 'center';
-    ctx.font = '700 10px system-ui, sans-serif';
-    var labelY = value >= 0 ? midY + 8 : midY - 8;
-    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '16px ' + FONT;
+    var labelY = value >= 0 ? midY + 10 : midY - 10;
+    ctx.fillStyle = '#070a1f';
+    ctx.fillText(LABELS[i], x + barWidth / 2 + 1, labelY + 1);
+    ctx.fillStyle = '#f4f5ff';
     ctx.fillText(LABELS[i], x + barWidth / 2, labelY);
   }
 };

@@ -37,6 +37,14 @@ npm run lint    # type check
 
 Adding `?debug=1` to the game's URL shows the frame rate and a debug menu, and exposes the game as `window.kawaCity` in the browser console.
 
+## Graphics ##
+
+The tiles and sprites in `images/` are generated from the original Micropolis artwork (kept in `art/micropolis/`) by `tools/pixelart/generate.py`, which repaints the terrain and remasters everything else in a 16-bit console style. To regenerate them (requires Python 3 with Pillow and numpy):
+
+```sh
+python3 tools/pixelart/generate.py
+```
+
 ## Controls ##
 
 - **Build**: pick a tool, then click on the map. Drag to lay roads, rails and power lines along a path, to place a grid of zones or buildings, or to bulldoze or plant parks over an area. The preview shows where the tool will act and what it will cost.
@@ -48,6 +56,7 @@ Adding `?debug=1` to the game's URL shows the frame rate and a debug menu, and e
 - [micropolisJS](https://github.com/graememcc/micropolisJS): Copyright (C) Graeme McCutcheon, 2013, and [contributors](https://github.com/graememcc/micropolisJS/graphs/contributors).
 - Micropolis: the open-source release of a city simulation game once sold by Electronic Arts.
 - KawaCity: renamed and modified from micropolisJS by [kawakode](https://github.com/kawakode) in 2026.
+- Fonts: [Press Start 2P](https://github.com/codeman38/PressStart2P) by Cody "CodeMan38" Boisclair and [DotGothic16](https://github.com/fontworks-fonts/DotGothic16) by Fontworks, under the SIL Open Font License (see `css/fonts/`).
 
 ## License ##
 The code is licensed under the GPLv3 (see [COPYING](COPYING)), with some additional terms (see [LICENSE](LICENSE)) - please be mindful of these. Likewise, be aware that the code is additionally governed by the Micropolis Public Name License as detailed in the next paragraph; this too must be complied with.

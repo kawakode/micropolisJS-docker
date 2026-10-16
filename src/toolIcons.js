@@ -63,13 +63,18 @@ var makeIcon = function(spec, tileSet) {
   ctx.imageSmoothingEnabled = false;
 
   if (spec.glyph) {
-    ctx.fillStyle = '#0e7490';
+    ctx.fillStyle = '#2b8fd0';
     ctx.fillRect(0, 0, pixels, pixels);
-    ctx.fillStyle = '#ecfeff';
-    ctx.font = '700 ' + Math.round(pixels * 0.7) + 'px system-ui, sans-serif';
+    ctx.fillStyle = '#1a5a8c';
+    ctx.fillRect(0, pixels - Math.round(pixels / 8), pixels, Math.round(pixels / 8));
+    ctx.fillRect(pixels - Math.round(pixels / 8), 0, Math.round(pixels / 8), pixels);
+    ctx.font = Math.round(pixels * 0.55) + 'px "Press Start 2P", monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(spec.glyph, pixels / 2, pixels / 2 + pixels * 0.04);
+    ctx.fillStyle = '#070a1f';
+    ctx.fillText(spec.glyph, pixels / 2 + Math.round(pixels / 16), pixels / 2 + Math.round(pixels / 10));
+    ctx.fillStyle = '#fff6c8';
+    ctx.fillText(spec.glyph, pixels / 2, pixels / 2 + Math.round(pixels / 20));
     return canvas;
   }
 

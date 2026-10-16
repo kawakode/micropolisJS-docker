@@ -330,13 +330,13 @@ Minimap.prototype.paint = function(force) {
   var scaleY = height / (this._map.height * TILE_SIZE);
   var lineWidth = Math.max(1, Math.round(1.5 * dpr));
 
+  var frame = [Math.round(view.x * scaleX), Math.round(view.y * scaleY), Math.round(view.width * scaleX),
+               Math.round(view.height * scaleY)];
   ctx.lineWidth = lineWidth;
-  ctx.strokeStyle = '#ffffff';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-  ctx.shadowBlur = 2 * dpr;
-  ctx.strokeRect(view.x * scaleX + lineWidth / 2, view.y * scaleY + lineWidth / 2,
-                 view.width * scaleX - lineWidth, view.height * scaleY - lineWidth);
-  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#070a1f';
+  ctx.strokeRect(frame[0] + lineWidth * 1.5, frame[1] + lineWidth * 1.5, frame[2] - lineWidth, frame[3] - lineWidth);
+  ctx.strokeStyle = '#f8c838';
+  ctx.strokeRect(frame[0] + lineWidth / 2, frame[1] + lineWidth / 2, frame[2] - lineWidth, frame[3] - lineWidth);
 };
 
 

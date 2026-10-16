@@ -504,21 +504,6 @@ GameCanvas.prototype._paintSprites = function(ctx, spriteList) {
 };
 
 
-var roundedRect = function(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-};
-
-
 // Paints the tool preview. The overlay is an object with:
 //   - rects: an array of {x, y, width, height, colour, valid} in tile units, outlining where the tool will act
 //   - label: optionally, {x, y, text, valid} with tile coordinates: a caption painted next to that tile
@@ -539,32 +524,42 @@ GameCanvas.prototype._paintOverlay = function(ctx, overlay) {
 
     ctx.globalAlpha = 1;
     ctx.lineWidth = Math.max(1, Math.round(2 * dpr));
-    ctx.strokeStyle = r.valid === false ? '#ff3b30' : '#ffffff';
+    ctx.strokeStyle = r.valid === false ? '#ff4a36' : '#f8f8ff';
     var inset = ctx.lineWidth / 2;
     ctx.strokeRect(x + inset, y + inset, w - ctx.lineWidth, h - ctx.lineWidth);
   }
 
   var label = overlay.label;
   if (label && label.text) {
-    var fontSize = Math.round(13 * dpr);
-    ctx.font = '600 ' + fontSize + 'px system-ui, -apple-system, "Segoe UI", sans-serif';
-    var textWidth = ctx.measureText(label.text).width;
-    var padX = Math.round(6 * dpr);
-    var boxH = Math.round(fontSize + 8 * dpr);
-    var lx = this._toDeviceX((label.x + 1) * TILE_SIZE) + Math.round(6 * dpr);
-    var ly = this._toDeviceY(label.y * TILE_SIZE) - boxH - Math.round(4 * dpr);
+    // A small message box, in the style of the interface
+    var px = Math.max(1, Math.round(dpr));
+    var fontSize = Math.round(16 * dpr);
+    ctx.font = fontSize + 'px "DotGothic16", system-ui, sans-serif';
+    var textWidth = Math.ceil(ctx.measureText(label.text).width);
+    var padX = 7 * px;
+    var boxW = textWidth + 2 * padX;
+    var boxH = fontSize + 8 * px;
+    var lx = this._toDeviceX((label.x + 1) * TILE_SIZE) + 6 * px;
+    var ly = this._toDeviceY(label.y * TILE_SIZE) - boxH - 6 * px;
 
     // Keep the label on screen
-    lx = MiscUtils.clamp(lx, 0, Math.max(0, this._canvas.width - textWidth - 2 * padX));
-    ly = MiscUtils.clamp(ly, 0, Math.max(0, this._canvas.height - boxH));
+    lx = Math.round(MiscUtils.clamp(lx, 4 * px, Math.max(4 * px, this._canvas.width - boxW - 4 * px)));
+    ly = Math.round(MiscUtils.clamp(ly, 4 * px, Math.max(4 * px, this._canvas.height - boxH - 4 * px)));
 
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = label.valid === false ? '#7f1d1d' : '#0f172a';
-    roundedRect(ctx, lx, ly, textWidth + 2 * padX, boxH, Math.round(4 * dpr));
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = '#ffffff';
+    // Hard shadow, dark outline, light border, then the fill
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.fillRect(lx + 3 * px, ly + 3 * px, boxW, boxH);
+    ctx.fillStyle = '#070a1f';
+    ctx.fillRect(lx - 2 * px, ly - 2 * px, boxW + 4 * px, boxH + 4 * px);
+    ctx.fillStyle = '#e8ecff';
+    ctx.fillRect(lx, ly, boxW, boxH);
+    ctx.fillStyle = label.valid === false ? '#a42416' : '#1d2a74';
+    ctx.fillRect(lx + 2 * px, ly + 2 * px, boxW - 4 * px, boxH - 4 * px);
+
     ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#070a1f';
+    ctx.fillText(label.text, lx + padX + px, ly + boxH / 2 + px);
+    ctx.fillStyle = label.valid === false ? '#ffffff' : '#f8c838';
     ctx.fillText(label.text, lx + padX, ly + boxH / 2);
   }
 };
