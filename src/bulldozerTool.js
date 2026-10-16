@@ -79,25 +79,41 @@ BulldozerTool.prototype.layDoze = function(x, y) {
 
 
 BulldozerTool.prototype.doTool = function(x, y, blockMaps) {
-  if (!this._map.testBounds(x, y))
+  if (!this._map.testBounds(x, y)) {
     this.result = this.TOOLRESULT_FAILED;
+    return;
+  }
 
   var tile = this._worldEffects.getTile(x, y);
   var tileValue = tile.getValue();
 
   var zoneSize = 0;
-  var deltaX;
-  var deltaY;
+  var deltaX = 0;
+  var deltaY = 0;
 
   if (tile.isZone()) {
-    zoneSize = ZoneUtils.checkZoneSize(tileValue);
-    deltaX = 0;
-    deltaY = 0;
+    zoneSize = ZoneUtils.getZoneSize(tileValue);
   } else {
     var result = ZoneUtils.checkBigZone(tileValue);
     zoneSize = result.zoneSize;
     deltaX = result.deltaX;
     deltaY = result.deltaY;
+
+    // Allow buildings to be demolished by clicking on any of their tiles, not just the centre
+    if (zoneSize === 0 && !tile.isBulldozable()) {
+      var zone = ZoneUtils.findCoveringZone(this._worldEffects, x, y);
+      if (zone !== null) {
+        zoneSize = zone.zoneSize;
+        deltaX = zone.x - x;
+        deltaY = zone.y - y;
+      } else if (tileValue >= TileValues.RESBASE) {
+        // A fragment of a building whose centre has been destroyed: clear it on its own
+        this.addCost(this.bulldozerCost);
+        this.putRubble(x, y, 1);
+        this.result = this.TOOLRESULT_OK;
+        return;
+      }
+    }
   }
 
   if (zoneSize > 0) {

@@ -63,8 +63,17 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.name = name || 'MyTown';
   this.everClicked = false;
 
+  // Track when various milestones are first reached
+  this._reachedTown = this._reachedCity = this._reachedCapital = this._reachedMetropolis = this._reachedMegalopolis = false;
+
   if (savedGame)
     this.load(savedGame);
+
+  // A game saved while paused should not resume paused: the controls always start in the running state
+  if (this.simulation.isPaused())
+    this.simulation.setSpeed(this.defaultSpeed);
+  else
+    this.defaultSpeed = this.simulation._speed;
 
   this.rci = new RCI('RCIContainer', this.simulation);
 
@@ -216,8 +225,6 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
 
   this._notificationBar = new Notification('#notifications', this.gameCanvas, Text.messageText[Messages.WELCOME]);
 
-  // Track when various milestones are first reached
-  this._reachedTown = this._reachedCity = this._reachedCapital = this._reachedMetropolis = this._reacedMegalopolis = false;
   this.congratsWindow = new CongratsWindow(opacityLayerID, 'congratsWindow');
   this.congratsWindow.addEventListener(Messages.CONGRATS_WINDOW_CLOSED, this.genericDialogClosure);
 
@@ -244,23 +251,36 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.commonAnimate = commonAnimate.bind(this);
   this.animate = (debug ? debugAnimate : this.commonAnimate).bind(this);
   this.animate();
+
+  // Expose the game in debug mode, to help diagnose problems from the browser console
+  if (Config.debug)
+    window.kawaCity = this;
 }
+
+
+var milestones = ['_reachedTown', '_reachedCity', '_reachedCapital', '_reachedMetropolis', '_reachedMegalopolis'];
 
 
 Game.prototype.save = function() {
   var saveData = {name: this.name, everClicked: this.everClicked};
+  for (var i = 0; i < milestones.length; i++)
+    saveData[milestones[i]] = this[milestones[i]];
+
   BaseTool.save(saveData);
   this.simulation.save(saveData);
 
-  Storage.saveGame(saveData);
+  return Storage.saveGame(saveData);
 };
 
 
+// Note: the simulation loads its own state when it is constructed with the saved game
 Game.prototype.load = function(saveData) {
-  this.name = saveData.name;
-  this.everClicked = saveData.everClicked;
+  this.name = saveData.name || this.name;
+  this.everClicked = !!saveData.everClicked;
+  for (var i = 0; i < milestones.length; i++)
+    this[milestones[i]] = !!saveData[milestones[i]];
+
   BaseTool.load(saveData);
-  this.simulation.load(saveData);
 };
 
 
@@ -402,12 +422,15 @@ Game.prototype.handleBudgetWindowClosure = function(data) {
     this.simulation.budget.firePercent = data.firePercent / 100;
     this.simulation.budget.policePercent = data.policePercent / 100;
     this.simulation.budget.setTax(data.taxPercent - 0);
-    if (this.simNeededBudget) {
-      this.simulation.budget.doBudgetWindow();
-      this.simNeededBudget = false;
-    } else {
-      this.simulation.budget.updateFundEffects();
-    }
+  }
+
+  // The simulation waits for the yearly budget to be confirmed: it must be completed even if the player cancels
+  // the window, keeping the existing values, or the simulation would stay frozen
+  if (this.simNeededBudget) {
+    this.simulation.budget.doBudgetWindow();
+    this.simNeededBudget = false;
+  } else if (!data.cancelled) {
+    this.simulation.budget.updateFundEffects();
   }
 };
 

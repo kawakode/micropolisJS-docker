@@ -46,7 +46,7 @@ var getFreeZonePopulation = function(map, x, y, tileValue) {
 
 var getZonePopulation = function(map, x, y, tileValue) {
   if (tileValue instanceof Tile)
-    tileValue = tile.getValue();
+    tileValue = tileValue.getValue();
 
   if (tileValue === TileValues.FREEZ)
     return getFreeZonePopulation(map, x, y, tileValue);

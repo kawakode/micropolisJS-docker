@@ -16,7 +16,7 @@ import { GameMap } from './gameMap.js';
 import { Position } from './position.ts';
 import { Random } from './random.ts';
 import { BLBNBIT, BULLBIT } from "./tileFlags.ts";
-import { CHANNEL, DIRT, REDGE, RIVER, WATER_LOW, WATER_HIGH, WOODS, WOODS_LOW, WOODS_HIGH } from "./tileValues.ts";
+import { CHANNEL, DIRT, REDGE, RIVER, TILE_INVALID, WATER_LOW, WATER_HIGH, WOODS, WOODS_LOW, WOODS_HIGH } from "./tileValues.ts";
 
 var TERRAIN_CREATE_ISLAND;
 var TERRAIN_TREE_LEVEL = -1;

@@ -31,7 +31,7 @@ var fallbackImage, tileSet, snowTileSet;
 
 
 var onTilesLoaded = function() {
-  var snowTiles = $('#snowtiles')[1];
+  var snowTiles = $('#snowtiles')[0];
   snowTileSet = new TileSet(snowTiles, onAllTilesLoaded, onFallbackTilesLoaded);
 };
 
@@ -94,4 +94,3 @@ Config.debug = window.location.search.slice(1).split('&').some(function(param) {
 
 var tiles = $('#tiles')[0];
 tileSet = new TileSet(tiles, onTilesLoaded, tileSetError);
-var snowtiles = $('#snowtiles')[1];

@@ -102,23 +102,25 @@ var MAX_TRAFFIC_DISTANCE = 30;
 
 Traffic.prototype.tryDrive = function(startPos, destFn) {
   var dirLast;
-  var drivePos = new Position(startPos);
+  // Note: Positions are immutable, so can be shared freely
+  var drivePos = new Position(startPos.x, startPos.y);
 
   /* Maximum distance to try */
   for (var dist = 0; dist < MAX_TRAFFIC_DISTANCE; dist++) {
     var  dir = this.tryGo(drivePos, dirLast);
     if (dir) {
-      drivePos = Position.move(pos, dir);
+      drivePos = Position.move(drivePos, dir);
       dirLast = dir.oppositeDirection();
 
       if (dist & 1)
-        this._stack.push(new Position(drivePos));
+        this._stack.push(drivePos);
 
       if (this.driveDone(drivePos, destFn))
         return true;
     } else {
       if (this._stack.length > 0) {
-        this._stack.pop();
+        // Backtrack to the last junction we recorded
+        drivePos = this._stack.pop();
         dist += 3;
       } else {
         return false;

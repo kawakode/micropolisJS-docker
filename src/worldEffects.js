@@ -44,6 +44,11 @@ WorldEffects.prototype.getTile = function(x, y) {
 };
 
 
+WorldEffects.prototype.testBounds = function(x, y) {
+  return this._map.testBounds(x, y);
+};
+
+
 WorldEffects.prototype.getTileValue = function(x, y) {
   return this.getTile(x, y).getValue();
 };

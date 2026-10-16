@@ -16,28 +16,57 @@ import { MiscUtils } from './miscUtils.js';
 // A very thin wrapper around localStorage, in case we wish to move to some other storage mechanism
 // (such as indexedDB) in the future
 
-var getSavedGame = function() {
-  var savedGame = window.localStorage.getItem(this.KEY);
+// Merely accessing localStorage throws in some browsers when site data is blocked
+var canStore = (function() {
+  try {
+    return window.localStorage !== undefined && window.localStorage !== null;
+  } catch (e) {
+    return false;
+  }
+})();
 
-  if (savedGame !== null) {
+var getSavedGame = function() {
+  if (!canStore)
+    return null;
+
+  var savedGame;
+  try {
+    savedGame = window.localStorage.getItem(this.KEY);
+    if (savedGame === null)
+      return null;
+
     savedGame = JSON.parse(savedGame);
 
     if (savedGame.version !== this.CURRENT_VERSION)
       this.transitionOldSave(savedGame);
-
-    // Flag as a saved game for Game/Simulation etc...
-    savedGame.isSavedGame = true;
+  } catch (e) {
+    console.error('Unable to read saved game', e);
+    return null;
   }
 
+  // Flag as a saved game for Game/Simulation etc...
+  savedGame.isSavedGame = true;
   return savedGame;
 };
 
 
+// Returns true if the game was saved
 var saveGame = function(gameData) {
+  if (!canStore)
+    return false;
+
   gameData.version = this.CURRENT_VERSION;
   gameData = JSON.stringify(gameData);
 
-  window.localStorage.setItem(this.KEY, gameData);
+  try {
+    window.localStorage.setItem(this.KEY, gameData);
+  } catch (e) {
+    // Most likely the storage quota has been exceeded, or storage is disabled
+    console.error('Unable to save game', e);
+    return false;
+  }
+
+  return true;
 };
 
 
@@ -70,7 +99,7 @@ var Storage = {
 
 Object.defineProperty(Storage, 'CURRENT_VERSION', MiscUtils.makeConstantDescriptor(3));
 Object.defineProperty(Storage, 'KEY', MiscUtils.makeConstantDescriptor('micropolisJSGame'));
-Object.defineProperty(Storage, 'canStore', MiscUtils.makeConstantDescriptor(window.localStorage !== undefined));
+Object.defineProperty(Storage, 'canStore', MiscUtils.makeConstantDescriptor(canStore));
 
 
 export { Storage };

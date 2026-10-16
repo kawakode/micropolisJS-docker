@@ -23,7 +23,7 @@ import { TILE_INVALID } from "./tileValues.ts";
 
 function GameCanvas(id, parentNode) {
   if (!(this instanceof GameCanvas))
-    return new GameCanvas(id, parentNode, width, height);
+    return new GameCanvas(id, parentNode);
 
   if (arguments.length < 1)
     throw new Error('Attempt to construct a GameCanvas with no parameters');
@@ -349,7 +349,7 @@ GameCanvas.prototype.tileToCanvasCoordinate = function(x, y) {
   if (x === undefined || y === undefined || x < this.minX || y < this.minY ||
       x > (this.maxX + this._totalTilesInViewX - 1) ||
       y > (this.maxY + this._totalTilesInViewY - 1))
-    throw e;
+    throw new Error('GameCanvas tileToCanvasCoordinate called with out of bounds coordinates');
 
   if (x < this._originX || x >= this._originX + this._totalTilesInViewX ||
       y < this._originY || y >= this._originY + this._totalTilesInViewY)

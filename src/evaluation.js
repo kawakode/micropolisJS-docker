@@ -67,7 +67,7 @@ Evaluation.prototype.evalInit = function() {
 };
 
 
-var saveProps = ['cityClass', 'cityScore'];
+var saveProps = ['cityClass', 'cityScore', 'cityPop'];
 
 Evaluation.prototype.save = function(saveData) {
   for (var i = 0, l = saveProps.length; i < l; i++)
@@ -78,6 +78,12 @@ Evaluation.prototype.save = function(saveData) {
 Evaluation.prototype.load = function(saveData) {
   for (var i = 0, l = saveProps.length; i < l; i++)
     this[saveProps[i]] = saveData[saveProps[i]];
+
+  // Older saves did not record the population: recompute it from the census data
+  if (typeof(this.cityPop) !== 'number')
+    this.cityPop = ((saveData.resPop || 0) + ((saveData.comPop || 0) + (saveData.indPop || 0)) * 8) * 20;
+
+  this.cityClassLast = this.cityClass;
 };
 
 
