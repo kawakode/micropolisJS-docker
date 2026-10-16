@@ -582,6 +582,107 @@ GameCanvas.prototype._paintOverlay = function(ctx, overlay) {
 };
 
 
+// Fills a rectangle given in world pixels
+GameCanvas.prototype._worldRect = function(ctx, x, y, w, h, colour) {
+  var dx = this._toDeviceX(x);
+  var dy = this._toDeviceY(y);
+  ctx.fillStyle = colour;
+  ctx.fillRect(dx, dy, this._toDeviceX(x + w) - dx, this._toDeviceY(y + h) - dy);
+};
+
+
+var OUTLINE = '#1a1424';
+var GLASS = '#a8c4e0';
+
+
+// Paints the decorative cars and boats (see AmbientLife), which sit on the ground
+GameCanvas.prototype._paintGroundLife = function(ctx, life) {
+  var view = this.getVisibleWorldRect();
+  var i;
+
+  for (i = 0; i < life.boats.length; i++) {
+    var boat = life.boats[i];
+    var bx = Math.round(boat.x);
+    var by = Math.round(boat.y);
+    if (bx < view.x - 16 || by < view.y - 16 || bx > view.x + view.width + 16 || by > view.y + view.height + 16)
+      continue;
+
+    // Wake, hull, mast and a triangular sail billowing towards the bow
+    var ahead = boat.vx >= 0 ? 1 : -1;
+    this._worldRect(ctx, bx - ahead * 6 - 1, by + 1, 3, 1, 'rgba(220, 238, 255, 0.7)');
+    this._worldRect(ctx, bx - ahead * 9 - 1, by + 1, 2, 1, 'rgba(220, 238, 255, 0.4)');
+    this._worldRect(ctx, bx - 4, by, 9, 3, OUTLINE);
+    this._worldRect(ctx, bx - 3, by, 7, 2, '#9a6234');
+    this._worldRect(ctx, bx, by - 8, 1, 8, OUTLINE);
+    for (var row = 0; row < 6; row++) {
+      var width = Math.min(4, 1 + Math.floor(row * 0.7));
+      this._worldRect(ctx, ahead > 0 ? bx + 1 : bx - width, by - 7 + row, width, 1, row === 5 ? '#d8d4c8' : '#f6f4ea');
+    }
+  }
+
+  for (i = 0; i < life.cars.length; i++) {
+    var car = life.cars[i];
+    var cx = Math.round(car.x);
+    var cy = Math.round(car.y);
+    if (cx < view.x - 8 || cy < view.y - 8 || cx > view.x + view.width + 8 || cy > view.y + view.height + 8)
+      continue;
+
+    if (car.dir === 1 || car.dir === 3) {
+      // Heading east or west
+      this._worldRect(ctx, cx - 4, cy - 2, 9, 5, OUTLINE);
+      this._worldRect(ctx, cx - 3, cy - 1, 7, 3, car.colour);
+      this._worldRect(ctx, car.dir === 1 ? cx + 1 : cx - 2, cy - 1, 2, 3, GLASS);
+    } else {
+      // Heading north or south
+      this._worldRect(ctx, cx - 2, cy - 4, 5, 9, OUTLINE);
+      this._worldRect(ctx, cx - 1, cy - 3, 3, 7, car.colour);
+      this._worldRect(ctx, cx - 1, car.dir === 0 ? cy - 2 : cy + 1, 3, 2, GLASS);
+    }
+  }
+};
+
+
+// Paints the shadows of the clouds drifting over the map. Each cloud's shape is a small bitmap (one pixel per 4
+// world pixels), drawn translucent and unsmoothed, so the shadows have pixelated edges.
+GameCanvas.prototype._paintCloudShadows = function(ctx, life) {
+  ctx.globalAlpha = 0.11;
+  for (var i = 0; i < life.clouds.length; i++) {
+    var cloud = life.clouds[i];
+    var dx = this._toDeviceX(cloud.x);
+    var dy = this._toDeviceY(cloud.y);
+    var dw = this._toDeviceX(cloud.x + cloud.shape.width * 4) - dx;
+    var dh = this._toDeviceY(cloud.y + cloud.shape.height * 4) - dy;
+    ctx.drawImage(cloud.shape, dx, dy, dw, dh);
+  }
+  ctx.globalAlpha = 1;
+};
+
+
+// Paints the birds, which fly above everything, with their shadows on the ground
+GameCanvas.prototype._paintSkyLife = function(ctx, life) {
+  for (var i = 0; i < life.birds.length; i++) {
+    var bird = life.birds[i];
+    var x = Math.round(bird.x);
+    var y = Math.round(bird.y);
+
+    this._worldRect(ctx, x + 6, y + 14, 5, 1, 'rgba(0, 0, 0, 0.18)');
+
+    if (bird.flap) {
+      // Wings up
+      this._worldRect(ctx, x, y, 1, 1, '#24202c');
+      this._worldRect(ctx, x + 1, y + 1, 1, 1, '#24202c');
+      this._worldRect(ctx, x + 2, y + 2, 1, 1, '#24202c');
+      this._worldRect(ctx, x + 3, y + 1, 1, 1, '#24202c');
+      this._worldRect(ctx, x + 4, y, 1, 1, '#24202c');
+    } else {
+      // Wings level
+      this._worldRect(ctx, x, y + 1, 5, 1, '#24202c');
+      this._worldRect(ctx, x + 2, y + 2, 1, 1, '#24202c');
+    }
+  }
+};
+
+
 // Paints a data overlay: a canvas with one pixel per map tile
 GameCanvas.prototype._paintDataOverlay = function(ctx, dataOverlay) {
   var left = this._toDeviceX(0);
@@ -593,7 +694,7 @@ GameCanvas.prototype._paintDataOverlay = function(ctx, dataOverlay) {
 };
 
 
-GameCanvas.prototype.paint = function(overlay, sprites, isPaused, dataOverlay) {
+GameCanvas.prototype.paint = function(overlay, sprites, isPaused, dataOverlay, life) {
   this._checkReady();
 
   this._calculateDimensions();
@@ -614,11 +715,19 @@ GameCanvas.prototype.paint = function(overlay, sprites, isPaused, dataOverlay) {
 
   this._paintTiles(ctx, isPaused);
 
+  if (life)
+    this._paintGroundLife(ctx, life);
+
   if (dataOverlay)
     this._paintDataOverlay(ctx, dataOverlay);
 
   if (sprites)
     this._paintSprites(ctx, sprites);
+
+  if (life) {
+    this._paintCloudShadows(ctx, life);
+    this._paintSkyLife(ctx, life);
+  }
 
   if (overlay)
     this._paintOverlay(ctx, overlay);

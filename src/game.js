@@ -38,6 +38,7 @@ import { SettingsWindow } from './settingsWindow.js';
 import { Simulation } from './simulation.js';
 import { Storage } from './storage.js';
 import { Text } from './text.js';
+import { AmbientLife } from './ambientLife.js';
 import { Minimap } from './minimap.js';
 import { ToolIcons } from './toolIcons.js';
 
@@ -246,6 +247,9 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
 
   // The minimap needs its container to be on screen
   this.minimap = new Minimap('minimapContainer', this.gameMap, this.simulation, this.gameCanvas, tileSet);
+
+  // Decorative cars, boats and birds
+  this.ambientLife = new AmbientLife(this.gameMap, this.simulation);
 
   // Speed controls in the heads-up display
   var self = this;
@@ -821,9 +825,10 @@ var commonAnimate = function(timestamp) {
   this.overlay = this.computeOverlay();
 
   this.minimap.paint();
+  this.ambientLife.update(elapsed, this.gameCanvas.getVisibleWorldRect(), !this.isPaused && !this.dialogOpen);
 
   var sprites = this.calculateSpritesForPaint(this.gameCanvas);
-  this.gameCanvas.paint(this.overlay, sprites, this.isPaused, this.minimap.getOverlayCanvas());
+  this.gameCanvas.paint(this.overlay, sprites, this.isPaused, this.minimap.getOverlayCanvas(), this.ambientLife);
 
   if (this.monsterTV.isOpen) {
     sprites = this.calculateSpritesForPaint(this.monsterTV.canvas);

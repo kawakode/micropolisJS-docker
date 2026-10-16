@@ -39,11 +39,13 @@ Adding `?debug=1` to the game's URL shows the frame rate and a debug menu, and e
 
 ## Graphics ##
 
-The tiles and sprites in `images/` are generated from the original Micropolis artwork (kept in `art/micropolis/`) by `tools/pixelart/generate.py`, which repaints the terrain and remasters everything else in a 16-bit console style. To regenerate them (requires Python 3 with Pillow and numpy):
+The tiles and sprites in `images/` are generated from the original Micropolis artwork (kept in `art/micropolis/`) by `tools/pixelart/generate.py`, which repaints the terrain and remasters everything else in a 16-bit console style. It also renders the frames of the water animation (`images/tiles-water.png` and `src/waterTiles.js`). To regenerate them (requires Python 3 with Pillow and numpy):
 
 ```sh
 python3 tools/pixelart/generate.py
 ```
+
+The map is also brought to life by purely decorative cars, boats, birds and cloud shadows (`src/ambientLife.js`), which follow the simulation: cars appear as the population and traffic grow, and vehicles stop when the game is paused.
 
 ## Controls ##
 
