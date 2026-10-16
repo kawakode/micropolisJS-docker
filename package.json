@@ -1,13 +1,13 @@
 {
-  "name": "micropolisJS",
+  "name": "kawacity",
   "version": "0.0.1",
-  "description": "A port of the open-source simulator \"Micropolis\" to Javascript/HTML5",
+  "description": "KawaCity, a city simulator based on micropolisJS, a port of the open-source simulator \"Micropolis\" to Javascript/HTML5",
   "repository": {
     "type": "git",
-    "url": "https://github.com/graememcc/micropolisJS.git"
+    "url": "https://github.com/kawakode/micropolisJS-docker.git"
   },
   "bugs": {
-    "url": "https://github.com/graememcc/micropolisJS/issues"
+    "url": "https://github.com/kawakode/micropolisJS-docker/issues"
   },
   "type": "module",
   "scripts": {
@@ -34,6 +34,9 @@
     "webpack-dev-server": "5.2.2"
   },
   "author": "Graeme McCutcheon (http://www.graememcc.co.uk)",
+  "contributors": [
+    "kawakode (https://github.com/kawakode)"
+  ],
   "license": "GPL-3.0",
   "readmeFilename": "README.md",
   "dependencies": {
