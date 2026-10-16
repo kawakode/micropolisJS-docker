@@ -74,10 +74,10 @@ function injectBuildIdIntoNameLicense(gitHash) {
 
 function addDevelopmentConfigTo(options) {
   options.devServer = {
-    contentBase: `./${OUTPUT_DIRECTORY}`
+    static: `./${OUTPUT_DIRECTORY}`
   };
 
-  options.devtool = 'source-maps';
+  options.devtool = 'source-map';
   options.mode = 'development';
 }
 
@@ -96,12 +96,20 @@ function addProductionConfigTo(options) {
 }
 
 function getBuildId() {
-  // Technically don't need to use the webpack plugin, as not passing it to Webpack...
-  const gitPlugin = new GitRevisionPlugin({
-    commitHashCommand: `log -1 --pretty=format:'%h' main`
-  });
+  // Allow the build id to be supplied externally (e.g. when building without a git checkout)
+  if (process.env.BUILD_ID)
+    return process.env.BUILD_ID;
 
-  return gitPlugin.commithash().slice(0, 12);
+  try {
+    // Technically don't need to use the webpack plugin, as not passing it to Webpack...
+    const gitPlugin = new GitRevisionPlugin({
+      commitHashCommand: `log -1 --pretty=format:%h HEAD`
+    });
+
+    return gitPlugin.commithash().slice(0, 12);
+  } catch (e) {
+    return 'unknown';
+  }
 }
 
 function commonOptions() {
@@ -137,7 +145,7 @@ function commonOptions() {
 export default function(env, argv) {
   let options = commonOptions();
 
-  if (env.development) {
+  if (env.development || argv.mode === 'development') {
     addDevelopmentConfigTo(options);
   } else {
     addProductionConfigTo(options);
