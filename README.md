@@ -5,6 +5,45 @@ A city simulation game for the browser (JS/HTML5).
 
 KawaCity is a modified version of [micropolisJS](https://github.com/graememcc/micropolisJS) by Graeme McCutcheon and contributors, itself a port of Micropolis to JS/HTML5. KawaCity is not the original micropolisJS, and is not affiliated with or endorsed by its authors, Micropolis GmbH or Electronic Arts.
 
+## Running the game ##
+
+### With Docker ###
+
+```sh
+docker build -t kawacity .
+docker run --rm -p 8080:80 kawacity
+```
+
+Then open <http://localhost:8080>.
+
+### With Node.js ###
+
+You need Node.js 22 or later.
+
+```sh
+npm ci
+npm run build   # builds the static site into dist/
+npm run dev     # or: serves a development build at http://localhost:8080
+```
+
+The contents of `dist/` can be hosted on any static web server. Note that the game must be built: the `index.html` at the root of the repository is only a template.
+
+### Checks ###
+
+```sh
+npm test        # unit tests
+npm run lint    # type check
+```
+
+Adding `?debug=1` to the game's URL shows the frame rate and a debug menu, and exposes the game as `window.kawaCity` in the browser console.
+
+## Controls ##
+
+- **Build**: pick a tool, then click on the map. Drag to lay roads, rails and power lines along a path, to place a grid of zones or buildings, or to bulldoze or plant parks over an area. The preview shows where the tool will act and what it will cost.
+- **Move around**: right- or middle-drag (or left-drag with no tool selected), arrow keys or WASD, two-finger scrolling on a touchpad, or click on the minimap.
+- **Zoom**: mouse wheel, pinch, `+`/`-`, or the buttons in the corner of the map.
+- **Shortcuts**: `1`–`9` select tools, `B` bulldozer, `Q` query, `Space` pause, `Esc` cancel/close/deselect.
+
 ## Credits ##
 - [micropolisJS](https://github.com/graememcc/micropolisJS): Copyright (C) Graeme McCutcheon, 2013, and [contributors](https://github.com/graememcc/micropolisJS/graphs/contributors).
 - Micropolis: the open-source release of a city simulation game once sold by Electronic Arts.
