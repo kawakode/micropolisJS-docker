@@ -90,7 +90,7 @@ export const TOUCH_WINDOW_CLOSED = "Touch Window closed";
 export const TRAFFIC_JAMS = "Traffic jams reported";
 export const TRAIN_CRASHED = "Train crashed";
 export const VALVES_UPDATED = "Valves updated";
-export const WELCOME = "Welcome to micropolisJS";
+export const WELCOME = "Welcome to KawaCity";
 
 export const DISASTER_MESSAGES = [
   EARTHQUAKE,
