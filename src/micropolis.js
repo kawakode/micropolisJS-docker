@@ -39,7 +39,11 @@ var onTilesLoaded = function() {
 var onAllTilesLoaded = function() {
   // Kick things off properly
   var sprites = $('#sprites')[0];
-  if (sprites.complete) {
+  var water = $('#watertiles')[0];
+  if (sprites.complete && water.complete) {
+    // The water animation is optional: only use it if it loaded
+    if (water.naturalWidth > 0)
+      tileSet.waterImage = water;
     $('#loadingBanner').css('display', 'none');
     var s = new SplashScreen(tileSet, snowTileSet, sprites);
   } else {

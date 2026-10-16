@@ -19,7 +19,8 @@ import $ from "jquery";
 import { AnimationManager } from './animationManager.js';
 import { MiscUtils } from './miscUtils.js';
 import { Position } from './position.ts';
-import { TILE_INVALID } from "./tileValues.ts";
+import { TILE_COUNT, TILE_INVALID } from "./tileValues.ts";
+import { WATER_FRAME_COUNT, WATER_TILES } from './waterTiles.js';
 
 // World coordinates are expressed in "world pixels": each tile is TILE_SIZE world pixels square
 var TILE_SIZE = 16;
@@ -30,6 +31,13 @@ var SPRITE_CELL = 48;
 var ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4];
 
 var BACKGROUND_COLOUR = '#16232a';
+
+// Water is animated: each tile containing water has a row of frames in the tile set's water image
+var WATER_FRAME_MS = 160;
+var waterRows = new Int16Array(TILE_COUNT).fill(-1);
+WATER_TILES.forEach(function(tile, row) {
+  waterRows[tile] = row;
+});
 
 
 function GameCanvas(id, parentNode) {
@@ -399,6 +407,14 @@ GameCanvas.prototype._drawTile = function(ctx, tileVal, dx, dy, dw, dh) {
   }
 
   var tileSet = this._tileSet;
+
+  var waterRow = waterRows[tileVal];
+  if (waterRow >= 0 && tileSet.waterImage) {
+    ctx.drawImage(tileSet.waterImage, this._waterFrame * TILE_SIZE, waterRow * TILE_SIZE, TILE_SIZE, TILE_SIZE,
+                  dx, dy, dw, dh);
+    return;
+  }
+
   var perRow = tileSet.tilesPerRow;
   var sx = (tileVal % perRow) * TILE_SIZE;
   var sy = Math.floor(tileVal / perRow) * TILE_SIZE;
@@ -414,6 +430,7 @@ GameCanvas.prototype._screenshot = function(onlyVisible) {
   tempCanvas.width = this._map.width * TILE_SIZE;
   tempCanvas.height = this._map.height * TILE_SIZE;
   var ctx = tempCanvas.getContext('2d');
+  this._waterFrame = 0;
 
   for (var x = 0; x < this._map.width; x++) {
     for (var y = 0; y < this._map.height; y++)
@@ -587,6 +604,9 @@ GameCanvas.prototype.paint = function(overlay, sprites, isPaused, dataOverlay) {
   }
 
   this._scale = this._zoom * this._dpr;
+
+  // Nature keeps moving even when the simulation is paused
+  this._waterFrame = Math.floor(performance.now() / WATER_FRAME_MS) % WATER_FRAME_COUNT;
 
   var ctx = this._canvas.getContext('2d');
   ctx.setTransform(1, 0, 0, 1, 0, 0);

@@ -78,15 +78,15 @@ GREY_RAMP = [(0, (30, 26, 40)), (63, (70, 66, 84)), (127, (130, 130, 148)), (191
 
 SEASONS = {
     'summer': {
-        'grass': [(96, 158, 62), (112, 176, 74), (82, 142, 54), (126, 186, 84)],
-        'grass_shadow': (64, 116, 48),
-        'water': [(46, 98, 196), (38, 84, 176), (86, 144, 226), (150, 196, 244)],
-        'foam': (176, 214, 246),
-        'sand': (220, 192, 128),
-        'sand_dark': (186, 156, 98),
-        'canopy': [(26, 70, 34), (40, 102, 42), (62, 136, 52), (104, 172, 70)],
-        'forest_floor': (44, 92, 40),
-        'dirt': [(152, 112, 74), (136, 98, 64), (170, 128, 86)],
+        'grass': [(80, 148, 64), (94, 162, 74), (68, 132, 56), (114, 178, 86)],
+        'grass_shadow': (58, 110, 50),
+        'water': [(44, 100, 184), (36, 86, 166), (82, 140, 214), (146, 192, 238)],
+        'foam': (198, 224, 242),
+        'sand': (196, 190, 150),
+        'sand_dark': (160, 156, 120),
+        'canopy': [(24, 66, 36), (38, 98, 46), (58, 130, 56), (100, 166, 78)],
+        'forest_floor': (44, 92, 44),
+        'dirt': [(122, 104, 84), (106, 90, 74), (138, 120, 98)],
     },
     'winter': {
         'grass': [(232, 238, 246), (248, 250, 255), (212, 222, 236), (255, 255, 255)],
@@ -103,7 +103,7 @@ SEASONS = {
 
 
 def lerp(a, b, t):
-    return tuple(int(round(a[i] + (b[i] - a[i]) * t)) for i in range(3))
+    return tuple(int(round(int(a[i]) + (int(b[i]) - int(a[i])) * t)) for i in range(3))
 
 
 def scale(colour, factor):
@@ -157,32 +157,41 @@ def make_grass(season):
         for x in range(TS):
             n = hash_noise(x, y, 11)
             colour = g[0]
-            if n < 0.09:
+            if n < 0.07:
                 colour = g[1]
-            elif n < 0.16:
+            elif n < 0.13:
                 colour = g[2]
             # Occasional two pixel tufts: a light blade over a dark one
-            if hash_noise(x, y, 29) < 0.035:
+            if hash_noise(x, y, 29) < 0.03:
                 colour = g[3]
-            elif hash_noise(x, (y - 1) % TS, 29) < 0.035:
+            elif hash_noise(x, (y - 1) % TS, 29) < 0.03:
                 colour = g[2]
             tex[y, x] = colour
     return tex
 
 
-def make_water(season):
+WATER_FRAMES = 8
+
+
+def make_water(season, frame=0):
+    """The water texture for one frame of its animation: ripples drift with the current and glint in turn. Every
+    frame repeats seamlessly every tile, and the animation loops after WATER_FRAMES frames."""
     w = SEASONS[season]['water']
     tex = np.zeros((TS, TS, 3), dtype=np.uint8)
     for y in range(TS):
         for x in range(TS):
-            # Sparse patches of deeper water
-            tex[y, x] = w[1] if hash_noise(x // 2, y, 7) < 0.22 else w[0]
-    # Short horizontal ripples, staggered, wrapping around the tile
-    ripples = [(2, 1, 3), (11, 3, 4), (6, 7, 3), (14, 10, 3), (3, 12, 4), (9, 14, 2)]
-    for rx, ry, length in ripples:
-        for i in range(length):
-            tex[ry, (rx + i) % TS] = w[2]
-        tex[ry, (rx + length // 2) % TS] = w[3]
+            # Sparse patches of deeper water, drifting slowly
+            tex[y, x] = w[1] if hash_noise(((x - frame) % TS) // 2, y, 7) < 0.22 else w[0]
+    # Short horizontal ripples, staggered, wrapping around the tile. Each moves at its own pace, so the surface does
+    # not appear to slide as a whole.
+    ripples = [(2, 1, 3, 2), (11, 3, 4, 1), (6, 7, 3, 2), (14, 10, 3, 1), (3, 12, 4, 2), (9, 14, 2, 1)]
+    for i, (rx, ry, length, speed) in enumerate(ripples):
+        start = rx + frame * speed * TS // (WATER_FRAMES * 2)
+        for j in range(length):
+            tex[ry, (start + j) % TS] = w[2]
+        # Glints come and go
+        if (frame + i) % 4 != 0:
+            tex[ry, (start + length // 2) % TS] = w[3]
     return tex
 
 
@@ -330,7 +339,7 @@ FLOOD_TILES = range(48, 52)
 FIRE_TILES = range(56, 64)
 
 
-def render_water_tile(orig, season, tex):
+def render_water_tile(orig, season, tex, frame=0):
     s = SEASONS[season]
     names = names_of(orig)
     water = np.isin(names, ['water', 'blue'])
@@ -345,7 +354,9 @@ def render_water_tile(orig, season, tex):
     for y in range(TS):
         for x in range(TS):
             if water[y, x]:
-                out[y, x] = s['foam'] if near_land[y, x] else tex['water'][y, x]
+                # Foam laps against the shore
+                lapping = (x + y + frame) % 4 != 0
+                out[y, x] = s['foam'] if near_land[y, x] and lapping else tex['water'][y, x]
             elif near_water[y, x]:
                 out[y, x] = s['sand']
             elif names[y, x] == 'brown':
@@ -356,7 +367,7 @@ def render_water_tile(orig, season, tex):
     return out
 
 
-def render_terrain(index, orig, season, tex):
+def render_terrain(index, orig, season, tex, frame=0):
     s = SEASONS[season]
     names = names_of(orig)
 
@@ -369,7 +380,7 @@ def render_terrain(index, orig, season, tex):
         return out
 
     if index in WATER_TILES:
-        return render_water_tile(orig, season, tex)
+        return render_water_tile(orig, season, tex, frame)
 
     if index in TREE_EDGE_TILES or index in FULL_TREE_TILES:
         full = index in FULL_TREE_TILES
@@ -423,31 +434,28 @@ FLAT = {'ground', 'green', 'water'}
 
 
 # Empty zones: a mown lot, with the border and letter in the zone's colour
-ZONE_LOTS = {240: (70, 196, 86), 423: (80, 136, 236), 612: (240, 196, 56)}
+ZONE_LOTS = {240: (96, 204, 104), 423: (104, 156, 240), 612: (226, 196, 84)}
 
 
 def render_zone_lot(img, names, season, tex, colour):
+    """Zoned, but not yet built on: the land stays grassy, faintly tinted and fenced in the zone's colour"""
     h, w = names.shape
     out = np.zeros((h, w, 3), dtype=np.uint8)
-    # Levelled ground, ready to be built on
-    lot = [(206, 192, 142), (194, 178, 128), (218, 206, 158)]
-    if season == 'winter':
-        lot = [(226, 230, 238), (210, 216, 228), (240, 244, 250)]
+    fence = scale(colour, 0.55)
     for y in range(h):
         for x in range(w):
             n = names[y, x]
             if n == 'ground':
-                noise = hash_noise(x % TS, y % TS, 53)
-                out[y, x] = lot[1] if noise < 0.12 else (lot[2] if noise < 0.2 else lot[0])
+                out[y, x] = lerp(tuple(tex['grass'][y % TS, x % TS]), colour, 0.14)
             elif n == 'black':
-                out[y, x] = (30, 26, 40)
+                out[y, x] = fence
             else:
                 out[y, x] = colour
-    # The border and letter cast a small shadow on the lot
+    # The border and letter cast a small shadow on the grass
     marks = ~np.isin(names, ['ground'])
     shadow = neighbours(marks, 1, 1) & ~marks
     for y, x in zip(*np.nonzero(shadow)):
-        out[y, x] = scale(tuple(out[y, x]), 0.82)
+        out[y, x] = scale(tuple(out[y, x]), 0.8)
     return out
 
 
@@ -564,15 +572,15 @@ def transport_kind(index):
 
 # --- Main ------------------------------------------------------------------------------------------------------------
 
-def generate_tiles(source_path, season):
+def generate_tiles(source_path, season, frame=0):
     src = np.array(Image.open(source_path).convert('RGBA'))[:, :, :3]
     out = np.zeros_like(src)
-    tex = {'grass': make_grass(season), 'water': make_water(season), 'dirt': make_dirt(season)}
+    tex = {'grass': make_grass(season), 'water': make_water(season, frame), 'dirt': make_dirt(season)}
     done = set()
 
     # Terrain
     for index in range(0, 64):
-        tile = render_terrain(index, get_tile(src, index), season, tex)
+        tile = render_terrain(index, get_tile(src, index), season, tex, frame)
         if tile is not None:
             put_tile(out, index, tile)
             done.add(index)
@@ -687,12 +695,72 @@ def generate_sprites(source_path):
     return Image.fromarray(out, 'RGBA')
 
 
+def generate_water_animation(source_path, first_frame):
+    """Renders every frame of the water animation. Returns the atlas (one row of frames per tile containing water)
+    and the list of tiles it holds, in row order."""
+    frames = [np.array(first_frame)] + [np.array(generate_tiles(source_path, 'summer', f)) for f in range(1, WATER_FRAMES)]
+
+    # The tiles that contain water are exactly those that change between frames
+    animated = []
+    for index in range(TILE_COUNT):
+        x, y = tile_origin(index)
+        first = frames[0][y:y + TS, x:x + TS]
+        if any((f[y:y + TS, x:x + TS] != first).any() for f in frames[1:]):
+            animated.append(index)
+
+    atlas = np.zeros((len(animated) * TS, WATER_FRAMES * TS, 4), dtype=np.uint8)
+    for row, index in enumerate(animated):
+        x, y = tile_origin(index)
+        for f in range(WATER_FRAMES):
+            atlas[row * TS:(row + 1) * TS, f * TS:(f + 1) * TS] = frames[f][y:y + TS, x:x + TS]
+    return Image.fromarray(atlas, 'RGBA'), animated
+
+
+def write_water_module(animated):
+    path = os.path.join(ROOT, 'src', 'waterTiles.js')
+    rows = []
+    for i in range(0, len(animated), 16):
+        rows.append('  ' + ', '.join(str(t) for t in animated[i:i + 16]))
+    with open(path, 'w') as f:
+        f.write('/* KawaCity. Generated by tools/pixelart/generate.py: do not edit by hand.\n'
+                ' *\n'
+                ' * This code is released under the GNU GPL v3, with some additional terms.\n'
+                ' * Please see the files LICENSE and COPYING for details.\n'
+                ' *\n'
+                ' */\n\n'
+                '// The tiles with animated water. Row n of images/tiles-water.png holds the frames of tile WATER_TILES[n].\n'
+                'var WATER_FRAME_COUNT = %d;\n\n'
+                'var WATER_TILES = [\n%s\n];\n\n\n'
+                'export { WATER_FRAME_COUNT, WATER_TILES };\n' % (WATER_FRAMES, ',\n'.join(rows)))
+
+
+def write_uri_module(image_path, module, name):
+    """The game embeds a copy of each tile set, used when the image cannot be read (e.g. when run from the file
+    system): keep it in sync with the generated images."""
+    import base64
+    data = base64.b64encode(open(image_path, 'rb').read()).decode('ascii')
+    path = os.path.join(ROOT, 'src', module)
+    source = open(path).read()
+    start = source.index('export const ' + name)
+    with open(path, 'w') as f:
+        f.write(source[:start] + "export const %s = 'data:image/png;base64,%s';\n" % (name, data))
+
+
 def main():
-    generate_tiles(os.path.join(SOURCE, 'tiles.png'), 'summer').save(os.path.join(OUTPUT, 'tiles.png'), optimize=True)
-    generate_tiles(os.path.join(SOURCE, 'tiles.png'), 'winter').save(os.path.join(OUTPUT, 'tilessnow.png'),
-                                                                     optimize=True)
+    source = os.path.join(SOURCE, 'tiles.png')
+    summer = generate_tiles(source, 'summer')
+    summer.save(os.path.join(OUTPUT, 'tiles.png'), optimize=True)
+    generate_tiles(source, 'winter').save(os.path.join(OUTPUT, 'tilessnow.png'), optimize=True)
     generate_sprites(os.path.join(SOURCE, 'sprites.png')).save(os.path.join(OUTPUT, 'sprites.png'), optimize=True)
-    print('Generated tiles.png, tilessnow.png and sprites.png in', OUTPUT)
+
+    write_uri_module(os.path.join(OUTPUT, 'tiles.png'), 'tileSetURI.ts', 'TileSetURI')
+    write_uri_module(os.path.join(OUTPUT, 'tilessnow.png'), 'tileSetSnowURI.ts', 'TileSetSnowURI')
+
+    atlas, animated = generate_water_animation(source, summer)
+    atlas.save(os.path.join(OUTPUT, 'tiles-water.png'), optimize=True)
+    write_water_module(animated)
+    print('Generated tiles.png, tilessnow.png, sprites.png and tiles-water.png (%d animated tiles) in %s' %
+          (len(animated), OUTPUT))
 
 
 if __name__ == '__main__':

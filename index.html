@@ -22,13 +22,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="description" content="Play KawaCity and build a virtual city in your browser! KawaCity is based on micropolisJS, a handwritten HTML5/Javascript port of the open-source city simulator Micropolis.">
     <meta name="theme-color" content="#0b1220">
-    <link rel="stylesheet" media="screen" type="text/css" href="css/style.css">
+    <link rel="stylesheet" media="screen" type="text/css" href="css/style.css?v=<%= htmlWebpackPlugin.options.gitHash %>">
     <title>KawaCity</title>
   </head>
   <body class="gamePage">
-    <img id="tiles" class="imageData" src="images/tiles.png" alt="">
-    <img id="snowtiles" class="imageData" src="images/tilessnow.png" alt="">
-    <img id="sprites" class="imageData" src="images/sprites.png" alt="">
+    <img id="tiles" class="imageData" src="images/tiles.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="snowtiles" class="imageData" src="images/tilessnow.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="watertiles" class="imageData" src="images/tiles-water.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="sprites" class="imageData" src="images/sprites.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
 
     <header id="hud" class="initialHidden">
       <div class="brand">KawaCity</div>
