@@ -193,24 +193,28 @@ var checkZoneConnections = function(x, y) {
 };
 
 
+// Fix up the connections of any roads, rails or wires bordering a newly placed building whose top-left
+// corner is at (x, y)
 var checkBorder = function(x, y, size) {
-  // Adjust to top left tile
-  x = x - 1;
-  y = y - 1;
-
   var i;
 
   for (i = 0; i < size; i++)
-    this.fixZone(x + i, y - 1);
+    this.fixBorderTile(x + i, y - 1);
 
   for (i = 0; i < size; i++)
-    this.fixZone(x - 1, y + i);
+    this.fixBorderTile(x - 1, y + i);
 
   for (i = 0; i < size; i++)
-    this.fixZone(x + i, y + size);
+    this.fixBorderTile(x + i, y + size);
 
   for (i = 0; i < size; i++)
-    this.fixZone(x + size, y + i);
+    this.fixBorderTile(x + size, y + i);
+};
+
+
+var fixBorderTile = function(x, y) {
+  if (this._map.testBounds(x, y))
+    this.fixSingle(x, y);
 };
 
 
@@ -225,6 +229,7 @@ var Connector = function(toolConstructor) {
   toolConstructor.prototype.checkZoneConnections = checkZoneConnections;
   toolConstructor.prototype.fixSingle = fixSingle;
   toolConstructor.prototype.checkBorder = checkBorder;
+  toolConstructor.prototype.fixBorderTile = fixBorderTile;
   return toolConstructor;
 };
 

@@ -918,3 +918,28 @@ nav li {
   left: 5px;
   bottom: 5px;
 }
+
+
+/* Map interaction */
+
+#MicropolisCanvas {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.cursorTool {
+  cursor: crosshair;
+}
+
+.cursorQuery {
+  cursor: help;
+}
+
+.cursorGrab {
+  cursor: grab;
+}
+
+.cursorGrabbing {
+  cursor: grabbing;
+}

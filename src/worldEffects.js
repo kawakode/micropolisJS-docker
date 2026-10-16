@@ -31,7 +31,7 @@ var fromKey = function(k) {
 
 
 WorldEffects.prototype.clear = function() {
-  this._data = [];
+  this._data = {};
 };
 
 

@@ -181,35 +181,33 @@ Simulation.prototype.simTick = function() {
 };
 
 
-Simulation.prototype._simFrame = function() {
-  if (this.budget.awaitingValues)
-    return;
-
-  // Default to slow speed
-  var threshold = 100;
-
+// The minimum number of milliseconds between simulation steps at the current speed
+Simulation.prototype.getStepInterval = function() {
   switch (this._speed) {
-    case Simulation.SPEED_PAUSED:
-      return;
-
-    case Simulation.SPEED_SLOW:
-      // We've already set the threshold correctly
-      break;
-
     case Simulation.SPEED_MED:
-      threshold = 50;
-      break;
+      return 50;
 
     case Simulation.SPEED_FAST:
-      threshold = 10;
-      break;
+      return 10;
 
     default:
-      console.warn('Unexpected speed ('  + this._speed + '): defaulting to slow');
+      return 100;
   }
+};
+
+
+// How long until the next simulation step is due, in milliseconds
+Simulation.prototype.timeUntilNextStep = function() {
+  return Math.max(0, this.getStepInterval() - (new Date() - this._lastTickTime));
+};
+
+
+Simulation.prototype._simFrame = function() {
+  if (this.budget.awaitingValues || this._speed === Simulation.SPEED_PAUSED)
+    return;
 
   var d = new Date();
-  if (d - this._lastTickTime < threshold)
+  if (d - this._lastTickTime < this.getStepInterval())
     return;
 
   var simData = this._constructSimData();

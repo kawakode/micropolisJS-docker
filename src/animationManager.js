@@ -118,8 +118,9 @@ AnimationManager.prototype.getTiles = function(tileValues, offsetX, offsetY, xBo
       var tileValue = tile & BIT_MASK;
       var newTile = TILE_INVALID;
       var last;
+      // History is keyed by map position, so that animations stay smooth while the view scrolls
       if (this._lastPainted)
-        last = this._lastPainted.getTile(x, y);
+        last = this._lastPainted.getTile(mapX, mapY);
 
       if (shouldChangeAnimation) {
         // Have we painted any of this sequence before? If so, paint the next tile
@@ -150,7 +151,7 @@ AnimationManager.prototype.getTiles = function(tileValues, offsetX, offsetY, xBo
       }
 
       tileValues[index] = newTile;
-      newPainted.setTile(x, y, newTile);
+      newPainted.setTile(mapX, mapY, newTile);
     }
   }
 

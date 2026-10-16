@@ -55,6 +55,10 @@ TileSet.prototype._verifyImage = function(image, callback, errorCallback) {
 
   var tileWidth = this.tileWidth = TILE_SIZE;
 
+  // The source image is retained, so that tiles can be painted directly from it
+  this.image = image;
+  this.tilesPerRow = TILES_PER_ROW;
+
   // We paint the image onto a canvas so we can split it up
   var c = document.createElement('canvas');
   c.width = tileWidth;

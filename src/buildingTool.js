@@ -105,7 +105,7 @@ BuildingTool.prototype.buildBuilding = function(x, y) {
 
   this.putBuilding(x, y);
 
-  this.checkBorder(x, y);
+  this.checkBorder(x, y, this.size);
 
   return this.TOOLRESULT_OK;
 };
