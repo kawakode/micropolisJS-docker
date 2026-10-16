@@ -36,6 +36,8 @@ var speedMedID = '#speedMed';
 var speedFastID = '#speedFast';
 var disastersYesID = '#disastersYes';
 var disastersNoID = '#disastersNo';
+var dayNightYesID = '#dayNightYes';
+var dayNightNoID = '#dayNightNo';
 
 
 SettingsWindow.prototype.close = function(actions) {
@@ -80,6 +82,8 @@ var submit = function(e) {
     shouldEnableDisasters = false;
   actions.push({action: SettingsWindow.DISASTERS_CHANGED, data: shouldEnableDisasters});
 
+  actions.push({action: SettingsWindow.DAY_NIGHT, data: $('.dayNightSetting:checked').val() === 'true'});
+
   this.close(actions);
 };
 
@@ -107,6 +111,11 @@ SettingsWindow.prototype.open = function(settingsData) {
   else
     $(disastersNoID).prop('checked', true);
 
+  if (settingsData.dayNight)
+    $(dayNightYesID).prop('checked', true);
+  else
+    $(dayNightNoID).prop('checked', true);
+
   this._toggleDisplay();
 };
 
@@ -125,6 +134,7 @@ defineAction('AUTOBUDGET');
 defineAction('AUTOBULLDOZE');
 defineAction('SPEED');
 defineAction('DISASTERS_CHANGED');
+defineAction('DAY_NIGHT');
 
 
 export { SettingsWindow };

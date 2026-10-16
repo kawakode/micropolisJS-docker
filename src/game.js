@@ -175,7 +175,8 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   // ... the settings window
   this.handleSettingsRequest = makeWindowOpenHandler('settings', function() {
     return [{autoBudget: this.simulation.budget.autoBudget, autoBulldoze: BaseTool.getAutoBulldoze(),
-             speed: this.defaultSpeed, disasters: this.simulation.disasterManager.disastersEnabled}];
+             speed: this.defaultSpeed, disasters: this.simulation.disasterManager.disastersEnabled,
+             dayNight: this.ambientLife.dayNight}];
   }.bind(this));
   this.settingsWindow = new SettingsWindow(opacityLayerID, 'settingsWindow');
   this.settingsWindow.addEventListener(Messages.SETTINGS_WINDOW_CLOSED, this.handleSettingsWindowClosure.bind(this));
@@ -240,7 +241,12 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this._notificationBar = new Notification('#notifications', this.gameCanvas, Text.messageText[Messages.WELCOME]);
 
   this.congratsWindow = new CongratsWindow(opacityLayerID, 'congratsWindow');
-  this.congratsWindow.addEventListener(Messages.CONGRATS_WINDOW_CLOSED, this.genericDialogClosure);
+  this.congratsWindow.addEventListener(Messages.CONGRATS_WINDOW_CLOSED, function() {
+    this.genericDialogClosure();
+
+    // Celebrate each milestone with fireworks
+    this.ambientLife.celebrate(this.gameCanvas.getVisibleWorldRect());
+  }.bind(this));
 
   // Unhide controls
   this.revealControls();
@@ -248,8 +254,14 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   // The minimap needs its container to be on screen
   this.minimap = new Minimap('minimapContainer', this.gameMap, this.simulation, this.gameCanvas, tileSet);
 
-  // Decorative cars, boats and birds
+  // Decorative cars, people, boats, birds, smoke, clouds, and the cycle of day and night
   this.ambientLife = new AmbientLife(this.gameMap, this.simulation);
+  if (savedGame) {
+    if (typeof(savedGame.dayNight) === 'boolean')
+      this.ambientLife.setDayNight(savedGame.dayNight);
+    this.ambientLife.setTimeOfDay(savedGame.timeOfDay);
+  }
+  this._clockText = '';
 
   // Speed controls in the heads-up display
   var self = this;
@@ -293,6 +305,9 @@ Game.prototype.save = function() {
   var saveData = {name: this.name, everClicked: this.everClicked};
   for (var i = 0; i < milestones.length; i++)
     saveData[milestones[i]] = this[milestones[i]];
+
+  saveData.dayNight = this.ambientLife.dayNight;
+  saveData.timeOfDay = this.ambientLife.getTimeOfDay();
 
   BaseTool.save(saveData);
   this.simulation.save(saveData);
@@ -396,6 +411,10 @@ Game.prototype.handleSettingsWindowClosure = function(actions) {
 
       case SettingsWindow.DISASTERS_CHANGED:
         this.simulation.disasterManager.disastersEnabled = a.data;
+        break;
+
+      case SettingsWindow.DAY_NIGHT:
+        this.ambientLife.setDayNight(a.data);
         break;
 
       default:
@@ -780,6 +799,25 @@ Game.prototype.processFrontEndMessage = function(message) {
 };
 
 
+// Shows the time of day in the heads-up display (a day starts at 6 in the morning)
+Game.prototype.updateClock = function() {
+  var text = '';
+  if (this.ambientLife.dayNight) {
+    var minutes = Math.floor((6 * 60 + this.ambientLife.getTimeOfDay() * 24 * 60) % (24 * 60));
+    // Only show whole quarters of an hour, so the clock does not flicker
+    minutes -= minutes % 15;
+    var hours = Math.floor(minutes / 60);
+    text = (hours < 10 ? '0' : '') + hours + ':' + (minutes % 60 < 10 ? '0' : '') + (minutes % 60);
+  }
+
+  if (text !== this._clockText) {
+    this._clockText = text;
+    $('#clock').text(text);
+    $('#clockStat').toggleClass('hidden', text === '');
+  }
+};
+
+
 Game.prototype.calculateSpritesForPaint = function(canvas) {
   var rect = canvas.getVisibleWorldRect();
   var tileSize = GameCanvas.TILE_SIZE;
@@ -826,6 +864,7 @@ var commonAnimate = function(timestamp) {
 
   this.minimap.paint();
   this.ambientLife.update(elapsed, this.gameCanvas.getVisibleWorldRect(), !this.isPaused && !this.dialogOpen);
+  this.updateClock();
 
   var sprites = this.calculateSpritesForPaint(this.gameCanvas);
   this.gameCanvas.paint(this.overlay, sprites, this.isPaused, this.minimap.getOverlayCanvas(), this.ambientLife);

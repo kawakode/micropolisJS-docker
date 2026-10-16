@@ -29,6 +29,7 @@
     <img id="tiles" class="imageData" src="images/tiles.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
     <img id="snowtiles" class="imageData" src="images/tilessnow.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
     <img id="watertiles" class="imageData" src="images/tiles-water.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="lighttiles" class="imageData" src="images/tiles-lights.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
     <img id="sprites" class="imageData" src="images/sprites.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
 
     <header id="hud" class="initialHidden">
@@ -36,6 +37,7 @@
       <div id="infobar" class="hudStats">
         <div class="stat cityName"><span id="name">My Town</span><span class="statSub" id="cclass">VILLAGE</span></div>
         <div class="stat"><span class="statLabel">Date</span><span class="statValue" id="date">Jan 1900</span></div>
+        <div class="stat optionalStat" id="clockStat"><span class="statLabel">Time</span><span class="statValue" id="clock">06:00</span></div>
         <div class="stat"><span class="statLabel">Funds</span><span class="statValue">$<span id="funds">20000</span></span></div>
         <div class="stat"><span class="statLabel">Population</span><span class="statValue" id="population">0</span></div>
         <div class="stat optionalStat"><span class="statLabel">Score</span><span class="statValue" id="score">0</span></div>
@@ -437,6 +439,11 @@
                 <legend class="fieldLabel">Random disasters</legend>
                 <input type="radio" class="enableDisastersSetting" name="disastersSetting" id="disastersYes" value="true" checked="checked"><label for="disastersYes">On</label>
                 <input type="radio" class="enableDisastersSetting" name="disastersSetting" id="disastersNo" value="false"><label for="disastersNo">Off</label>
+              </fieldset>
+              <fieldset id="dayNightSelect" class="choice">
+                <legend class="fieldLabel">Day and night</legend>
+                <input type="radio" class="dayNightSetting" name="dayNightSetting" id="dayNightYes" value="true" checked="checked"><label for="dayNightYes">On</label>
+                <input type="radio" class="dayNightSetting" name="dayNightSetting" id="dayNightNo" value="false"><label for="dayNightNo">Off</label>
               </fieldset>
             </div>
             <div class="modalButtons">

@@ -39,13 +39,18 @@ Adding `?debug=1` to the game's URL shows the frame rate and a debug menu, and e
 
 ## Graphics ##
 
-The tiles and sprites in `images/` are generated from the original Micropolis artwork (kept in `art/micropolis/`) by `tools/pixelart/generate.py`, which repaints the terrain and remasters everything else in a 16-bit console style. It also renders the frames of the water animation (`images/tiles-water.png` and `src/waterTiles.js`). To regenerate them (requires Python 3 with Pillow and numpy):
+The tiles and sprites in `images/` are generated from the original Micropolis artwork (kept in `art/micropolis/`) by `tools/pixelart/generate.py`, which repaints the terrain and remasters everything else in a 16-bit console style. It also renders the frames of the water animation (`images/tiles-water.png` and `src/waterTiles.js`) and the lights that come on at night (`images/tiles-lights.png` and `src/lightTiles.js`). To regenerate them (requires Python 3 with Pillow and numpy):
 
 ```sh
 python3 tools/pixelart/generate.py
 ```
 
-The map is also brought to life by purely decorative cars, boats, birds and cloud shadows (`src/ambientLife.js`), which follow the simulation: cars appear as the population and traffic grow, and vehicles stop when the game is paused.
+The map is also brought to life by purely decorative effects (`src/ambientLife.js`), which follow the simulation and stop when the game is paused:
+
+- cars, pedestrians, sailing boats, birds and cloud shadows: traffic grows with the population;
+- smoke from factories, the coal power plant and fires, steam from the nuclear power plant's cooling towers, and dust where buildings go up;
+- a day and night cycle (a day lasts six minutes), during which windows, street lamps, headlights and boat lanterns light up; it can be turned off in the settings;
+- fireworks when the city reaches a milestone.
 
 ## Controls ##
 

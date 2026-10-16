@@ -20,6 +20,7 @@ import { AnimationManager } from './animationManager.js';
 import { MiscUtils } from './miscUtils.js';
 import { Position } from './position.ts';
 import { TILE_COUNT, TILE_INVALID } from "./tileValues.ts";
+import { LIGHT_TILES } from './lightTiles.js';
 import { WATER_FRAME_COUNT, WATER_TILES } from './waterTiles.js';
 
 // World coordinates are expressed in "world pixels": each tile is TILE_SIZE world pixels square
@@ -37,6 +38,13 @@ var WATER_FRAME_MS = 160;
 var waterRows = new Int16Array(TILE_COUNT).fill(-1);
 WATER_TILES.forEach(function(tile, row) {
   waterRows[tile] = row;
+});
+
+// At night, some tiles have lights: windows, street lamps, flames. They are laid out like the tile set, in the tile
+// set's lights image.
+var hasLights = new Uint8Array(TILE_COUNT);
+LIGHT_TILES.forEach(function(tile) {
+  hasLights[tile] = 1;
 });
 
 
@@ -478,6 +486,7 @@ GameCanvas.prototype._paintTiles = function(ctx, isPaused) {
 
   var tileValues = this._map.getTileValuesForPainting(firstX, firstY, width, height, this._tileValues);
   this._tileValues = tileValues;
+  this._paintedArea = {x: firstX, y: firstY, width: width, height: height};
 
   // Adjust for animations
   this.animationManager.getTiles(tileValues, firstX, firstY, width, height, isPaused);
@@ -620,6 +629,23 @@ GameCanvas.prototype._paintGroundLife = function(ctx, life) {
     }
   }
 
+  for (i = 0; i < life.pedestrians.length; i++) {
+    var p = life.pedestrians[i];
+    var px = Math.round(p.x);
+    var py = Math.round(p.y);
+    if (px < view.x - 4 || py < view.y - 4 || px > view.x + view.width + 4 || py > view.y + view.height + 4)
+      continue;
+
+    // A shadow, a head, a body, and legs that move as they walk
+    var stride = Math.floor(p.step) % 2 === 0;
+    this._worldRect(ctx, px + 1, py - 1, 1, 2, 'rgba(26,20,36,0.45)');
+    this._worldRect(ctx, px, py - 3, 1, 1, p.skin);
+    this._worldRect(ctx, px, py - 2, 1, 2, p.clothes);
+    this._worldRect(ctx, stride ? px : px - 1, py, 1, 1, '#2a2430');
+    if (stride)
+      this._worldRect(ctx, px - 1, py - 1, 1, 1, p.skin);
+  }
+
   for (i = 0; i < life.cars.length; i++) {
     var car = life.cars[i];
     var cx = Math.round(car.x);
@@ -642,10 +668,131 @@ GameCanvas.prototype._paintGroundLife = function(ctx, life) {
 };
 
 
+// Paints smoke, steam and dust (glow is false), or fireworks (glow is true)
+GameCanvas.prototype._paintParticles = function(ctx, life, glow) {
+  var particles = life.particles;
+  // Sparks add up their light
+  if (glow)
+    ctx.globalCompositeOperation = 'lighter';
+
+  for (var i = 0; i < particles.length; i++) {
+    var p = particles[i];
+    if (!!p.glow !== glow)
+      continue;
+
+    var t = p.age / p.life;
+    var size = Math.max(1, Math.round(p.size0 + (p.size1 - p.size0) * t));
+    // Smoke and sparks hold on, then fade out quickly
+    var alpha = p.a0 + (p.a1 - p.a0) * (p.fade ? t * t : t);
+    if (p.twinkle && t > 0.4 && Math.random() < 0.35)
+      alpha *= 0.2;
+
+    var r = Math.round(p.c0[0] + (p.c1[0] - p.c0[0]) * t);
+    var g = Math.round(p.c0[1] + (p.c1[1] - p.c0[1]) * t);
+    var b = Math.round(p.c0[2] + (p.c1[2] - p.c0[2]) * t);
+    var colour = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha.toFixed(3) + ')';
+    var x = Math.round(p.x - size / 2);
+    var y = Math.round(p.y - size / 2);
+
+    if (size < 4) {
+      this._worldRect(ctx, x, y, size, size, colour);
+    } else {
+      // Bigger puffs are rounded off: a cross of three rectangles that don't overlap
+      this._worldRect(ctx, x + 1, y, size - 2, size, colour);
+      this._worldRect(ctx, x, y + 1, 1, size - 2, colour);
+      this._worldRect(ctx, x + size - 1, y + 1, 1, size - 2, colour);
+    }
+  }
+
+  ctx.globalCompositeOperation = 'source-over';
+};
+
+
+// Paints the night: the sky's colour multiplied over the map, then the lights in the windows, the street lamps and
+// the cars' headlights
+GameCanvas.prototype._paintNight = function(ctx, life, sky) {
+  if (sky.tint !== null) {
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgb(' + Math.round(sky.tint[0]) + ',' + Math.round(sky.tint[1]) + ',' + Math.round(sky.tint[2]) + ')';
+    ctx.fillRect(0, 0, this._canvas.width, this._canvas.height);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  if (sky.lights < 0.02)
+    return;
+
+  ctx.globalAlpha = sky.lights;
+
+  var lightsImage = this._tileSet.lightsImage;
+  var area = this._paintedArea;
+  if (lightsImage && area) {
+    var tileValues = this._tileValues;
+    var perRow = this._tileSet.tilesPerRow;
+
+    for (var y = 0; y < area.height; y++) {
+      var mapY = area.y + y;
+      var dy = this._toDeviceY(mapY * TILE_SIZE);
+      var dh = this._toDeviceY((mapY + 1) * TILE_SIZE) - dy;
+
+      for (var x = 0; x < area.width; x++) {
+        var tileVal = tileValues[y * area.width + x];
+        if (tileVal < 0 || !hasLights[tileVal])
+          continue;
+
+        var mapX = area.x + x;
+        var dx = this._toDeviceX(mapX * TILE_SIZE);
+        var dw = this._toDeviceX((mapX + 1) * TILE_SIZE) - dx;
+        ctx.drawImage(lightsImage, (tileVal % perRow) * TILE_SIZE, Math.floor(tileVal / perRow) * TILE_SIZE,
+                      TILE_SIZE, TILE_SIZE, dx, dy, dw, dh);
+      }
+    }
+  }
+
+  // Headlights, and a soft beam ahead of each car
+  for (var i = 0; i < life.cars.length; i++) {
+    var car = life.cars[i];
+    var cx = Math.round(car.x);
+    var cy = Math.round(car.y);
+    switch (car.dir) {
+      case 0:
+        this._worldRect(ctx, cx - 1, cy - 9, 3, 4, 'rgba(255, 236, 170, 0.22)');
+        this._worldRect(ctx, cx - 1, cy - 5, 1, 1, '#fff3c0');
+        this._worldRect(ctx, cx + 1, cy - 5, 1, 1, '#fff3c0');
+        break;
+      case 1:
+        this._worldRect(ctx, cx + 6, cy - 1, 4, 3, 'rgba(255, 236, 170, 0.22)');
+        this._worldRect(ctx, cx + 5, cy - 1, 1, 1, '#fff3c0');
+        this._worldRect(ctx, cx + 5, cy + 1, 1, 1, '#fff3c0');
+        break;
+      case 2:
+        this._worldRect(ctx, cx - 1, cy + 6, 3, 4, 'rgba(255, 236, 170, 0.22)');
+        this._worldRect(ctx, cx - 1, cy + 5, 1, 1, '#fff3c0');
+        this._worldRect(ctx, cx + 1, cy + 5, 1, 1, '#fff3c0');
+        break;
+      default:
+        this._worldRect(ctx, cx - 9, cy - 1, 4, 3, 'rgba(255, 236, 170, 0.22)');
+        this._worldRect(ctx, cx - 5, cy - 1, 1, 1, '#fff3c0');
+        this._worldRect(ctx, cx - 5, cy + 1, 1, 1, '#fff3c0');
+    }
+  }
+
+  // A lantern on each boat
+  for (i = 0; i < life.boats.length; i++)
+    this._worldRect(ctx, Math.round(life.boats[i].x), Math.round(life.boats[i].y) - 1, 1, 1, '#ffe08a');
+
+  ctx.globalAlpha = 1;
+};
+
+
 // Paints the shadows of the clouds drifting over the map. Each cloud's shape is a small bitmap (one pixel per 4
 // world pixels), drawn translucent and unsmoothed, so the shadows have pixelated edges.
-GameCanvas.prototype._paintCloudShadows = function(ctx, life) {
-  ctx.globalAlpha = 0.11;
+GameCanvas.prototype._paintCloudShadows = function(ctx, life, sky) {
+  // Clouds cast no visible shadow at night
+  var alpha = 0.11 * (1 - sky.lights);
+  if (alpha < 0.005)
+    return;
+
+  ctx.globalAlpha = alpha;
   for (var i = 0; i < life.clouds.length; i++) {
     var cloud = life.clouds[i];
     var dx = this._toDeviceX(cloud.x);
@@ -715,18 +862,27 @@ GameCanvas.prototype.paint = function(overlay, sprites, isPaused, dataOverlay, l
 
   this._paintTiles(ctx, isPaused);
 
-  if (life)
-    this._paintGroundLife(ctx, life);
+  var sky = life ? life.getSky() : null;
 
-  if (dataOverlay)
-    this._paintDataOverlay(ctx, dataOverlay);
+  if (life) {
+    this._paintGroundLife(ctx, life);
+    this._paintParticles(ctx, life, false);
+  }
 
   if (sprites)
     this._paintSprites(ctx, sprites);
 
+  if (life)
+    this._paintNight(ctx, life, sky);
+
+  // Data overlays stay readable, day or night
+  if (dataOverlay)
+    this._paintDataOverlay(ctx, dataOverlay);
+
   if (life) {
-    this._paintCloudShadows(ctx, life);
+    this._paintCloudShadows(ctx, life, sky);
     this._paintSkyLife(ctx, life);
+    this._paintParticles(ctx, life, true);
   }
 
   if (overlay)

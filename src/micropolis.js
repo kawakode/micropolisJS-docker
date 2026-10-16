@@ -40,10 +40,15 @@ var onAllTilesLoaded = function() {
   // Kick things off properly
   var sprites = $('#sprites')[0];
   var water = $('#watertiles')[0];
-  if (sprites.complete && water.complete) {
-    // The water animation is optional: only use it if it loaded
+  var lights = $('#lighttiles')[0];
+  if (sprites.complete && water.complete && lights.complete) {
+    // The water animation and night lights are optional: only use them if they loaded
     if (water.naturalWidth > 0)
       tileSet.waterImage = water;
+    if (lights.naturalWidth > 0) {
+      tileSet.lightsImage = lights;
+      snowTileSet.lightsImage = lights;
+    }
     $('#loadingBanner').css('display', 'none');
     var s = new SplashScreen(tileSet, snowTileSet, sprites);
   } else {
