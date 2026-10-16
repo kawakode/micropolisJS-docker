@@ -89,7 +89,6 @@ export const TOOL_CHANGED = "Tool changed";
 export const TAX_TOO_HIGH = "Tax too high";
 export const TOOL_CLICKED = "Tool clicked";
 export const TORNADO_SIGHTED = "Tornado sighted";
-export const TOUCH_WINDOW_CLOSED = "Touch Window closed";
 export const TRAFFIC_JAMS = "Traffic jams reported";
 export const TRAIN_CRASHED = "Train crashed";
 export const VALVES_UPDATED = "Valves updated";

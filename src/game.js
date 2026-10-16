@@ -38,7 +38,8 @@ import { SettingsWindow } from './settingsWindow.js';
 import { Simulation } from './simulation.js';
 import { Storage } from './storage.js';
 import { Text } from './text.js';
-import { TouchWarnWindow } from './touchWarnWindow.js';
+import { Minimap } from './minimap.js';
+import { ToolIcons } from './toolIcons.js';
 
 var disasterTimeout = 20 * 1000;
 
@@ -86,6 +87,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
     this.gameCanvas.setZoom(2);
   this.gameCanvas.centreOn(Math.floor(this.gameMap.width / 2), Math.floor(this.gameMap.height / 2));
 
+  ToolIcons.decorateToolButtons(tileSet);
   this.inputStatus = new InputStatus(this.gameMap, this.gameCanvas);
 
   this.dialogOpen = false;
@@ -195,10 +197,6 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.nagWindow = new NagWindow(opacityLayerID, 'nagWindow');
   this.nagWindow.addEventListener(Messages.NAG_WINDOW_CLOSED, this.genericDialogClosure);
 
-  // ... the touch warn window
-  this.touchWindow = new TouchWarnWindow(opacityLayerID, 'touchWarnWindow');
-  this.touchWindow.addEventListener(Messages.TOUCH_WINDOW_CLOSED, this.genericDialogClosure);
-
   // ... and finally the query window
   this.queryWindow = new QueryWindow(opacityLayerID, 'queryWindow');
   this.queryWindow.addEventListener(Messages.QUERY_WINDOW_CLOSED, this.genericDialogClosure);
@@ -245,6 +243,20 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
 
   // Unhide controls
   this.revealControls();
+
+  // The minimap needs its container to be on screen
+  this.minimap = new Minimap('minimapContainer', this.gameMap, this.simulation, this.gameCanvas, tileSet);
+
+  // Speed controls in the heads-up display
+  var self = this;
+  $('.speedButton').click(function(e) {
+    e.preventDefault();
+    self.setSpeed($(this).attr('data-speed') - 0);
+  });
+  this._updateSpeedButtons();
+
+  // Keep the demand indicator crisp when the window changes size
+  $(window).on('resize', function() { self.rci.update(); });
 
   // Run the sim
   this.tick = tick.bind(this);
@@ -375,8 +387,7 @@ Game.prototype.handleSettingsWindowClosure = function(actions) {
         break;
 
       case SettingsWindow.SPEED:
-        this.defaultSpeed = a.data;
-        this.simulation.setSpeed(this.defaultSpeed);
+        this.setSpeed(a.data - 0);
         break;
 
       case SettingsWindow.DISASTERS_CHANGED:
@@ -622,10 +633,10 @@ Game.prototype.computeOverlay = function() {
 
 
 Game.prototype.handleSave = function() {
-  this.save();
+  var succeeded = this.save();
   this.dialogOpen = true;
   this._openWindow = 'saveWindow';
-  this.saveWindow.open();
+  this.saveWindow.open(succeeded);
 };
 
 
@@ -640,7 +651,30 @@ Game.prototype.handlePause = function() {
   else
     this.simulation.setSpeed(this.defaultSpeed);
 
+  this._updateSpeedButtons();
+};
+
+
+// Sets the running speed (resuming the game if it was paused)
+Game.prototype.setSpeed = function(speed) {
+  if (speed !== Simulation.SPEED_SLOW && speed !== Simulation.SPEED_MED && speed !== Simulation.SPEED_FAST)
+    return;
+
+  this.defaultSpeed = speed;
+  this.isPaused = false;
+  this.simulation.setSpeed(speed);
+  this._updateSpeedButtons();
+};
+
+
+Game.prototype._updateSpeedButtons = function() {
   $('#pauseRequest').text(this.isPaused ? 'Play' : 'Pause').toggleClass('paused', this.isPaused);
+
+  var current = this.isPaused ? -1 : this.defaultSpeed;
+  $('.speedButton').each(function() {
+    var active = ($(this).attr('data-speed') - 0) === current;
+    $(this).toggleClass('active', active).attr('aria-pressed', active ? 'true' : 'false');
+  });
 };
 
 
@@ -786,8 +820,10 @@ var commonAnimate = function(timestamp) {
   // Run this even when paused: you can still build when paused
   this.overlay = this.computeOverlay();
 
+  this.minimap.paint();
+
   var sprites = this.calculateSpritesForPaint(this.gameCanvas);
-  this.gameCanvas.paint(this.overlay, sprites, this.isPaused);
+  this.gameCanvas.paint(this.overlay, sprites, this.isPaused, this.minimap.getOverlayCanvas());
 
   if (this.monsterTV.isOpen) {
     sprites = this.calculateSpritesForPaint(this.monsterTV.canvas);

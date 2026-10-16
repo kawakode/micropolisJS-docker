@@ -570,7 +570,18 @@ GameCanvas.prototype._paintOverlay = function(ctx, overlay) {
 };
 
 
-GameCanvas.prototype.paint = function(overlay, sprites, isPaused) {
+// Paints a data overlay: a canvas with one pixel per map tile
+GameCanvas.prototype._paintDataOverlay = function(ctx, dataOverlay) {
+  var left = this._toDeviceX(0);
+  var top = this._toDeviceY(0);
+  var width = this._toDeviceX(this._map.width * TILE_SIZE) - left;
+  var height = this._toDeviceY(this._map.height * TILE_SIZE) - top;
+
+  ctx.drawImage(dataOverlay, 0, 0, dataOverlay.width, dataOverlay.height, left, top, width, height);
+};
+
+
+GameCanvas.prototype.paint = function(overlay, sprites, isPaused, dataOverlay) {
   this._checkReady();
 
   this._calculateDimensions();
@@ -587,6 +598,9 @@ GameCanvas.prototype.paint = function(overlay, sprites, isPaused) {
   ctx.imageSmoothingEnabled = false;
 
   this._paintTiles(ctx, isPaused);
+
+  if (dataOverlay)
+    this._paintDataOverlay(ctx, dataOverlay);
 
   if (sprites)
     this._paintSprites(ctx, sprites);

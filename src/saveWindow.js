@@ -37,7 +37,10 @@ SaveWindow.prototype.close = function() {
 };
 
 
-SaveWindow.prototype.open = function() {
+SaveWindow.prototype.open = function(succeeded) {
+  $('#saveMessage').text(succeeded === false ?
+    'Sorry, the game could not be saved. Your browser may be blocking storage, or it may be full.' :
+    'Game saved! Choose "Load saved game" on the title screen to carry on later.');
   this._toggleDisplay();
   $(saveOKID).focus();
 };
