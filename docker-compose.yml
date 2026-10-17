@@ -1,0 +1,14 @@
+# KawaCity, from the published image:
+#
+#   docker compose up -d
+#
+# then open http://localhost:8080
+
+services:
+  kawacity:
+    # latest, or a version: 1, 1.0, 1.0.0
+    image: ghcr.io/kawakode/kawacity:latest
+    ports:
+      # host port:container port
+      - "8080:80"
+    restart: unless-stopped
