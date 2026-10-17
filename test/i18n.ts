@@ -144,7 +144,7 @@ describe("Translations", () => {
         };
 
         ["densityStrings", "landValueStrings", "crimeStrings", "pollutionStrings", "rateStrings", "zoneTypes", "gameLevel",
-         "cityClass", "problems", "months", "toolMessages", "messageText"].forEach(table => add((Text as any)[table]));
+         "cityClass", "problems", "months", "toolMessages", "messageText", "sides", "edges", "deals"].forEach(table => add((Text as any)[table]));
         Object.keys(Toolbar.TOOLS).forEach(tool => {
             add((Toolbar.TOOLS as any)[tool].name);
             add((Toolbar.TOOLS as any)[tool].description);
@@ -161,7 +161,7 @@ describe("Translations", () => {
 
     it("keep the parameters of each text", () => {
         const parameters = (text: string) => (text.match(/\{\w+\}/g) || []).sort().join(",");
-        const html = ["credits", "nag", "saveFile", "pictureReady"];
+        const html = ["credits", "nag", "saveFile"];
         const wrong = Object.keys(French).filter(key => html.indexOf(key) === -1 &&
                                                         parameters(key) !== parameters(French[key]));
         expect(wrong).toEqual([]);

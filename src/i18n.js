@@ -12,8 +12,8 @@ import { French } from './lang/fr.js';
 // the first of the browser's languages that the game speaks, or else English.
 //
 // In the page, an element with a data-i18n attribute has its text translated: the attribute holds the English text,
-// or is empty for the element's own text. The same goes for the attributes title, aria-label, placeholder and value,
-// with data-i18n-title, data-i18n-aria-label... An element whose text holds markup (links) has a data-i18n-html
+// or is empty for the element's own text. The same goes for the attributes title, aria-label, placeholder, value and
+// alt, with data-i18n-title, data-i18n-aria-label... An element whose text holds markup (links) has a data-i18n-html
 // attribute naming its translation instead.
 //
 // A text is sometimes ambiguous in English ("Fire": the disaster, or the fire department): it is then written as
@@ -24,7 +24,7 @@ var NAMES = {en: 'English', fr: 'Français'};
 var LOCALES = {en: 'en-US', fr: 'fr-FR'};
 var DICTIONARIES = {fr: French.strings};
 var STORAGE_KEY = 'kawacityLanguage';
-var ATTRIBUTES = ['title', 'aria-label', 'placeholder', 'value'];
+var ATTRIBUTES = ['title', 'aria-label', 'placeholder', 'value', 'alt'];
 
 var listeners = [];
 

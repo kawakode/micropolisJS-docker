@@ -173,6 +173,24 @@ describe("The news ticker", () => {
         expect(keys).not.toContain("quiet");
     });
 
+    it("tells where to build the link a deal with the neighbours waits for", () => {
+        const news = makeNews();
+        const report = news.cityReport(makeStatus({dealsOnHold: [
+            {side: "east", name: "Belmonte", kind: "trade", state: "noLink", x: 119, y: 50},
+            {side: "west", name: "Roseval", kind: "sellPower", state: "noPower", x: 0, y: 50}]}));
+        const deal = report.find((item: any) => item.key === "dealOnHold");
+
+        expect(deal.text).toBe("The trade agreement with Belmonte is on hold: build a road or a railway to the east edge of the map.");
+        expect([deal.x, deal.y]).toEqual([119, 50]);
+    });
+
+    it("knows that power bought from the neighbours is power", () => {
+        const news = makeNews();
+        const keys = (status: any) => news.cityReport(status).map((item: any) => item.key);
+        expect(keys(makeStatus({}, {coalPowerPop: 0}))).toContain("noPower");
+        expect(keys(makeStatus({powerBought: 500}, {coalPowerPop: 0}))).not.toContain("noPower");
+    });
+
     it("advises a new city", () => {
         const news = makeNews();
         const status = makeStatus({population: 0, populationDelta: 0, problems: [{problem: 3, votes: 21}]},
@@ -271,6 +289,11 @@ describe("The news ticker in French", () => {
             makeStatus({}, {coalPowerPop: 0}),
         ];
         ["VILLAGE", "TOWN", "CITY", "CAPITAL", "METROPOLIS", "MEGALOPOLIS"].forEach(cityClass => variants.push(makeStatus({cityClass})));
+
+        // Each kind of deal with the neighbours on hold
+        ["trade", "buyPower", "sellPower"].forEach(kind => variants.push(makeStatus({dealsOnHold: [
+            {side: "north", name: "Belmonte", kind: kind, state: "noLink", x: 60, y: 0}]})));
+        variants.push(makeStatus({dealsOnHold: [{side: "west", name: "Belmonte", kind: "sellPower", state: "noPower", x: 0, y: 50}]}));
 
         // Each problem in first place, and in second
         [0, 1, 2, 3, 4, 5, 6].forEach(problem => variants.push(makeStatus({problems: [{problem: problem, votes: 20}, {problem: (problem + 1) % 7, votes: 20}]})));

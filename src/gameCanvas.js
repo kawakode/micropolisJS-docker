@@ -437,32 +437,30 @@ GameCanvas.prototype._drawTile = function(ctx, tileVal, dx, dy, dw, dh) {
 };
 
 
-GameCanvas.prototype._screenshot = function(onlyVisible) {
-  if (onlyVisible)
-    return this._canvas.toDataURL();
+// A picture of the map, as a canvas: the part on screen, as it is shown, or the whole map at full size (its tiles only,
+// without what moves)
+GameCanvas.prototype.takePicture = function(onlyVisible) {
+  var picture = document.createElement('canvas');
+  var ctx = picture.getContext('2d');
 
-  var tempCanvas = document.createElement('canvas');
-  tempCanvas.width = this._map.width * TILE_SIZE;
-  tempCanvas.height = this._map.height * TILE_SIZE;
-  var ctx = tempCanvas.getContext('2d');
+  if (onlyVisible) {
+    picture.width = this._canvas.width;
+    picture.height = this._canvas.height;
+    ctx.drawImage(this._canvas, 0, 0);
+    return picture;
+  }
+
+  picture.width = this._map.width * TILE_SIZE;
+  picture.height = this._map.height * TILE_SIZE;
+  ctx.imageSmoothingEnabled = false;
   this._waterFrame = 0;
 
   for (var x = 0; x < this._map.width; x++) {
     for (var y = 0; y < this._map.height; y++)
-      this._drawTile(ctx, this._map.getTileValue(x, y), x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      this._drawMapTile(ctx, this._map.getTileValue(x, y), x, y, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
   }
 
-  return tempCanvas.toDataURL();
-};
-
-
-GameCanvas.prototype.screenshotMap = function() {
-  return this._screenshot(false);
-};
-
-
-GameCanvas.prototype.screenshotVisible = function() {
-  return this._screenshot(true);
+  return picture;
 };
 
 
@@ -500,9 +498,6 @@ GameCanvas.prototype._paintTiles = function(ctx, isPaused) {
   // Adjust for animations
   this.animationManager.getTiles(tileValues, firstX, firstY, width, height, isPaused);
 
-  var map = this._map;
-  var roadsImage = this._tileSet.roadsImage;
-
   for (var y = 0; y < height; y++) {
     var mapY = firstY + y;
     var dy = this._toDeviceY(mapY * TILE_SIZE);
@@ -513,17 +508,22 @@ GameCanvas.prototype._paintTiles = function(ctx, isPaused) {
       var dx = this._toDeviceX(mapX * TILE_SIZE);
       var dw = this._toDeviceX((mapX + 1) * TILE_SIZE) - dx;
 
-      var tileVal = tileValues[y * width + x];
-      this._drawTile(ctx, tileVal, dx, dy, dw, dh);
-
-      // The kind of road, if it isn't a street
-      if (tileVal >= 0 && roadStyleRows[tileVal] >= 0 && roadsImage) {
-        var roadClass = map.getRoadClass(mapX, mapY);
-        if (roadClass > 0)
-          ctx.drawImage(roadsImage, (roadClass - 1) * TILE_SIZE, roadStyleRows[tileVal] * TILE_SIZE, TILE_SIZE, TILE_SIZE,
-                        dx, dy, dw, dh);
-      }
+      this._drawMapTile(ctx, tileValues[y * width + x], mapX, mapY, dx, dy, dw, dh);
     }
+  }
+};
+
+
+// Draws the tile at mapX, mapY, with the kind of road if it isn't a street
+GameCanvas.prototype._drawMapTile = function(ctx, tileVal, mapX, mapY, dx, dy, dw, dh) {
+  this._drawTile(ctx, tileVal, dx, dy, dw, dh);
+
+  var roadsImage = this._tileSet.roadsImage;
+  if (tileVal >= 0 && roadStyleRows[tileVal] >= 0 && roadsImage) {
+    var roadClass = this._map.getRoadClass(mapX, mapY);
+    if (roadClass > 0)
+      ctx.drawImage(roadsImage, (roadClass - 1) * TILE_SIZE, roadStyleRows[tileVal] * TILE_SIZE, TILE_SIZE, TILE_SIZE,
+                    dx, dy, dw, dh);
   }
 };
 

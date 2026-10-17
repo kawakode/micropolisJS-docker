@@ -9,6 +9,7 @@ import { Evaluation } from './evaluation.js';
 import { I18n } from './i18n.js';
 import { French } from './lang/fr.js';
 import * as Messages from './messages.ts';
+import { Text } from './text.js';
 
 // What the news ticker says (see Ticker). At least one item in three tells how the city is doing: disasters as they
 // are reported, then the most pressing of the city's troubles with what to do about them, or how well it is going.
@@ -72,6 +73,15 @@ PROBLEMS[Evaluation.TAXES] = ['taxes', 'lower the tax rate in the Budget window'
 PROBLEMS[Evaluation.TRAFFIC] = ['traffic', 'add rail, avenues or highways where the roads jam'];
 PROBLEMS[Evaluation.UNEMPLOYMENT] = ['unemployment', 'zone more commercial and industrial land'];
 PROBLEMS[Evaluation.FIRE] = ['fires', 'build fire stations, and fund them fully'];
+
+// The deals with the neighbouring cities that are not in force (see Neighbours), and what they need
+var ON_HOLD = {
+  trade: 'The trade agreement with {name} is on hold: build a road or a railway to the {side} edge of the map.',
+  buyPower: 'The electricity bought from {name} is on hold: build a power line to the {side} edge of the map.',
+  sellPower: 'The electricity sold to {name} is on hold: build a power line to the {side} edge of the map.',
+  noPower: '{name} gets none of the electricity it buys: link the power line at the {side} edge to the grid, or build ' +
+           'another power plant.'
+};
 
 // The jokes, by topic: something the mayor did (a tool's name, a change of the budget...), idle when the mayor has
 // done nothing for a while, and generic jokes for any time. {city}, {n} (how many times the mayor did it), {pop},
@@ -308,6 +318,16 @@ var JOKES = {
     'The Mayor takes yet another picture of the city. Postcard sales soar.',
     'Mayor\'s latest city photo goes viral. Well, the Mayor\'s family liked it.'
   ],
+  deal: [
+    'The Mayor signs a deal with a neighbouring city. Both sides claim they got the better end of it.',
+    'New partnership with the neighbours: the Mayor\'s handshake reportedly lasted eleven minutes.',
+    'Diplomacy at City Hall: the Mayor swaps gifts with a neighbouring mayor. Ours got a mug.',
+    '{n} deals with the neighbours so far. The Mayor now asks to be called Minister of Foreign Affairs.'
+  ],
+  dealEnded: [
+    'The Mayor tears up a deal with the neighbours. The neighbours keep the mug.',
+    'Partnership ended. The Mayor tells the neighbours: "It is not you, it is us."'
+  ],
   idle: [
     'Mayor not seen in a while. City Hall says they are "strategically observing".',
     'Quiet day at City Hall: the Mayor is reportedly watching the traffic, for fun.',
@@ -509,7 +529,7 @@ TickerNews.prototype.cityReport = function(status) {
   if (homesAndJobs === 0)
     add(ADVICE, 'start', 'Welcome to {city}! Build a power plant, zone homes, shops and factories, and link them with roads and power lines.');
 
-  if (homesAndJobs > 0 && plants === 0) {
+  if (homesAndJobs > 0 && plants === 0 && !status.powerBought) {
     add(WARNING, 'noPower', 'No power plant in {city}: zones won\'t grow without electricity.');
   } else if (census.unpoweredZoneCount > 0) {
     add(census.unpoweredZoneCount > zones * 0.3 ? WARNING : ADVICE, 'unpowered',
@@ -526,6 +546,15 @@ TickerNews.prototype.cityReport = function(status) {
 
   if (status.indCap)
     add(WARNING, 'seaport', 'Industry needs a seaport to grow any further.');
+
+  // Deals with the neighbouring cities that wait for their link, or for power to sell: the first is shown, where its link
+  // should go
+  var onHold = status.dealsOnHold || [];
+  if (onHold.length > 0) {
+    var deal = onHold[0];
+    add(ADVICE, 'dealOnHold', ON_HOLD[deal.state === 'noPower' ? 'noPower' : deal.kind],
+        {name: deal.name, side: I18n.t(Text.edges[deal.side])}, deal);
+  }
 
   if (census.totalPop > 60 && census.policeStationPop === 0)
     add(WARNING, 'noPolice', 'Citizens demand a police station: crime grows unchecked without one.');

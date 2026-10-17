@@ -143,10 +143,16 @@ BudgetWindow.prototype.open = function(budgetData) {
   if (taxesCollected === undefined)
     throw new Error('Missing budget data (taxesCollected)');
 
-  var cashFlow = taxesCollected - this.roadMaintenanceBudget - this.fireMaintenanceBudget - this.policeMaintenanceBudget;
+  // KawaCity: what the deals with the neighbouring cities earned or cost this year
+  var dealsFund = budgetData.dealsFund || 0;
+
+  var cashFlow = taxesCollected + dealsFund - this.roadMaintenanceBudget - this.fireMaintenanceBudget -
+                 this.policeMaintenanceBudget;
   var currentFunds = previousFunds + cashFlow;
   var money = I18n.money;
   $('#taxesCollected').text(money(taxesCollected));
+  $('#dealsFund').text(money(dealsFund));
+  $('#dealsInfo').toggleClass('hidden', dealsFund === 0);
   $('#cashFlow').text(money(cashFlow));
   $('#previousFunds').text(money(previousFunds));
   $('#currentFunds').text(money(currentFunds));

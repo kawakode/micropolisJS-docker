@@ -55,6 +55,7 @@
         <button id="graphsRequest" class="hudButton" data-i18n>Graphs</button>
         <button id="moreRequest" class="hudButton moreButton" aria-haspopup="true" aria-expanded="false" aria-controls="hudMore" data-i18n>More &#9662;</button>
         <div id="hudMore" class="hudMore">
+          <button id="neighboursRequest" class="hudButton" data-i18n>Neighbours</button>
           <button id="disasterRequest" class="hudButton" data-i18n>Disasters</button>
           <button id="screenshotRequest" class="hudButton" data-i18n>Picture</button>
           <a class="hudButton hudLink" href="about.html" target="_blank" rel="noopener" data-i18n>About</a>
@@ -250,6 +251,7 @@
               <div id="cashInfo" class="budgetData"><span data-i18n>Cash flow</span> <span id="cashFlow"></span></div>
               <div id="previousInfo" class="budgetData"><span data-i18n>Previous funds</span> <span id="previousFunds"></span></div>
               <div id="currentInfo" class="budgetData"><span data-i18n>Current funds</span> <span id="currentFunds"></span></div>
+              <div id="dealsInfo" class="budgetData"><span data-i18n>Neighbour deals</span> <span id="dealsFund"></span></div>
             </div>
             <div class="budgetSliders">
               <fieldset>
@@ -325,8 +327,17 @@
               <legend class="visuallyHidden" data-i18n>Period</legend>
               <input type="radio" class="graphsRange" name="graphsRange" id="graphsRange10" value="10" checked="checked"><label for="graphsRange10" data-i18n>10 years</label>
               <input type="radio" class="graphsRange" name="graphsRange" id="graphsRange120" value="120"><label for="graphsRange120" data-i18n>120 years</label>
+              <input type="radio" class="graphsRange" name="graphsRange" id="graphsRangeYTD" value="ytd"><label for="graphsRangeYTD" title="Since January" data-i18n data-i18n-title>Year to date</label>
+              <input type="radio" class="graphsRange" name="graphsRange" id="graphsRangeCustom" value="custom"><label for="graphsRangeCustom" data-i18n>Custom</label>
             </fieldset>
+            <div id="graphsCustom" class="graphsCustom hidden">
+              <label for="graphsFrom" data-i18n>From</label>
+              <select id="graphsFrom" class="graphsYear"></select>
+              <label for="graphsTo" data-i18n>to</label>
+              <select id="graphsTo" class="graphsYear"></select>
+            </div>
             <canvas id="graphsCanvas" width="520" height="240"></canvas>
+            <p class="graphsHint" data-i18n>Drag across the graph to look at those years.</p>
             <fieldset class="choice graphsLegend" id="graphsSeriesSelect">
               <legend class="visuallyHidden" data-i18n>Show</legend>
               <input type="checkbox" class="graphsSeries" id="graphsRes" value="res" checked="checked"><label for="graphsRes"><span class="swatch" style="background: #4cc464"></span><span data-i18n>Residential</span></label>
@@ -476,30 +487,55 @@
         </div>
       </div>
 
-      <div class="hidden modal" id="screenshotLinkWindow" role="dialog" aria-labelledby="screenshotLinkHeader">
-        <header id="screenshotLinkHeader" class="modalHeader" data-i18n>Take picture</header>
-        <div id="screenshotLinkContainer" class="modalBody">
-          <div id="screenshotLinkMessage" class="alignCenter" data-i18n-html="pictureReady">
-            Your picture is ready: <a id="screenshotLink" target="_blank" rel="noopener" download="kawacity.png">download it</a>.
-          </div>
-          <form id="screenshotLinkForm" class="modalButtons">
-            <input type="submit" id="screenshotLinkOK" class="button primary dialogOK" value="OK">
+      <div class="hidden modal wide" id="neighboursWindow" role="dialog" aria-labelledby="neighboursHeader">
+        <header id="neighboursHeader" class="modalHeader" data-i18n>Neighbouring cities</header>
+        <div id="neighboursContainer" class="modalBody">
+          <form id="neighboursForm">
+            <p class="neighboursIntro" data-i18n>Make deals with the cities around yours. Most need a link reaching their edge of the map: build it, and the deal comes into force.</p>
+            <div id="neighboursList" class="neighboursList"></div>
+            <dl class="dealsLegend">
+              <dt data-i18n>Trade agreement</dt>
+              <dd data-i18n>Shops and factories find more customers: more demand for commercial and industrial zones.</dd>
+              <dt data-i18n>Buy electricity</dt>
+              <dd data-i18n>Their power enters your grid by the power line at their edge: as much as a gas power plant gives.</dd>
+              <dt data-i18n>Sell electricity</dt>
+              <dd data-i18n>Your spare power goes to them by the power line at their edge: as much as a gas power plant gives.</dd>
+              <dt data-i18n>Twinning</dt>
+              <dd data-i18n>Exchanges between the two cities make yours better known: more people want to move in. No link needed.</dd>
+            </dl>
+            <p id="neighboursBalance" class="neighboursBalance"></p>
+            <p class="neighboursNote" data-i18n>Deals are paid with the yearly budget, for the months they were in force. Bigger cities make bigger deals.</p>
+            <div class="modalButtons">
+              <button id="neighboursCancel" class="button cancel" data-i18n>Cancel</button>
+              <input type="submit" id="neighboursOK" class="button primary dialogOK" value="OK">
+            </div>
           </form>
         </div>
       </div>
 
-      <div class="hidden modal" id="screenshotWindow" role="dialog" aria-labelledby="screenshotHeader">
-        <header id="screenshotHeader" class="modalHeader" data-i18n>Take picture</header>
+      <div class="hidden modal wide" id="screenshotWindow" role="dialog" aria-labelledby="screenshotHeader">
+        <header id="screenshotHeader" class="modalHeader" data-i18n>Share a picture</header>
         <div id="screenshotContainer" class="modalBody">
           <form id="screenshotForm">
-            <fieldset id="screenshotContainerDiv" class="choice">
-              <legend class="fieldLabel" data-i18n>Area to take a picture of</legend>
-              <input type="radio" class="screenshotType" name="screenshotType" id="screenshotVisible" value="visible" checked="checked"><label for="screenshotVisible" data-i18n>Visible map</label>
-              <input type="radio" class="screenshotType" name="screenshotType" id="screenshotAll" value="all"><label for="screenshotAll" data-i18n>Full map</label>
-            </fieldset>
+            <div class="pictureOptions">
+              <fieldset class="choice">
+                <legend class="visuallyHidden" data-i18n>Area to take a picture of</legend>
+                <input type="radio" class="screenshotType" name="screenshotType" id="screenshotVisible" value="visible" checked="checked"><label for="screenshotVisible" data-i18n>Visible map</label>
+                <input type="radio" class="screenshotType" name="screenshotType" id="screenshotAll" value="all"><label for="screenshotAll" data-i18n>Full map</label>
+              </fieldset>
+              <fieldset class="choice">
+                <legend class="visuallyHidden" data-i18n>Caption</legend>
+                <input type="checkbox" id="pictureCaption" checked="checked"><label for="pictureCaption" data-i18n>Name and figures</label>
+              </fieldset>
+            </div>
+            <div id="picturePreviewFrame" class="picturePreview"><img id="picturePreview" alt="The picture of the city" data-i18n-alt></div>
+            <p id="pictureStatus" class="pictureStatus" role="status"></p>
+            <p id="pictureSecure" class="pictureSecure hidden" data-i18n>To share or copy the picture straight away, the game must be served over HTTPS.</p>
             <div class="modalButtons">
-              <button id="screenshotCancel" class="button cancel" data-i18n>Cancel</button>
-              <input type="submit" id="screenshotOK" class="button primary dialogOK" value="OK">
+              <button type="button" id="pictureShare" class="button primary" data-i18n>Share&hellip;</button>
+              <button type="button" id="pictureCopy" class="button" data-i18n>Copy</button>
+              <button type="button" id="pictureDownload" class="button" data-i18n>Download</button>
+              <input type="submit" id="screenshotOK" class="button dialogOK" value="Close" data-i18n-value>
             </div>
           </form>
         </div>
