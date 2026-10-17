@@ -52,11 +52,14 @@
         <button id="budgetRequest" class="hudButton">Budget</button>
         <button id="evalRequest" class="hudButton">Evaluation</button>
         <button id="graphsRequest" class="hudButton">Graphs</button>
-        <button id="disasterRequest" class="hudButton optionalButton">Disasters</button>
-        <button id="screenshotRequest" class="hudButton optionalButton">Picture</button>
+        <button id="moreRequest" class="hudButton moreButton" aria-haspopup="true" aria-expanded="false" aria-controls="hudMore">More &#9662;</button>
+        <div id="hudMore" class="hudMore">
+          <button id="disasterRequest" class="hudButton">Disasters</button>
+          <button id="screenshotRequest" class="hudButton">Picture</button>
+          <a class="hudButton hudLink" href="about.html" target="_blank" rel="noopener">About</a>
+        </div>
         <button id="settingsRequest" class="hudButton">Settings</button>
         <button id="saveRequest" class="hudButton loadSave accentButton" disabled>Save</button>
-        <a class="hudButton hudLink optionalButton" href="about.html" target="_blank" rel="noopener">About</a>
       </nav>
     </header>
 
@@ -309,6 +312,7 @@
                 <option id="disasterCrash" value="Crash">Crash</option>
                 <option id="disasterMeltdown" value="Meltdown">Meltdown</option>
                 <option id="disasterTornado" value="Tornado">Tornado</option>
+                <option id="disasterEarthquake" value="Earthquake">Earthquake</option>
               </select>
             </div>
             <div id="disasterButtons" class="modalButtons">

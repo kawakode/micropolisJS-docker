@@ -333,8 +333,8 @@ var crimeScan = function(census, blockMaps) {
   var crimeZoneCount = 0;
 
   // Scan the map, looking for developed land, as it can attract crime.
-  for (var x = 0, width = crimeRateMap.mapWidth, blockSize = crimeRateMap.blockSize; x < width; x += blockSize) {
-    for (var y = 0, height = crimeRateMap.mapHeight, b; y < height; y += blockSize) {
+  for (var x = 0, width = crimeRateMap.gameMapWidth, blockSize = crimeRateMap.blockSize; x < width; x += blockSize) {
+    for (var y = 0, height = crimeRateMap.gameMapHeight; y < height; y += blockSize) {
       // Remember: landValueMap values are in the range 0-250
       var value = landValueMap.worldGet(x, y);
 
@@ -351,8 +351,9 @@ var crimeScan = function(census, blockMaps) {
         // Clamp in range -260 to 300
         value = Math.min(value, 300);
 
-        // If the police are nearby, there's no point committing the crime of the century
-        value -= policeStationMap.worldGet(x, y);
+        // If the police are nearby, there's no point committing the crime of the century (the effect map holds the
+        // police coverage, smoothed three times)
+        value -= policeStationEffectMap.worldGet(x, y);
 
         // Force in to range 0-250
         value = MiscUtils.clamp(value, 0, 250);

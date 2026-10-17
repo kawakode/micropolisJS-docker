@@ -28,9 +28,11 @@ function Census() {
   this.totalPop = 0;
 
   var createArray = function(arrName) {
+    // The cash flow is recorded around 128 (no change)
+    var initial = arrName.indexOf('money') === 0 ? 128 : 0;
     this[arrName] = [];
     for (var a = 0; a < 120; a++)
-      this[arrName][a] = 0;
+      this[arrName][a] = initial;
   };
 
   for (var i = 0; i < arrs.length; i++) {
@@ -110,10 +112,10 @@ Census.prototype.take10Census = function(budget) {
   this.comHist10[0] = this.comPop;
   this.indHist10[0] = this.indPop;
 
-  this.crimeRamp += Math.floor((this.crimeAverage - this.crimeRamp) / 4);
+  this.crimeRamp += Math.trunc((this.crimeAverage - this.crimeRamp) / 4);
   this.crimeHist10[0] = Math.min(this.crimeRamp, 255);
 
-  this.pollutionRamp += Math.floor((this.pollutionAverage - this.pollutionRamp) / 4);
+  this.pollutionRamp += Math.trunc((this.pollutionAverage - this.pollutionRamp) / 4);
   this.pollutionHist10[0] = Math.min(this.pollutionRamp, 255);
 
   var x = Math.floor(budget.cashFlow / 20) + 128;
@@ -121,12 +123,20 @@ Census.prototype.take10Census = function(budget) {
 
   var resPopScaled = this.resPop >> 8;
 
-  if (this.hospitalPop < this.resPopScaled)
+  if (this.hospitalPop < resPopScaled)
     this.needHospital = 1;
-  else if (this.hospitalPop > this.resPopScaled)
+  else if (this.hospitalPop > resPopScaled)
     this.needHospital = -1;
-  else if (this.hospitalPop === this.resPopScaled)
+  else
     this.needHospital = 0;
+
+  // As many churches as hospitals
+  if (this.churchPop < resPopScaled)
+    this.needChurch = 1;
+  else if (this.churchPop > resPopScaled)
+    this.needChurch = -1;
+  else
+    this.needChurch = 0;
 
   this.changed = true;
 };

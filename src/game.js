@@ -45,6 +45,9 @@ import { ToolIcons } from './toolIcons.js';
 
 var disasterTimeout = 20 * 1000;
 
+// How often sprites move, in milliseconds
+var SPRITE_STEP = 1000 / 60;
+
 
 function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   difficulty = difficulty || 0;
@@ -127,7 +130,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   }
 
   // Initialise monsterTV
-  this.monsterTV = new MonsterTV(this.gameMap, tileSet, spriteSheet, this.gameCanvas.animationManager);
+  this.monsterTV = new MonsterTV(this.gameMap, tileSet, spriteSheet, null);
 
   var opacityLayerID = 'opaque';
 
@@ -268,6 +271,8 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   // Decorative cars, people, boats, birds, smoke, clouds, and the cycle of day and night
   this.ambientLife = new AmbientLife(this.gameMap, this.simulation);
   if (savedGame) {
+    if (typeof(savedGame.disastersEnabled) === 'boolean')
+      this.simulation.disasterManager.disastersEnabled = savedGame.disastersEnabled;
     if (typeof(savedGame.dayNight) === 'boolean')
       this.ambientLife.setDayNight(savedGame.dayNight);
     this.ambientLife.setTimeOfDay(savedGame.timeOfDay);
@@ -318,6 +323,7 @@ Game.prototype.save = function() {
     saveData[milestones[i]] = this[milestones[i]];
 
   saveData.dayNight = this.ambientLife.dayNight;
+  saveData.disastersEnabled = this.simulation.disasterManager.disastersEnabled;
   saveData.timeOfDay = this.ambientLife.getTimeOfDay();
 
   BaseTool.save(saveData);
@@ -397,6 +403,11 @@ Game.prototype.handleDisasterWindowClosure = function(request) {
 
     case DisasterWindow.DISASTER_TORNADO:
       this.simulation.spriteManager.makeTornado();
+      break;
+
+    case DisasterWindow.DISASTER_EARTHQUAKE:
+      this.simulation.disasterManager.makeEarthquake();
+      break;
   }
 };
 
@@ -713,6 +724,10 @@ Game.prototype._updateSpeedButtons = function() {
 
 
 Game.prototype.handleEscape = function() {
+  // Close the menu first, if it is open
+  if (InputStatus.toggleMoreMenu(false))
+    return;
+
   // InputStatus doesn't know what dialogs are showing, so we must handle escape here
   if (this.dialogOpen) {
     var win = this[this._openWindow];
@@ -782,6 +797,10 @@ Game.prototype.processFrontEndMessage = function(message) {
 
     return;
   }
+
+  // The ground shakes for longer in a stronger earthquake
+  if (subject === Messages.EARTHQUAKE)
+    this.gameCanvas.shoogle(4, 1500 + (message.data && message.data.strength ? message.data.strength * 3 : 1500));
 
   // Show disaster if applicable
   if (message.data) {
@@ -867,8 +886,14 @@ var commonAnimate = function(timestamp) {
 
   this.inputStatus.update(elapsed);
 
-  if (!this.isPaused && !this.dialogOpen)
-    this.simulation.spriteManager.moveObjects(this.simulation._constructSimData());
+  // Trains, ships, planes, monsters and tornadoes move 60 times a second, whatever the display's refresh rate
+  if (!this.isPaused && !this.dialogOpen) {
+    this._spriteTime = Math.min((this._spriteTime || 0) + elapsed, SPRITE_STEP * 4);
+    while (this._spriteTime >= SPRITE_STEP) {
+      this.simulation.spriteManager.moveObjects(this.simulation._constructSimData());
+      this._spriteTime -= SPRITE_STEP;
+    }
+  }
 
   // Run this even when paused: you can still build when paused
   this.overlay = this.computeOverlay();

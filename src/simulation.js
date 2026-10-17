@@ -44,6 +44,7 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame) {
   this._simCycle = 0;
   this._cityTime = 0;
   this._cityPopLast = 0;
+  this._cityClassLive = null;
   this._messageLast = undefined;
   this._startingYear = 1900;
 
@@ -114,7 +115,8 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame) {
   if (savedGame) {
     this.load(savedGame);
   } else {
-    this.budget.setFunds(20000);
+    // As in the original game, harder levels start with less money
+    this.budget.setFunds([20000, 10000, 5000][this._gameLevel] || 20000);
     this._census.totalPop = 1;
   }
 
@@ -286,6 +288,11 @@ Simulation.prototype.init = function() {
   Residential.registerHandlers(this._mapScanner, this._repairManager);
   Stadia.registerHandlers(this._mapScanner, this._repairManager);
   Transport.registerHandlers(this._mapScanner, this._repairManager);
+
+  // As in the original game, the first scan starts from an empty census (a saved game holds the last counts) and
+  // assumes everything is powered until the first power scan
+  this._clearCensus();
+  this._powerManager.powerGridMap.fill(1);
 
   var simData = this._constructSimData();
   this._mapScanner.mapScan(0, this._map.width, simData);
@@ -477,9 +484,10 @@ Simulation.prototype._sendMessages = function() {
       if (zoneCount > 0) {
         if (this._census.poweredZoneCount / zoneCount < 0.7 && powerPop > 0) {
           var d = new Date();
-          if (this._lastPowerMessage === null || d - this._lastPowerMessage > 1000 * 60 * 2) {
+          // Not more than once a minute
+          if (!this._lastBlackoutMessage || d - this._lastBlackoutMessage > 1000 * 60) {
             this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.BLACKOUTS_REPORTED});
-            this._lastPowerMessage = d;
+            this._lastBlackoutMessage = d;
           }
         }
       }
@@ -539,11 +547,22 @@ Simulation.prototype._checkGrowth = function() {
     return;
 
   var message = '';
-  var cityPop = this.evaluation.getPopulation(this._census);
+  var cityPop = this.evaluation.computePopulation(this._census);
 
+  // The heads-up display follows the population month by month, the evaluation only once a year
   if (cityPop !== this._cityPopLast) {
-    var lastClass = this.evaluation.getCityClass(this._cityPopLast);
-    var newClass = this.evaluation.getCityClass(cityPop);
+    this._emitEvent(Messages.POPULATION_UPDATED, cityPop);
+    var cityClass = this.evaluation.classify(cityPop);
+    if (cityClass !== this._cityClassLive) {
+      this._cityClassLive = cityClass;
+      this._emitEvent(Messages.CLASSIFICATION_UPDATED, cityClass);
+    }
+  }
+
+  // No message for the first count after the city was founded or loaded
+  if (this._cityPopLast > 0 && cityPop !== this._cityPopLast) {
+    var lastClass = this.evaluation.classify(this._cityPopLast);
+    var newClass = this.evaluation.classify(cityPop);
 
     if (lastClass !== newClass) {
       switch (newClass) {
@@ -597,6 +616,12 @@ Simulation.prototype._onValveChange  = function() {
 };
 
 
+// The population of the city, as of the last monthly count
+Simulation.prototype.getPopulation = function() {
+  return this._cityPopLast;
+};
+
+
 Simulation.prototype.getCensus = function() {
   return this._census;
 };
@@ -635,7 +660,7 @@ Simulation.prototype._updateTime = function() {
   var cityMonth = Math.floor(this._cityTime % 48) >> 2;
 
   if (cityYear >= megalinium) {
-    this.setYear(this._startingYear);
+    this._setYear(this._startingYear);
     return;
   }
 

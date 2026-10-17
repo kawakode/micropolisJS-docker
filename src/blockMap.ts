@@ -74,7 +74,11 @@ export class BlockMap {
   }
 
   public clear() {
-    this.forEach((x, y) => this.set(x, y, 0));
+    this.fill(0);
+  }
+
+  public fill(value: number) {
+    this.forEach((x, y) => this.set(x, y, value));
   }
 
   public copyFrom(source: BlockMap, transform: TransformationFunction = ID) {

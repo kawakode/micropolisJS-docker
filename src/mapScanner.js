@@ -48,7 +48,8 @@ MapScanner.prototype.mapScan = function(startX, maxX, simData) {
 
       if (tile.isZone()) {
         simData.repairManager.checkTile(x, y, simData.cityTime);
-        var powered = tile.isPowered();
+        // The power was set just above: read it from the map, not from our copy of the tile
+        var powered = this._map.getTile(x, y).isPowered();
         if (powered)
           simData.census.poweredZoneCount += 1;
         else

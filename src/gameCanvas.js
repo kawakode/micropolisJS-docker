@@ -459,8 +459,10 @@ GameCanvas.prototype.screenshotVisible = function() {
 };
 
 
-GameCanvas.prototype.shoogle = function() {
-  // TODO Earthquakes
+// Shakes the view, for an earthquake: strength is in world pixels, duration in milliseconds
+GameCanvas.prototype.shoogle = function(strength, duration) {
+  this._shakeStrength = strength || 4;
+  this._shakeUntil = performance.now() + (duration || 3000);
 };
 
 
@@ -853,6 +855,17 @@ GameCanvas.prototype.paint = function(overlay, sprites, isPaused, dataOverlay, l
 
   this._scale = this._zoom * this._dpr;
 
+  // An earthquake shakes the view, less and less as it ends
+  var shakeX = 0, shakeY = 0;
+  var now = performance.now();
+  if (this._shakeUntil && now < this._shakeUntil) {
+    var amplitude = this._shakeStrength * Math.min(1, (this._shakeUntil - now) / 1000);
+    shakeX = Math.round((Math.random() * 2 - 1) * amplitude);
+    shakeY = Math.round((Math.random() * 2 - 1) * amplitude * 0.5);
+    this._viewX += shakeX;
+    this._viewY += shakeY;
+  }
+
   // Nature keeps moving even when the simulation is paused
   this._waterFrame = Math.floor(performance.now() / WATER_FRAME_MS) % WATER_FRAME_COUNT;
 
@@ -887,6 +900,9 @@ GameCanvas.prototype.paint = function(overlay, sprites, isPaused, dataOverlay, l
 
   if (overlay)
     this._paintOverlay(ctx, overlay);
+
+  this._viewX -= shakeX;
+  this._viewY -= shakeY;
 };
 
 

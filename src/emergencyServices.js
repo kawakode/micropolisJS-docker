@@ -44,6 +44,8 @@ var EmergencyServices = {
   registerHandlers: function(mapScanner, repairManager) {
     mapScanner.addAction(POLICESTATION, policeStationFound);
     mapScanner.addAction(FIRESTATION, fireStationFound);
+    repairManager.addAction(POLICESTATION, 7, 3);
+    repairManager.addAction(FIRESTATION, 7, 3);
   }
 };
 

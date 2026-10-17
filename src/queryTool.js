@@ -68,9 +68,9 @@ QueryTool.prototype.classifyPollution = function(x, y, blockMaps) {
   var pollution = blockMaps.pollutionDensityMap.worldGet(x, y);
   if (Config.debug || Config.queryDebug)
     $('#queryPollutionRaw').text(pollution);
-  pollution = pollution >> 6;
-  pollution = pollution & 3;
-  $('#queryPollution').text(Text.pollutionStrings[pollution]);
+  // As in the original game, any pollution at all is at least moderate
+  var index = pollution > 0 && pollution < 64 ? 1 : (pollution >> 6) & 3;
+  $('#queryPollution').text(Text.pollutionStrings[index]);
 };
 
 
@@ -78,9 +78,9 @@ QueryTool.prototype.classifyRateOfGrowth = function(x, y, blockMaps) {
   var rate = blockMaps.rateOfGrowthMap.worldGet(x, y);
   if (Config.debug || Config.queryDebug)
     $('#queryRateRaw').text(rate);
-  rate = rate >> 6;
-  rate = rate & 3;
-  $('#queryRate').text(Text.rateStrings[rate]);
+  // The rate of growth ranges from -200 to 200
+  var index = rate < 0 ? 0 : (rate === 0 ? 1 : (rate > 100 ? 3 : 2));
+  $('#queryRate').text(Text.rateStrings[index]);
 };
 
 

@@ -44,7 +44,7 @@ EvaluationWindow.prototype._populateWindow = function(evaluation) {
   for (var i = 0; i < 4; i++) {
     var problemNo = evaluation.getProblemNumber(i);
     if (problemNo !== null) {
-      var text = Text.problems[problemNo];
+      var text = Text.problems[problemNo] + ' (' + evaluation.getProblemVotes(i) + '%)';
       $('#evalProb' + (i + 1)).text(text);
       $('#evalProb' + (i + 1)).show();
     } else {

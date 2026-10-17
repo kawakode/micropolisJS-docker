@@ -1209,16 +1209,91 @@ a.hudButton, a.hudButton:visited {
 
 /* Smaller screens */
 
+/* On wide screens, the less used buttons sit in the bar; on smaller ones, in a menu */
+.hudMore {
+  display: contents;
+}
+
+.moreButton {
+  display: none;
+}
+
 @media (max-width: 1450px) {
-  .optionalButton {
+  .moreButton {
+    display: inline-flex;
+  }
+
+  .hudMore {
+    display: none;
+    position: fixed;
+    z-index: 40;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    min-width: 170px;
+    padding: 6px;
+    background: linear-gradient(180deg, var(--win-top) 0%, var(--win-bottom) 100%);
+    border: 3px solid var(--win-border);
+    box-shadow: 0 0 0 3px var(--win-outline), 5px 5px 0 2px rgba(0, 0, 0, 0.4);
+  }
+
+  .hudMore.open {
+    display: flex;
+  }
+
+  .hudMore .hudButton {
+    justify-content: flex-start;
+  }
+
+  /* Make room for the statistics */
+  #hud {
+    gap: 10px;
+  }
+
+  .hudButton {
+    padding: 3px 7px;
+  }
+}
+
+@media (max-width: 1380px) {
+  .optionalStat {
     display: none;
   }
 }
 
-@media (max-width: 1250px) {
-  .optionalStat {
+/* The statistics get a row of their own */
+@media (max-width: 1180px) {
+  #hud {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    padding: 6px 10px;
+  }
+
+  #hud .brand {
     display: none;
   }
+
+  .hudStats {
+    order: 1;
+    flex-basis: 100%;
+  }
+
+  /* There is room for every statistic on their own row */
+  .optionalStat {
+    display: flex;
+  }
+
+  .hudSpeed {
+    order: 2;
+  }
+
+  .hudMenu {
+    order: 3;
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 1250px) {
 
   #notifications {
     max-width: calc(100% - 320px);
@@ -1275,6 +1350,10 @@ a.hudButton, a.hudButton:visited {
 }
 
 @media (max-width: 600px) {
+  .optionalStat {
+    display: none;
+  }
+
   .stat {
     padding: 2px 8px;
   }

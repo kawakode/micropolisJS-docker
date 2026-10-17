@@ -119,6 +119,20 @@ var InputStatus = EventEmitter(function(map, gameCanvas) {
     self.selectTool($(this).attr('data-tool'));
   });
 
+  // The menu of less used buttons, on smaller screens
+  $('#moreRequest').click(function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    InputStatus.toggleMoreMenu();
+  });
+  $('#hudMore').on('click', '.hudButton', function() {
+    InputStatus.toggleMoreMenu(false);
+  });
+  $(document).on('click', function(e) {
+    if (!$(e.target).closest('#hudMore').length)
+      InputStatus.toggleMoreMenu(false);
+  });
+
   $('#budgetRequest').click(budgetHandler.bind(this));
   $('#evalRequest').click(evalHandler.bind(this));
   $('#graphsRequest').click(graphsHandler.bind(this));
@@ -692,6 +706,26 @@ var graphsHandler = makeHandler('GRAPHS_REQUESTED');
 var screenshotHandler = makeHandler('SCREENSHOT_WINDOW_REQUESTED');
 var settingsHandler = makeHandler('SETTINGS_WINDOW_REQUESTED');
 var saveHandler = makeHandler('SAVE_REQUESTED');
+
+
+// Opens or closes the menu of less used buttons (open is optional: it toggles by default). Returns whether the menu
+// was open.
+InputStatus.toggleMoreMenu = function(open) {
+  var menu = $('#hudMore');
+  var button = $('#moreRequest');
+  var wasOpen = menu.hasClass('open');
+  if (open === undefined)
+    open = !wasOpen;
+
+  if (open && button.length) {
+    var rect = button[0].getBoundingClientRect();
+    menu.css({top: Math.round(rect.bottom + 8) + 'px', right: Math.max(8, Math.round(window.innerWidth - rect.right)) + 'px'});
+  }
+
+  menu.toggleClass('open', open);
+  button.attr('aria-expanded', open ? 'true' : 'false');
+  return wasOpen;
+};
 
 
 export { InputStatus };

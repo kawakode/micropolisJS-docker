@@ -26,7 +26,8 @@ var DisasterManager = EventEmitter(function(map, spriteManager, gameLevel) {
   this._gameLevel = gameLevel;
 
   this._floodCount = 0;
-  this.disastersEnabled = false;
+  // As in the original game, disasters strike unless the player turns them off
+  this.disastersEnabled = true;
 });
 
 
@@ -45,7 +46,8 @@ DisasterManager.prototype.doDisasters = function(census) {
     switch (Random.getRandom(8)) {
       case 0:
       case 1:
-        this.setFire();
+        // Fires start in buildings
+        this.setFire(1, true);
         break;
 
       case 2:
@@ -61,8 +63,7 @@ DisasterManager.prototype.doDisasters = function(census) {
         break;
 
       case 6:
-        // TODO Earthquakes
-        //this.makeEarthquake();
+        this.makeEarthquake();
         break;
 
       case 7:
@@ -106,9 +107,10 @@ var vulnerable = function(tile) {
 // User initiated earthquake
 DisasterManager.prototype.makeEarthquake = function() {
   var strength = Random.getRandom(700) + 300;
-  this.doEarthquake(strength);
 
-  this._emitEvent(Messages.EARTHQUAKE, {x: this._map.cityCenterX, y: this._map.cityCenterY});
+  // The front end shakes the view: the stronger the earthquake, the longer
+  this._emitEvent(Messages.EARTHQUAKE, {showable: true, x: this._map.cityCentreX, y: this._map.cityCentreY,
+                                        strength: strength});
 
   for (var i = 0; i < strength; i++)  {
     var x = Random.getRandom(this._map.width - 1);
@@ -127,6 +129,7 @@ DisasterManager.prototype.makeEarthquake = function() {
 };
 
 
+// Sets fire to a random building (zonesOnly) or anything that burns, trying up to the given number of times
 DisasterManager.prototype.setFire = function(times, zonesOnly) {
   times = times || 1;
   zonesOnly = zonesOnly || false;
@@ -140,7 +143,7 @@ DisasterManager.prototype.setFire = function(times, zonesOnly) {
 
     var tile = this._map.getTile(x, y);
 
-    if (!tile.isZone()) {
+    if (!tile.isZone() && (zonesOnly || tile.isCombustible())) {
       tile = tile.getValue();
       var lowerLimit = zonesOnly ? TileValues.LHTHR : TileValues.TREEBASE;
       if (tile > lowerLimit && tile < TileValues.LASTZONE) {
@@ -198,7 +201,7 @@ DisasterManager.prototype.makeFlood = function() {
         var tile = this._map.getTile(xx, yy);
         tileValue = tile.getValue();
 
-        if (tile === TileValues.DIRT || (tile.isBulldozable() && tile.isCombustible)) {
+        if (tileValue === TileValues.DIRT || (tile.isBulldozable() && tile.isCombustible())) {
           this._map.setTile(xx, yy, TileValues.FLOOD, 0);
           this._floodCount = 30;
           this._emitEvent(Messages.FLOODING_REPORTED, {showable: true, x: xx, y: yy});

@@ -51,7 +51,8 @@ var getZonePopulation = function(map, x, y, tileValue) {
   if (tileValue === TileValues.FREEZ)
     return getFreeZonePopulation(map, x, y, tileValue);
 
-  var populationIndex = Math.floor((tileValue - TileValues.RZB) / 9) % 4 + 1;
+  // 16, 24, 32 or 40, by density
+  var populationIndex = Math.floor((tileValue - TileValues.RZB) / 9) % 4;
   return populationIndex * 8 + 16;
 };
 
@@ -64,8 +65,9 @@ var evalLot = function(map, x, y) {
   if (!map.testBounds(x, y))
     return -1;
 
+  // An empty lot of the zone, or one where a house was bulldozed
   var tileValue = map.getTileValue(x, y);
-  if (tileValue < TileValues.RESBASE || tileValue > TileValues.RESBASE + 8)
+  if (tileValue !== TileValues.DIRT && (tileValue < TileValues.RESBASE || tileValue > TileValues.RESBASE + 8))
     return -1;
 
   var score = 1;
@@ -89,11 +91,11 @@ var buildHouse = function(map, x, y, lpValue) {
   var best = 0;
   var bestScore = 0;
 
-  //  Deliberately ordered so that the centre tile is at index 0
+  // Deliberately ordered so that the centre tile is at index 0: it is never a candidate for a house
   var xDelta = [0, -1, 0, 1, -1, 1, -1, 0, 1];
   var yDelta = [0, -1, -1, -1, 0, 0, 1, 1, 1];
 
-  for (var i = 0; i < 9; i++) {
+  for (var i = 1; i < 9; i++) {
     var xx = x + xDelta[i];
     var yy = y + yDelta[i];
 
@@ -166,7 +168,8 @@ var degradeZone = function(map, x, y, blockMaps, population, lpValue, zonePower)
     for (yy = y - 1; yy <= y + 1; yy++) {
       for (xx = x - 1; xx <= x + 1; xx++) {
         if (xx === x && yy === y) continue;
-        map.setTile(x, y, TileValues.LHTHR + lpValue + Random.getRandom(2), BLBNCNBIT);
+        if (map.testBounds(xx, yy))
+          map.setTile(xx, yy, TileValues.LHTHR + lpValue + Random.getRandom(2), BLBNCNBIT);
       }
     }
 
@@ -230,7 +233,7 @@ var residentialFound = function(map, x, y, simData) {
   // will never be be bigger than any of the values Random will generate
   if (population > Random.getRandom(35)) {
     // Is there a route from this zone to a commercial zone?
-    trafficOK = simData.trafficManager.makeTraffic(x, y, simData.blockMaps, TileUtils.isCommercial);
+    trafficOK = simData.trafficManager.makeTraffic(x, y, simData.blockMaps, Traffic.FROM_RESIDENTIAL);
 
     // If we're not connected to the road network, then going shopping will be a pain. Move out.
     if (trafficOK === Traffic.NO_ROAD_FOUND) {
@@ -289,11 +292,22 @@ var residentialFound = function(map, x, y, simData) {
 };
 
 
+// The eight kinds of church
+var CHURCHES = [TileValues.CHURCH, TileValues.CHURCH1, TileValues.CHURCH2, TileValues.CHURCH3, TileValues.CHURCH4,
+                TileValues.CHURCH5, TileValues.CHURCH6, TileValues.CHURCH7];
+
+
 var makeHospital = function(map, x, y, simData, zonePower) {
-  // We only build a hospital if the population requires it
+  // We only build a hospital or a church if the population requires it
   if (simData.census.needHospital > 0) {
     ZoneUtils.putZone(map, x, y, TileValues.HOSPITAL, zonePower);
     simData.census.needHospital = 0;
+    return;
+  }
+
+  if (simData.census.needChurch > 0) {
+    ZoneUtils.putZone(map, x, y, CHURCHES[Random.getRandom(CHURCHES.length - 1)], zonePower);
+    simData.census.needChurch = 0;
     return;
   }
 };
@@ -310,11 +324,27 @@ var hospitalFound = function(map, x, y, simData) {
 };
 
 
+var churchFound = function(map, x, y, simData) {
+  simData.census.churchPop += 1;
+
+  // Degrade to an empty zone if there are too many churches
+  if (simData.census.needChurch === -1) {
+    if (Random.getRandom(20) === 0)
+      ZoneUtils.putZone(map, x, y, TileValues.FREEZ, map.getTile(x, y).isPowered());
+  }
+};
+
+
 var Residential = {
   registerHandlers: function(mapScanner, repairManager) {
     mapScanner.addAction(TileUtils.isResidentialZone, residentialFound);
     mapScanner.addAction(TileValues.HOSPITAL, hospitalFound);
     repairManager.addAction(TileValues.HOSPITAL, 15, 3);
+
+    CHURCHES.forEach(function(church) {
+      mapScanner.addAction(church, churchFound);
+      repairManager.addAction(church, 15, 3);
+    });
   },
   getZonePopulation: getZonePopulation
 };

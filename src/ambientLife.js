@@ -408,7 +408,7 @@ AmbientLife.prototype._updateFireworks = function(seconds) {
 
 // How busy the city is, from 0 (empty) to 1
 AmbientLife.prototype._activity = function() {
-  var population = this._simulation.evaluation.cityPop;
+  var population = this._simulation.getPopulation();
   if (population <= 0)
     return 0;
 

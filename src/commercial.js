@@ -59,11 +59,14 @@ var growZone = function(map, x, y, blockMaps, population, lpValue, zonePower) {
 var degradeZone = function(map, x, y, blockMaps, populationCategory, lpCategory, zonePower) {
   // Note that we special case empty zones here, rather than having to check population value on every
   // call to placeIndustrial (which we anticipate will be called more often)
-  if (populationCategory > 1) {
+  // An empty zone has nowhere left to go
+  if (populationCategory === 0)
+    return;
+
+  if (populationCategory > 1)
     placeCommercial(map, x, y, populationCategory - 2, lpCategory, zonePower);
-  } else {
+  else
     ZoneUtils.putZone(map, x, y, COMCLR, zonePower);
-  }
 
   ZoneUtils.incRateOfGrowth(blockMaps, x, y, -8);
 };
@@ -90,8 +93,8 @@ var commercialFound = function(map, x, y, simData) {
   // Note in particular, we will never take this branch if the zone is empty.
   var trafficOK = Traffic.ROUTE_FOUND;
   if (population > Random.getRandom(5)) {
-    // Try to find a route from here to an industrial zone
-    trafficOK = simData.trafficManager.makeTraffic(x, y, simData.blockMaps, TileUtils.isIndustrial);
+    // Try to find a route from here to homes, shops or factories
+    trafficOK = simData.trafficManager.makeTraffic(x, y, simData.blockMaps, Traffic.FROM_COMMERCIAL);
 
     // Trigger outward migration if not connected to road network
     if (trafficOK === Traffic.NO_ROAD_FOUND) {
@@ -123,7 +126,7 @@ var commercialFound = function(map, x, y, simData) {
     // Thus, there's approximately a 3% chance that the value will be in the range, and we *might* grow.
     // This has the nice effect of not preventing an individual unit from growing even if overall demand has collapsed
     // (the business itself might still be growing.
-    if (zonePower && zoneScore > -350 && (zoneScore - 26380) > Random.getRandom16Signed()) {
+    if (trafficOK !== Traffic.NO_ROUTE_FOUND && zoneScore > -350 && (zoneScore - 26380) > Random.getRandom16Signed()) {
       lpValue = ZoneUtils.getLandPollutionValue(simData.blockMaps, x, y);
       growZone(map, x, y, simData.blockMaps, population, lpValue, zonePower);
       return;

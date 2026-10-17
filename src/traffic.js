@@ -19,6 +19,7 @@ import { SPRITE_HELICOPTER } from './spriteConstants.ts';
 import { SpriteUtils } from './spriteUtils.js';
 import { TileUtils } from './tileUtils.js';
 import { DIRT, POWERBASE, ROADBASE } from "./tileValues.ts";
+import * as TileValues from "./tileValues.ts";
 
 function Traffic(map, spriteManager) {
   this._map = map;
@@ -100,6 +101,19 @@ Traffic.prototype.findPerimeterRoad = function(pos) {
 
 var MAX_TRAFFIC_DISTANCE = 30;
 
+
+// Where trips can end, as in the original game: residents drive to shops, factories or services; shops to homes,
+// shops or factories; factories to homes
+var tripEnd = function(low, high) {
+  return function(tileValue) {
+    return tileValue >= low && tileValue <= high;
+  };
+};
+
+Traffic.FROM_RESIDENTIAL = tripEnd(TileValues.COMBASE, TileValues.NUCLEAR);
+Traffic.FROM_COMMERCIAL = tripEnd(TileValues.LHTHR, TileValues.PORT);
+Traffic.FROM_INDUSTRIAL = tripEnd(TileValues.LHTHR, TileValues.COMBASE);
+
 Traffic.prototype.tryDrive = function(startPos, destFn) {
   var dirLast;
   // Note: Positions are immutable, so can be shared freely
@@ -118,9 +132,10 @@ Traffic.prototype.tryDrive = function(startPos, destFn) {
       if (this.driveDone(drivePos, destFn))
         return true;
     } else {
+      // Dead end. As in the original game, forget the last position recorded and use up 3 more steps: the trip
+      // fails unless a way on is found
       if (this._stack.length > 0) {
-        // Backtrack to the last junction we recorded
-        drivePos = this._stack.pop();
+        this._stack.pop();
         dist += 3;
       } else {
         return false;

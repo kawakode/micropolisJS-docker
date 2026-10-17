@@ -67,7 +67,7 @@ AirplaneSprite.prototype.move = function(spriteCycle, disasterManager, blockMaps
     this.destY = Random.getRandom(SpriteUtils.worldToPix(this.map.height)) + 8;
   }
 
-  if (disasterManager.enableDisasters) {
+  if (disasterManager.disastersEnabled) {
     var explode = false;
 
     var spriteList = this.spriteManager.getSpriteList();

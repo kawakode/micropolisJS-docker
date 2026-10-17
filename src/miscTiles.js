@@ -22,33 +22,35 @@ var yDelta = [ 0, -1,  0,  1 ];
 var fireFound = function(map, x, y, simData) {
   simData.census.firePop += 1;
 
+  // As in the original game, a fire only does anything one scan in four: spread, then maybe burn out
+  if ((Random.getRandom16() & 3) !== 0)
+    return;
+
   // Try to set neighbouring tiles on fire as well
-  if ((Random.getRandom16() & 3) === 0) {
-    for (var i = 0; i < 4; i++) {
-      if (!Random.getChance(7))
-        continue;
+  for (var i = 0; i < 4; i++) {
+    if (!Random.getChance(7))
+      continue;
 
-      var xTem = x + xDelta[i];
-      var yTem = y + yDelta[i];
+    var xTem = x + xDelta[i];
+    var yTem = y + yDelta[i];
 
-      if (!map.testBounds(xTem, yTem))
-        continue;
+    if (!map.testBounds(xTem, yTem))
+      continue;
 
-      var tile = map.getTile(xTem, yTem);
-      if (!tile.isCombustible())
-        continue;
+    var tile = map.getTile(xTem, yTem);
+    if (!tile.isCombustible())
+      continue;
 
-      if (tile.isZone()) {
-        // Neighbour is a zone and burnable
-        ZoneUtils.fireZone(map, xTem, yTem, simData.blockMaps);
+    if (tile.isZone()) {
+      // Neighbour is a zone and burnable
+      ZoneUtils.fireZone(map, xTem, yTem, simData.blockMaps);
 
-        // Industrial zones etc really go boom
-        if (tile.getValue() > IZB)
-          simData.spriteManager.makeExplosion(xTem, yTem);
-      }
-
-      map.setTo(xTem, yTem, TileUtils.randomFire());
+      // Industrial zones etc really go boom
+      if (tile.getValue() > IZB)
+        simData.spriteManager.makeExplosion(xTem, yTem);
     }
+
+    map.setTo(xTem, yTem, TileUtils.randomFire());
   }
 
   // Compute likelyhood of fire running out of fuel
@@ -74,6 +76,14 @@ var radiationFound = function(map, x, y, simData) {
 };
 
 
+// An explosion leaves rubble. The renderer turns it to rubble at the end of its animation; off screen, the map scan
+// does it after a few scans
+var explosionFound = function(map, x, y, simData) {
+  if (Random.getChance(3))
+    map.setTo(x, y, TileUtils.randomRubble());
+};
+
+
 var floodFound = function(map, x, y, simData) {
   simData.disasterManager.doFlood(x, y, simData.blockMaps);
 };
@@ -84,6 +94,7 @@ var MiscTiles = {
     mapScanner.addAction(TileUtils.isFire, fireFound, true);
     mapScanner.addAction(RADTILE, radiationFound, true);
     mapScanner.addAction(TileUtils.isFlood, floodFound, true);
+    mapScanner.addAction(TileUtils.isManualExplosion, explosionFound, true);
   }
 };
 
