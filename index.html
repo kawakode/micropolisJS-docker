@@ -39,6 +39,9 @@
     <img id="toolIcons" class="imageData" src="images/ui/tools.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
     <img id="hudIcons" class="imageData" src="images/ui/hud.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
     <img id="townPictures" class="imageData" src="images/ui/towns.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="isoGround" class="imageData" src="images/iso/ground.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="isoObjects" class="imageData" src="images/iso/objects.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="isoLights" class="imageData" src="images/iso/lights.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
 
     <header id="hud" class="initialHidden">
       <div class="brand">KawaCity</div>
@@ -582,6 +585,11 @@
                 <legend class="fieldLabel" data-i18n>Random disasters</legend>
                 <input type="radio" class="enableDisastersSetting" name="disastersSetting" id="disastersYes" value="true" checked="checked"><label for="disastersYes" data-i18n>On</label>
                 <input type="radio" class="enableDisastersSetting" name="disastersSetting" id="disastersNo" value="false"><label for="disastersNo" data-i18n>Off</label>
+              </fieldset>
+              <fieldset id="viewSelect" class="choice">
+                <legend class="fieldLabel" data-i18n>View</legend>
+                <input type="radio" class="viewSetting" name="viewSetting" id="viewIsometric" value="isometric" checked="checked"><label for="viewIsometric" data-i18n>Isometric</label>
+                <input type="radio" class="viewSetting" name="viewSetting" id="viewTop" value="top"><label for="viewTop" data-i18n>From above</label>
               </fieldset>
               <fieldset id="dayNightSelect" class="choice">
                 <legend class="fieldLabel" data-i18n>Day and night</legend>

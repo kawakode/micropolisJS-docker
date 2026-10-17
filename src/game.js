@@ -29,6 +29,7 @@ import { GameCanvas } from './gameCanvas.js';
 import { GameMap } from './gameMap.js';
 import { InfoBar } from './infoBar.js';
 import { InputStatus } from './inputStatus.js';
+import { IsoView } from './isoView.js';
 import * as Messages from './messages.ts';
 import { MonsterTV } from './monsterTV.js';
 import { NagWindow } from './nagWindow.js';
@@ -93,9 +94,11 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   // Note: must init canvas before inputStatus
   this.gameCanvas = new GameCanvas('canvasContainer');
   this.gameCanvas.init(this.gameMap, this.tileSet, spriteSheet);
+  this.gameCanvas.setIsometric(IsoView.isPreferred());
 
-  // Modern screens are large: start zoomed in when there is room
-  if (this.gameCanvas.cssWidth >= 1000 && this.gameCanvas.cssHeight >= 600)
+  // Modern screens are large: start zoomed in when there is room (the isometric view's tiles are already twice as
+  // wide)
+  if (this.gameCanvas.cssWidth >= 1000 && this.gameCanvas.cssHeight >= 600 && !this.gameCanvas.isIsometric())
     this.gameCanvas.setZoom(2);
   this.gameCanvas.centreOn(Math.floor(this.gameMap.width / 2), Math.floor(this.gameMap.height / 2));
 
@@ -145,6 +148,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
 
   // Initialise monsterTV
   this.monsterTV = new MonsterTV(this.gameMap, tileSet, spriteSheet, null);
+  this.monsterTV.canvas.setIsometric(this.gameCanvas.isIsometric());
 
   var opacityLayerID = 'opaque';
 
@@ -214,7 +218,8 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.handleSettingsRequest = makeWindowOpenHandler('settings', function() {
     return [{autoBudget: this.simulation.budget.autoBudget, autoBulldoze: BaseTool.getAutoBulldoze(),
              speed: this.defaultSpeed, disasters: this.simulation.disasterManager.disastersEnabled,
-             dayNight: this.ambientLife.dayNight, level: this.simulation.getLevel(), language: I18n.getLanguage()}];
+             dayNight: this.ambientLife.dayNight, level: this.simulation.getLevel(), language: I18n.getLanguage(),
+             isometric: this.gameCanvas.isIsometric()}];
   }.bind(this));
   this.settingsWindow = new SettingsWindow(opacityLayerID, 'settingsWindow');
   this.settingsWindow.addEventListener(Messages.SETTINGS_WINDOW_CLOSED, this.handleSettingsWindowClosure.bind(this));
@@ -307,6 +312,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
 
   // Decorative cars, people, boats, birds, smoke, clouds, and the cycle of day and night
   this.ambientLife = new AmbientLife(this.gameMap, this.simulation);
+  this.ambientLife.setIsometric(this.gameCanvas.isIsometric());
   if (savedGame) {
     if (typeof(savedGame.disastersEnabled) === 'boolean')
       this.simulation.disasterManager.disastersEnabled = savedGame.disastersEnabled;
@@ -606,10 +612,28 @@ Game.prototype.handleSettingsWindowClosure = function(actions) {
         I18n.setLanguage(a.data);
         break;
 
+      case SettingsWindow.VIEW:
+        this.setIsometric(a.data);
+        break;
+
       default:
         console.warn('Unexpected action', a);
     }
   }
+};
+
+
+// Switches between the isometric view and the view from above, at the same scale, and remembers the choice
+Game.prototype.setIsometric = function(isometric) {
+  IsoView.setPreferred(isometric);
+  if (isometric === this.gameCanvas.isIsometric())
+    return;
+
+  var zoom = this.gameCanvas.getZoom();
+  this.gameCanvas.setIsometric(isometric);
+  this.gameCanvas.setZoom(isometric ? zoom / 2 : zoom * 2);
+  this.monsterTV.canvas.setIsometric(isometric);
+  this.ambientLife.setIsometric(isometric);
 };
 
 

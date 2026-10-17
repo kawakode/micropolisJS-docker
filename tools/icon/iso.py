@@ -64,9 +64,11 @@ class Box:
     """A box from (x0, y0, z0) to (x1, y1, z1). paint(face, u, v) gives the colour of a point of a face ('top',
     'left' facing +Y, 'right' facing +X), where u runs along the face and v up it (or along Y on the top)."""
 
-    def __init__(self, x0, y0, z0, x1, y1, z1, paint):
+    def __init__(self, x0, y0, z0, x1, y1, z1, paint, flat=False):
         self.x0, self.y0, self.z0, self.x1, self.y1, self.z1 = x0, y0, z0, x1, y1, z1
         self.paint = paint
+        # A flat shape (markings on the ground) is not outlined
+        self.flat = flat
         # Its extent on the screen
         self.left, self.right = x0 - y1, x1 - y0
         self.top, self.bottom = (x0 + y0) / 2.0 - z1, (x1 + y1) / 2.0 - z0
@@ -114,6 +116,7 @@ class Solid:
         self.x0, self.y0, self.z0, self.x1, self.y1, self.z1 = x0, y0, z0, x1, y1, z1
         self.inside = inside
         self.paint = paint
+        self.flat = False
         corners = [(x, y, z) for x in (x0, x1) for y in (y0, y1) for z in (z0, z1)]
         self.left = min(x - y for x, y, z in corners)
         self.right = max(x - y for x, y, z in corners)
@@ -239,9 +242,11 @@ class Line:
 
 # --- Drawing --------------------------------------------------------------------------------------------------------
 
-def render(width, height, shapes, sprites, origin, background, lines=(), highlight=True):
+def render(width, height, shapes, sprites, origin, background, lines=(), highlight=True, outline=True):
     """Draws the shapes, sprites and lines over the background (a function of the pixel, giving a colour or None for
-    a transparent pixel), and outlines them. Returns the pixels, None where transparent."""
+    a transparent pixel), and outlines them (unless outline is False). A shape's paint may give None: the shape hides
+    what is behind it, but shows nothing (to draw only the lights of a building). Returns the pixels, None where
+    transparent."""
     ox, oy = origin
     pixels = [[background(i, j) for i in range(width)] for j in range(height)]
     owner = [[None] * width for _ in range(height)]
@@ -300,20 +305,31 @@ def render(width, height, shapes, sprites, origin, background, lines=(), highlig
     if highlight:
         for j in range(height - 1):
             for i in range(width):
-                if face[j][i] == 'top' and face[j + 1][i] in ('left', 'right') and owner[j + 1][i] == owner[j][i]:
+                if face[j][i] == 'top' and face[j + 1][i] in ('left', 'right') and owner[j + 1][i] == owner[j][i] \
+                        and pixels[j][i] is not None:
                     pixels[j][i] = mix(pixels[j][i], (255, 255, 255), 0.35)
+
+    if not outline:
+        return pixels
+
+    # Flat shapes are drawn, but are not outlined, as if they were the background
+    def solid(o):
+        if o is None:
+            return False
+        if isinstance(o, tuple):
+            return o[0] != 'line'
+        return not shapes[o].flat
 
     # Outlines: around the whole picture (but the lines), and between objects where the one behind shows above the other
     outlined = [row[:] for row in pixels]
     for j in range(height):
         for i in range(width):
-            if owner[j][i] is None:
+            if not solid(owner[j][i]) and not (isinstance(owner[j][i], tuple) and owner[j][i][0] == 'line'):
                 near = [(i + di, j + dj) for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1))]
-                if any(0 <= a < width and 0 <= b < height and owner[b][a] is not None and
-                       not (isinstance(owner[b][a], tuple) and owner[b][a][0] == 'line') for a, b in near):
+                if any(0 <= a < width and 0 <= b < height and solid(owner[b][a]) for a, b in near):
                     outlined[j][i] = OUTLINE
-            elif j + 1 < height and owner[j + 1][i] is not None and owner[j + 1][i] != owner[j][i] and \
-                    depth[j + 1][i] > depth[j][i] + 1.5:
+            elif solid(owner[j][i]) and j + 1 < height and solid(owner[j + 1][i]) and \
+                    owner[j + 1][i] != owner[j][i] and depth[j + 1][i] > depth[j][i] + 1.5 and pixels[j][i] is not None:
                 # The edge of a nearer object, seen over a farther one
                 outlined[j][i] = shade(pixels[j][i], 0.55)
 

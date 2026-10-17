@@ -39,6 +39,7 @@ npm run lint    # type check
 - The texts are written in English; `src/lang/fr.js` translates them into French (see `src/i18n.js`). `npm test` checks that every text has its translation.
 - `python3 tools/pixelart/generate.py` regenerates the tiles and sprites in `images/` from the original artwork (needs Pillow and numpy).
 - `python3 tools/icon/generate.py` draws, in pixel art, the favicon and the icons in `images/icons/`, and the interface's pictures in `images/ui/` with their places in `src/uiIcons.js` (needs Pillow).
+- `python3 tools/icon/map_atlas.py` draws the isometric view of the map in the same style: the ground, buildings, vehicles and their night lights in `images/iso/`, with their places in `src/isoArt.js` (needs Pillow). `src/isoTiles.js` says what is drawn for each tile, and `src/isoView.js` draws the map. The view from above, drawn from the tiles of `tools/pixelart`, can still be chosen in the settings.
 
 **Releasing**: push a version tag. The tests run, then the image is published with the tag's version (`1.2.3`, `1.2`, `1`) and as `latest` (except pre-releases such as `v1.2.3-rc.1`).
 
