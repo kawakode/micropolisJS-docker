@@ -62,6 +62,9 @@ function GameTools(map) {
     landfill: new TerrainTool(map, TerrainTool.FILL, 60),
   });
 
+  // The bulldozer's sizes are one tool, applied over a wider area (see InputStatus)
+  tools.bulldozer3 = tools.bulldozer5 = tools.bulldozer7 = tools.bulldozer;
+
   tools.query.addEventListener(QUERY_WINDOW_NEEDED, MiscUtils.reflectEvent.bind(tools, QUERY_WINDOW_NEEDED));
 
   return tools;

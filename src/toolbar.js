@@ -7,14 +7,23 @@
 
 import $ from "jquery";
 
-// The tool bar: the zones, the query tool and the bulldozer are always at hand; everything else is grouped in
-// categories. Clicking a category takes up its last used tool, and opens a palette of all the category's tools.
+// The tool bar: the zones and the query tool are always at hand; everything else is grouped in categories (the
+// bulldozer's sizes too). Clicking a category takes up its last used tool, and opens a palette of all the category's tools.
 //
 // Each tool has a button of class toolButton, which InputStatus listens to, carrying the tool's details in data
 // attributes: its size (for the preview), colour, label, cost and keyboard shortcut. ToolIcons then decorates
 // the buttons.
 
 var TOOLS = {
+  bulldozer: {name: 'Bulldozer 1x1', size: 1, brush: 1, cost: 1, colour: '#fb7185', key: 'B',
+              description: 'Clears a tile, or the area you drag over. Click any tile of a building to demolish it all.'},
+  bulldozer3: {name: 'Bulldozer 3x3', size: 1, brush: 3, cost: 1, colour: '#fb7185',
+               description: 'Clears 3x3 tiles around the cursor: drag it like a brush. $1 a tile.'},
+  bulldozer5: {name: 'Bulldozer 5x5', size: 1, brush: 5, cost: 1, colour: '#fb7185',
+               description: 'Clears 5x5 tiles around the cursor. Press B again to change size.'},
+  bulldozer7: {name: 'Bulldozer 7x7', size: 1, brush: 7, cost: 1, colour: '#fb7185',
+               description: 'Clears 7x7 tiles around the cursor: for wide demolitions.'},
+
   road: {name: 'Street', size: 1, cost: 10, colour: '#94a3b8', key: '4',
          description: 'The ordinary road. Bridges water for $50 a tile.'},
   dirtroad: {name: 'Dirt road', size: 1, cost: 4, colour: '#b08850',
@@ -71,7 +80,10 @@ var TOOLS = {
              description: 'Fill water in, to build on it.'}
 };
 
+// A category is built in the tool bar's group of categories, unless it names another holder
 var CATEGORIES = [
+  {id: 'bulldozer', name: 'Bulldozer', holder: '#basicButtons',
+   tools: ['bulldozer', 'bulldozer3', 'bulldozer5', 'bulldozer7']},
   {id: 'transport', name: 'Transport', tools: ['road', 'dirtroad', 'avenue', 'highway', 'rail', 'port', 'airport']},
   {id: 'power', name: 'Power', tools: ['wire', 'wind', 'solar', 'gas', 'coal', 'nuclear']},
   {id: 'services', name: 'Services', tools: ['police', 'fire', 'school', 'university']},
@@ -88,16 +100,18 @@ var makeToolButton = function(toolName) {
     .text(tool.name);
   if (tool.key)
     button.attr('data-key', tool.key);
+  if (tool.brush)
+    button.attr('data-brush', tool.brush);
   return button;
 };
 
 
 // Builds the categories and their palettes in the tool bar (before ToolIcons decorates the buttons)
 var build = function() {
-  var bar = $('#categoryButtons');
   var flyout = $('#toolFlyout');
 
   CATEGORIES.forEach(function(category) {
+    var bar = $(category.holder || '#categoryButtons');
     var palette = $('<div class="toolPalette" role="menu"></div>').attr({'data-category': category.id,
                                                                         'aria-label': category.name});
     $('<div class="paletteTitle"></div>').text(category.name).appendTo(palette);

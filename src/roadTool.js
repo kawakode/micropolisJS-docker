@@ -56,7 +56,7 @@ RoadTool.prototype.layRoad = function(x, y) {
 
 
 RoadTool.prototype._layRoadTile = function(x, y) {
-  this.doAutoBulldoze(x, y);
+  var needsBulldoze = this.doAutoBulldoze(x, y);
   var tile = this._worldEffects.getTileValue(x, y);
   var cost = this.toolCost;
 
@@ -136,7 +136,7 @@ RoadTool.prototype._layRoadTile = function(x, y) {
       break;
 
     default:
-      return this.TOOLRESULT_FAILED;
+      return needsBulldoze ? this.TOOLRESULT_NEEDS_BULLDOZE : this.TOOLRESULT_FAILED;
   }
 
   this.addCost(cost);

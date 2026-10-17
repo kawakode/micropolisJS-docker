@@ -22,7 +22,7 @@ var WireTool = ConnectingTool(function(map) {
 
 
 WireTool.prototype.layWire = function(x, y) {
-  this.doAutoBulldoze(x, y);
+  var needsBulldoze = this.doAutoBulldoze(x, y);
   var cost = this.toolCost;
 
   var tile = this._worldEffects.getTileValue(x, y);
@@ -105,7 +105,7 @@ WireTool.prototype.layWire = function(x, y) {
       break;
 
     default:
-      return this.TOOLRESULT_FAILED;
+      return needsBulldoze ? this.TOOLRESULT_NEEDS_BULLDOZE : this.TOOLRESULT_FAILED;
   }
 
   this.addCost(cost);

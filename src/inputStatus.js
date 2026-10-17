@@ -25,7 +25,7 @@ import { MiscUtils } from './miscUtils.js';
 
 // How the tools behave when dragged
 var TOOL_LINE = 'line';         // Lays an L-shaped path of tiles from the start of the drag (roads, rails, wires)
-var TOOL_AREA = 'area';         // Fills the dragged rectangle (bulldozer, parks)
+var TOOL_AREA = 'area';         // Fills the dragged rectangle (bulldozer, parks), widened by the tool's brush
 var TOOL_BUILDING = 'building'; // Places a grid of buildings over the dragged rectangle
 var TOOL_SINGLE = 'single';     // Acts on a single tile on click (query)
 
@@ -37,6 +37,9 @@ var toolCategories = {
   rail: TOOL_LINE,
   wire: TOOL_LINE,
   bulldozer: TOOL_AREA,
+  bulldozer3: TOOL_AREA,
+  bulldozer5: TOOL_AREA,
+  bulldozer7: TOOL_AREA,
   park: TOOL_AREA,
   garden: TOOL_AREA,
   plaza: TOOL_AREA,
@@ -60,6 +63,9 @@ var toolShortcuts = {
   'b': 'bulldozer',
   'q': 'query'
 };
+
+// Pressing the bulldozer's key again goes through its sizes
+var BULLDOZER_SIZES = ['bulldozer', 'bulldozer3', 'bulldozer5', 'bulldozer7'];
 
 // Limit how much can be done in a single drag
 var MAX_AREA_SIDE = 64;
@@ -102,6 +108,7 @@ var InputStatus = EventEmitter(function(map, gameCanvas) {
   this.toolName = null;
   this.currentTool = null;
   this.toolWidth = 0;
+  this.toolBrush = 1;
   this.toolColour = '';
 
   // Add the listeners
@@ -250,7 +257,11 @@ var keyDownHandler = function(e) {
 
   var tool = toolShortcuts[e.key.toLowerCase()];
   if (tool !== undefined && !e.repeat) {
-    this.selectTool(tool);
+    var size = BULLDOZER_SIZES.indexOf(this.toolName);
+    if (tool === 'bulldozer' && size >= 0)
+      this.selectTool(BULLDOZER_SIZES[(size + 1) % BULLDOZER_SIZES.length]);
+    else
+      this.selectTool(tool);
     e.preventDefault();
   }
 };
@@ -570,10 +581,12 @@ InputStatus.prototype._computePlacements = function(anchor, current) {
       break;
 
     case TOOL_AREA:
-      var minX = Math.min(anchor.x, current.x);
-      var minY = Math.min(anchor.y, current.y);
-      var maxX = Math.min(Math.max(anchor.x, current.x), minX + MAX_AREA_SIDE - 1);
-      var maxY = Math.min(Math.max(anchor.y, current.y), minY + MAX_AREA_SIDE - 1);
+      // A brush wider than a tile sweeps the drag, centred on the pointer
+      var reach = Math.floor((this.toolBrush - 1) / 2);
+      var minX = Math.min(anchor.x, current.x) - reach;
+      var minY = Math.min(anchor.y, current.y) - reach;
+      var maxX = Math.min(Math.max(anchor.x, current.x) + reach, minX + MAX_AREA_SIDE - 1);
+      var maxY = Math.min(Math.max(anchor.y, current.y) + reach, minY + MAX_AREA_SIDE - 1);
 
       for (y = minY; y <= maxY; y++) {
         for (x = minX; x <= maxX; x++)
@@ -618,7 +631,8 @@ InputStatus.prototype.getPendingPlacements = function() {
     if (gesture.type !== 'tool' || gesture.toolName !== this.toolName)
       return null;
 
-    return {placements: this._computePlacements(gesture.anchor, gesture.current), dragging: true};
+    return {placements: this._computePlacements(gesture.anchor, gesture.current), dragging: true,
+            brush: this.toolBrush, centre: gesture.current};
   }
 
   if (this._hover === null)
@@ -628,7 +642,7 @@ InputStatus.prototype.getPendingPlacements = function() {
   if (tile === null || !this._map.testBounds(tile.x, tile.y))
     return null;
 
-  return {placements: [{x: tile.x, y: tile.y}], dragging: false};
+  return {placements: this._computePlacements(tile, tile), dragging: false, brush: this.toolBrush, centre: tile};
 };
 
 
@@ -666,6 +680,7 @@ InputStatus.prototype.selectTool = function(toolName, keep) {
 
   this.toolName = toolName;
   this.toolWidth = button.attr('data-size') - 0;
+  this.toolBrush = (button.attr('data-brush') - 0) || 1;
   this.currentTool = this.gameTools[toolName];
   this.toolColour = button.attr('data-colour');
   this._cancelGesture();
@@ -679,6 +694,7 @@ InputStatus.prototype.clearTool = function() {
   this.toolName = null;
   this.currentTool = null;
   this.toolWidth = 0;
+  this.toolBrush = 1;
   this.toolColour = '';
   this._cancelGesture();
   $('.toolButton.selected').removeClass('selected').addClass('unselected').attr('aria-pressed', 'false');

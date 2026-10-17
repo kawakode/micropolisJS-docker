@@ -667,6 +667,12 @@ Game.prototype.handleMandatoryBudget = function() {
 };
 
 
+// The warning for a tool that can't act until the land is bulldozed: hint at the setting when it is off
+var needsDozeText = function() {
+  return BaseTool.getAutoBulldoze() ? Text.toolMessages.needsDoze : Text.toolMessages.needsDozeManual;
+};
+
+
 // Applies the current tool at each of the given placements in turn, stopping if we run out of money
 Game.prototype.handleTool = function(data) {
   var tool = this.inputStatus.gameTools[data.toolName];
@@ -678,6 +684,9 @@ Game.prototype.handleTool = function(data) {
   var placements = data.placements;
   var succeeded = 0;
   var failure = null;
+
+  if (tool.startBatch)
+    tool.startBatch();
 
   for (var i = 0, l = placements.length; i < l; i++) {
     var p = placements[i];
@@ -697,12 +706,15 @@ Game.prototype.handleTool = function(data) {
       failure = tool.result;
   }
 
+  if (tool.endBatch)
+    tool.endBatch();
+
   this._preview = null;
 
   if (failure === tool.TOOLRESULT_NO_MONEY)
     $('#toolOutput').text(Text.toolMessages.noMoney);
   else if (succeeded === 0 && failure === tool.TOOLRESULT_NEEDS_BULLDOZE)
-    $('#toolOutput').text(Text.toolMessages.needsDoze);
+    $('#toolOutput').text(needsDozeText());
   else
     $('#toolOutput').text($('.toolButton.selected').attr('data-label') || 'Tools');
 };
@@ -715,6 +727,8 @@ Game.prototype._simulateTool = function(tool, placements) {
   var results = [];
 
   tool.clear();
+  if (tool.startBatch)
+    tool.startBatch();
 
   for (var i = 0, l = placements.length; i < l; i++) {
     var p = placements[i];
@@ -733,9 +747,12 @@ Game.prototype._simulateTool = function(tool, placements) {
   }
 
   var totalCost = tool._applicationCost;
+  var demolished = tool.getDemolished ? tool.getDemolished() : [];
   tool.clear();
+  if (tool.endBatch)
+    tool.endBatch();
 
-  return {results: results, cost: totalCost};
+  return {results: results, cost: totalCost, demolished: demolished};
 };
 
 
@@ -762,9 +779,10 @@ Game.prototype.computeOverlay = function() {
   var now = Date.now();
   var preview = this._preview;
   if (preview === null || preview.key !== key || now - preview.time > 250) {
-    var simulated = category === InputStatus.TOOL_SINGLE ? {results: [tool.TOOLRESULT_OK], cost: 0} :
+    var simulated = category === InputStatus.TOOL_SINGLE ? {results: [tool.TOOLRESULT_OK], cost: 0, demolished: []} :
                     this._simulateTool(tool, placements);
-    preview = this._preview = {key: key, time: now, results: simulated.results, cost: simulated.cost};
+    preview = this._preview = {key: key, time: now, results: simulated.results, cost: simulated.cost,
+                               demolished: simulated.demolished};
   }
 
   var rects = [];
@@ -778,11 +796,25 @@ Game.prototype.computeOverlay = function() {
     needsBulldoze = needsBulldoze || preview.results[i] === tool.TOOLRESULT_NEEDS_BULLDOZE;
 
     // When bulldozing or planting an area, tiles where there is nothing to do are simply left unmarked
-    if (!ok && category === InputStatus.TOOL_AREA && pending.dragging)
+    if (!ok && category === InputStatus.TOOL_AREA && (pending.dragging || pending.brush > 1))
       continue;
 
     rects.push({x: placements[i].x - offset, y: placements[i].y - offset, width: size, height: size,
                 colour: colour, valid: ok});
+  }
+
+  // The whole of the buildings that the bulldozer would demolish
+  var marked = new Set(rects.map(function(r) { return r.x + ',' + r.y; }));
+  preview.demolished.forEach(function(tile) {
+    if (!marked.has(tile.x + ',' + tile.y))
+      rects.push({x: tile.x, y: tile.y, width: 1, height: 1, colour: colour, valid: true});
+  });
+
+  // The outline of a brush wider than a tile, under the pointer
+  if (pending.brush > 1) {
+    var reach = Math.floor((pending.brush - 1) / 2);
+    rects.push({x: pending.centre.x - reach, y: pending.centre.y - reach, width: pending.brush, height: pending.brush,
+                colour: colour, outline: true});
   }
 
   var last = placements[placements.length - 1];
@@ -791,7 +823,7 @@ Game.prototype.computeOverlay = function() {
 
   if (category !== InputStatus.TOOL_SINGLE && last !== undefined) {
     if (!anySucceeded && needsBulldoze)
-      label = {text: Text.toolMessages.needsDoze, valid: false};
+      label = {text: needsDozeText(), valid: false};
     else if (preview.cost > funds)
       label = {text: formatMoney(preview.cost) + ' (not enough funds)', valid: false};
     else if (anySucceeded && preview.cost > 0)

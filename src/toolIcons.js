@@ -49,7 +49,10 @@ var iconSpecs = {
   rail: {tiles: [TileValues.LHRAIL]},
   wire: {tiles: [TileValues.LHPOWER]},
   park: {tiles: [TileValues.WOODS2]},
-  bulldozer: {tiles: [TileValues.RUBBLE]},
+  bulldozer: {brush: 1},
+  bulldozer3: {brush: 3},
+  bulldozer5: {brush: 5},
+  bulldozer7: {brush: 7},
   query: {glyph: '?'}
 };
 
@@ -90,6 +93,25 @@ var makeIcon = function(spec, tileSet) {
     ctx.fillText(spec.glyph, pixels / 2 + Math.round(pixels / 16), pixels / 2 + Math.round(pixels / 10));
     ctx.fillStyle = '#fff6c8';
     ctx.fillText(spec.glyph, pixels / 2, pixels / 2 + Math.round(pixels / 20));
+    return canvas;
+  }
+
+  // The bulldozer's sizes: rubble, under a grid as many tiles across as the bulldozer clears
+  if (spec.brush) {
+    drawTile(ctx, tileSet, TileValues.RUBBLE, 0, 0, pixels);
+    var line = Math.max(1, Math.round(pixels / 32));
+    var step = (pixels - line) / spec.brush;
+    ctx.fillStyle = 'rgba(7, 10, 31, 0.75)';
+    for (var i = 0; i <= spec.brush; i++) {
+      var at = Math.round(i * step);
+      ctx.fillRect(at, 0, line, pixels);
+      ctx.fillRect(0, at, pixels, line);
+    }
+    ctx.fillStyle = '#fb7185';
+    ctx.fillRect(0, 0, pixels, line);
+    ctx.fillRect(0, pixels - line, pixels, line);
+    ctx.fillRect(0, 0, line, pixels);
+    ctx.fillRect(pixels - line, 0, line, pixels);
     return canvas;
   }
 

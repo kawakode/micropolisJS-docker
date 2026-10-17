@@ -22,7 +22,7 @@ var RailTool = ConnectingTool(function(map) {
 
 
 RailTool.prototype.layRail = function(x, y) {
-  this.doAutoBulldoze(x, y);
+  var needsBulldoze = this.doAutoBulldoze(x, y);
   var tile = this._worldEffects.getTileValue(x, y);
   tile = TileUtils.normalizeRoad(tile);
   var cost = this.toolCost;
@@ -96,7 +96,7 @@ RailTool.prototype.layRail = function(x, y) {
         break;
 
       default:
-        return this.TOOLRESULT_FAILED;
+        return needsBulldoze ? this.TOOLRESULT_NEEDS_BULLDOZE : this.TOOLRESULT_FAILED;
     }
 
     this.addCost(cost);

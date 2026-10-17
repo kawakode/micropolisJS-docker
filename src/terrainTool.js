@@ -134,25 +134,27 @@ TerrainTool.prototype.doTool = function(x, y, blockMaps) {
   switch (this.mode) {
     case PLANT:
       // Trees grow on bare land
-      if (value !== TileValues.DIRT) {
-        this.result = isTree(value) ? this.TOOLRESULT_FAILED : this.TOOLRESULT_NEEDS_BULLDOZE;
+      if (isTree(value)) {
+        this.result = this.TOOLRESULT_FAILED;
         return;
       }
+
+      this.result = this.clearTile(x, y);
+      if (this.result !== this.TOOLRESULT_OK)
+        return;
       effects.setTile(x, y, TileValues.WOODS, BLBNBIT);
       break;
 
     case DIG:
-      // Water can be dug out of bare land, forests and rubble (with the bulldozer's help)
+      // Water is dug out of bare land (trees and rubble are bulldozed first)
       if (isWater(value)) {
         this.result = this.TOOLRESULT_FAILED;
         return;
       }
 
-      if (value !== TileValues.DIRT && !isTree(value) &&
-          !(value >= TileValues.RUBBLE && value <= TileValues.LASTRUBBLE)) {
-        this.result = this.TOOLRESULT_NEEDS_BULLDOZE;
+      this.result = this.clearTile(x, y);
+      if (this.result !== this.TOOLRESULT_OK)
         return;
-      }
       effects.setTile(x, y, TileValues.RIVER, 0);
       break;
 
@@ -171,14 +173,9 @@ TerrainTool.prototype.doTool = function(x, y, blockMaps) {
         return;
       }
 
-      if (value !== TileValues.DIRT) {
-        // Trees and rubble are cleared for $1, as roads do
-        if (!this.autoBulldoze || !(isTree(value) || (value >= TileValues.RUBBLE && value <= TileValues.LASTRUBBLE))) {
-          this.result = this.TOOLRESULT_NEEDS_BULLDOZE;
-          return;
-        }
-        this.addCost(1);
-      }
+      this.result = this.clearTile(x, y);
+      if (this.result !== this.TOOLRESULT_OK)
+        return;
       effects.setTile(x, y, this.tile, this.tileFlags);
       break;
   }

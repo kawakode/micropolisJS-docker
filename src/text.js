@@ -61,7 +61,8 @@ var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
 // Tool strings
 var toolMessages = {
   noMoney: 'Insufficient funds to build that',
-  needsDoze: 'Area must be bulldozed first'
+  needsDoze: 'Area must be bulldozed first',
+  needsDozeManual: 'Bulldoze first (automatic bulldozing is off)'
 };
 
 // Message strings

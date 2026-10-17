@@ -552,7 +552,8 @@ GameCanvas.prototype._paintSprites = function(ctx, spriteList) {
 
 
 // Paints the tool preview. The overlay is an object with:
-//   - rects: an array of {x, y, width, height, colour, valid} in tile units, outlining where the tool will act
+//   - rects: an array of {x, y, width, height, colour, valid} in tile units, outlining where the tool will act (a
+//     rect with outline set is only outlined, dashed: the reach of a brush)
 //   - label: optionally, {x, y, text, valid} with tile coordinates: a caption painted next to that tile
 GameCanvas.prototype._paintOverlay = function(ctx, overlay) {
   var dpr = this._dpr;
@@ -564,6 +565,18 @@ GameCanvas.prototype._paintOverlay = function(ctx, overlay) {
     var y = this._toDeviceY(r.y * TILE_SIZE);
     var w = this._toDeviceX((r.x + r.width) * TILE_SIZE) - x;
     var h = this._toDeviceY((r.y + r.height) * TILE_SIZE) - y;
+
+    if (r.outline) {
+      ctx.lineWidth = Math.max(1, Math.round(2 * dpr));
+      var half = ctx.lineWidth / 2;
+      ctx.setLineDash([4 * ctx.lineWidth, 2 * ctx.lineWidth]);
+      ctx.strokeStyle = '#070a1f';
+      ctx.strokeRect(x + half + ctx.lineWidth, y + half + ctx.lineWidth, w - ctx.lineWidth * 2, h - ctx.lineWidth * 2);
+      ctx.strokeStyle = r.colour || '#f8f8ff';
+      ctx.strokeRect(x + half, y + half, w - ctx.lineWidth, h - ctx.lineWidth);
+      ctx.setLineDash([]);
+      continue;
+    }
 
     ctx.globalAlpha = 0.35;
     ctx.fillStyle = r.valid === false ? '#ff3b30' : (r.colour || '#ffd60a');
