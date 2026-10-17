@@ -41,6 +41,8 @@ import { SettingsWindow } from './settingsWindow.js';
 import { Simulation } from './simulation.js';
 import { Storage } from './storage.js';
 import { Text } from './text.js';
+import { Ticker } from './ticker.js';
+import { TickerNews } from './tickerNews.js';
 import { AmbientLife } from './ambientLife.js';
 import { Minimap } from './minimap.js';
 import { ToolIcons } from './toolIcons.js';
@@ -268,6 +270,14 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.infoBar(this.simulation, initialValues);
 
   this._notificationBar = new Notification('#notifications', this.gameCanvas, Text.messageText[Messages.WELCOME]);
+
+  // The news ticker: how the city is doing, and jokes about what the mayor does
+  this.tickerNews = new TickerNews(this.name);
+  this.ticker = new Ticker('#ticker', function() {
+    return this.tickerNews.next(this.simulation.getCityStatus());
+  }.bind(this), function(x, y) {
+    this.gameCanvas.centreOn(x, y);
+  }.bind(this));
 
   this.congratsWindow = new CongratsWindow(opacityLayerID, 'congratsWindow');
   this.congratsWindow.addEventListener(Messages.CONGRATS_WINDOW_CLOSED, function() {
@@ -506,6 +516,8 @@ Game.prototype.handleDisasterWindowClosure = function(request) {
   if (request === DisasterWindow.DISASTER_NONE)
     return;
 
+  this.tickerNews.record('disaster:' + request);
+
   switch (request) {
     case DisasterWindow.DISASTER_MONSTER:
       this.simulation.spriteManager.makeMonster();
@@ -558,14 +570,20 @@ Game.prototype.handleSettingsWindowClosure = function(actions) {
         break;
 
       case SettingsWindow.DISASTERS_CHANGED:
+        if (!a.data && this.simulation.disasterManager.disastersEnabled)
+          this.tickerNews.record('disastersOff');
         this.simulation.disasterManager.disastersEnabled = a.data;
         break;
 
       case SettingsWindow.DAY_NIGHT:
+        if (!a.data && this.ambientLife.dayNight)
+          this.tickerNews.record('nightOff');
         this.ambientLife.setDayNight(a.data);
         break;
 
       case SettingsWindow.LEVEL:
+        if (a.data !== this.simulation.getLevel())
+          this.tickerNews.record(a.data > this.simulation.getLevel() ? 'harder' : 'easier');
         this.simulation.changeLevel(a.data);
         break;
 
@@ -600,6 +618,8 @@ Game.prototype.handleScreenshotWindowClosure = function(action) {
   if (action === null)
     return;
 
+  this.tickerNews.record('picture');
+
   var dataURI;
   if (action === ScreenshotWindow.SCREENSHOT_VISIBLE)
     dataURI = this.gameCanvas.screenshotVisible();
@@ -616,6 +636,7 @@ Game.prototype.handleBudgetWindowClosure = function(data) {
   this.dialogOpen = false;
 
   if (!data.cancelled) {
+    this.recordBudgetChanges(data);
     this.simulation.budget.roadPercent = data.roadPercent / 100;
     this.simulation.budget.firePercent = data.firePercent / 100;
     this.simulation.budget.policePercent = data.policePercent / 100;
@@ -630,6 +651,25 @@ Game.prototype.handleBudgetWindowClosure = function(data) {
   } else if (!data.cancelled) {
     this.simulation.budget.updateFundEffects();
   }
+};
+
+
+// Tells the ticker how the mayor changed the budget (data: the budget window's new values, in percent)
+Game.prototype.recordBudgetChanges = function(data) {
+  var budget = this.simulation.budget;
+  var tax = data.taxPercent - 0;
+  if (tax > budget.cityTax)
+    this.tickerNews.record('taxUp');
+  else if (tax < budget.cityTax)
+    this.tickerNews.record('taxDown');
+
+  var services = [['policeCut', data.policePercent, budget.policePercent],
+                  ['fireCut', data.firePercent, budget.firePercent],
+                  ['roadCut', data.roadPercent, budget.roadPercent]];
+  services.forEach(function(service) {
+    if (service[1] / 100 < service[2] && service[1] < 100)
+      this.tickerNews.record(service[0]);
+  }, this);
 };
 
 
@@ -710,6 +750,13 @@ Game.prototype.handleTool = function(data) {
     tool.endBatch();
 
   this._preview = null;
+
+  if (succeeded > 0)
+    this.tickerNews.record(data.toolName, succeeded);
+  if (failure === tool.TOOLRESULT_NO_MONEY)
+    this.tickerNews.record('noMoney');
+  else if (succeeded === 0 && failure === tool.TOOLRESULT_NEEDS_BULLDOZE)
+    this.tickerNews.record('needsBulldoze');
 
   if (failure === tool.TOOLRESULT_NO_MONEY)
     $('#toolOutput').text(Text.toolMessages.noMoney);
@@ -840,6 +887,7 @@ Game.prototype.computeOverlay = function() {
 
 
 Game.prototype.handleSave = function() {
+  this.tickerNews.record('save');
   var saveData = this.getSaveData();
   var succeeded = Storage.saveGame(saveData);
 
@@ -859,10 +907,12 @@ Game.prototype.handlePause = function() {
 
   this.isPaused = !this.isPaused;
 
-  if (this.isPaused)
+  if (this.isPaused) {
+    this.tickerNews.record('pause');
     this.simulation.setSpeed(Simulation.SPEED_PAUSED);
-  else
+  } else {
     this.simulation.setSpeed(this.defaultSpeed);
+  }
 
   this._updateSpeedButtons();
 };
@@ -872,6 +922,9 @@ Game.prototype.handlePause = function() {
 Game.prototype.setSpeed = function(speed) {
   if (speed !== Simulation.SPEED_SLOW && speed !== Simulation.SPEED_MED && speed !== Simulation.SPEED_FAST)
     return;
+
+  if (speed !== this.defaultSpeed && speed !== Simulation.SPEED_MED)
+    this.tickerNews.record(speed === Simulation.SPEED_FAST ? 'fast' : 'slow');
 
   this.defaultSpeed = speed;
   this.isPaused = false;
@@ -915,6 +968,8 @@ Game.prototype.handleEscape = function() {
 Game.prototype.processFrontEndMessage = function(message) {
   var subject = message.subject;
   var d = new Date();
+
+  this.tickerNews.report(subject, message.data);
 
   if (Text.goodMessages[subject] !== undefined) {
     var cMessage = this.name + ' is now a ';
@@ -1074,6 +1129,7 @@ var commonAnimate = function(timestamp) {
   this.ambientLife.update(elapsed, this.gameCanvas.getVisibleWorldRect(), !this.isPaused && !this.dialogOpen);
   this.updateClock();
   this.updateScenarioPanel();
+  this.ticker.update(elapsed);
 
   var sprites = this.calculateSpritesForPaint(this.gameCanvas);
   this.gameCanvas.paint(this.overlay, sprites, this.isPaused, this.minimap.getOverlayCanvas(), this.ambientLife);

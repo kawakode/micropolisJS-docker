@@ -852,6 +852,121 @@ a.hudButton, a.hudButton:visited {
 }
 
 
+/* News ticker, along the bottom of the screen */
+
+#ticker {
+  flex: 0 0 auto;
+  display: flex;
+  height: 32px;
+  background: linear-gradient(180deg, #141c52 0%, #0b1030 100%);
+  border-top: 3px solid var(--win-border);
+  box-shadow: 0 -3px 0 var(--win-outline);
+  font-size: 15px;
+  z-index: 20;
+}
+
+#ticker.initialHidden {
+  display: none;
+}
+
+.tickerLabel {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  background: var(--red);
+  border-right: 3px solid var(--win-outline);
+  color: #fff;
+  font-family: var(--title-font);
+  font-size: 10px;
+  text-transform: uppercase;
+  text-shadow: 1px 1px 0 var(--win-outline);
+  white-space: nowrap;
+}
+
+.tickerTrack {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tickerItem {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  color: var(--text);
+  text-shadow: 1px 1px 0 var(--win-outline);
+  will-change: transform;
+}
+
+.tickerTag {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  background: #c4b5fd;
+  color: var(--win-outline);
+  font-size: 12px;
+  font-weight: 700;
+  text-shadow: none;
+}
+
+.tickerItem.alert .tickerTag {
+  background: var(--red);
+  color: #fff;
+}
+
+.tickerItem.alert .tickerText {
+  color: #ffd2c8;
+}
+
+.tickerItem.warning .tickerTag {
+  background: var(--gold);
+}
+
+.tickerItem.advice .tickerTag {
+  background: var(--teal);
+}
+
+.tickerItem.good .tickerTag {
+  background: var(--green);
+}
+
+.tickerItem.joke .tickerText {
+  color: var(--muted);
+}
+
+.tickerLink {
+  cursor: pointer;
+}
+
+.tickerLink .tickerText {
+  text-decoration: underline dotted;
+  text-underline-offset: 4px;
+}
+
+.tickerLink::after {
+  content: '\25B6';
+  font-size: 11px;
+  color: var(--gold);
+}
+
+/* With reduced motion, one item at a time */
+#ticker.still .tickerItem {
+  max-width: calc(100% - 24px);
+}
+
+#ticker.still .tickerText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
 /* Monster TV and debug */
 
 #monstertv {
@@ -1428,6 +1543,20 @@ a.hudButton, a.hudButton:visited {
   #monstertv {
     right: 10px;
     bottom: 104px;
+  }
+
+  #ticker {
+    height: 28px;
+    font-size: 14px;
+  }
+
+  .tickerLabel {
+    padding: 0 6px;
+    font-size: 8px;
+  }
+
+  .tickerTag {
+    font-size: 11px;
   }
 
   #tvContainer {

@@ -30,7 +30,9 @@ import { PowerManager } from './powerManager.js';
 import { RepairManager } from './repairManager.js';
 import { Residential } from './residential.js';
 import { Road } from './road.js';
+import { SPRITE_MONSTER, SPRITE_TORNADO } from './spriteConstants.ts';
 import { SpriteManager } from './spriteManager.js';
+import { SpriteUtils } from './spriteUtils.js';
 import { Stadia } from './stadia.js';
 import { Traffic } from './traffic.js';
 import { Transport } from './transport.js';
@@ -333,6 +335,7 @@ Simulation.prototype.init = function() {
   BlockMapUtils.crimeScan(this._census, this.blockMaps);
   BlockMapUtils.populationDensityScan(this._map, this.blockMaps);
   BlockMapUtils.fireAnalysis(this.blockMaps);
+  this._snapshotCensus();
 };
 
 
@@ -377,6 +380,8 @@ var simulate = function(simData) {
       break;
 
     case 9:
+      this._snapshotCensus();
+
       if (this._cityTime % CENSUS_FREQUENCY_10 === 0)
         this._census.take10Census(this.budget);
 
@@ -430,6 +435,18 @@ var simulate = function(simData) {
 
   // Go on the the next phase.
   this._phaseCycle = (this._phaseCycle + 1) & 15;
+};
+
+
+// The census is counted again during each scan of the map: keep the counts of the last complete scan
+Simulation.prototype._snapshotCensus = function() {
+  var snapshot = {};
+  for (var key in this._census) {
+    if (typeof(this._census[key]) === 'number')
+      snapshot[key] = this._census[key];
+  }
+
+  this._censusSnapshot = snapshot;
 };
 
 
@@ -761,6 +778,60 @@ Simulation.prototype.getPopulation = function() {
 
 Simulation.prototype.getCensus = function() {
   return this._census;
+};
+
+
+var spriteLocation = function(sprite) {
+  if (sprite === null)
+    return null;
+
+  return {x: SpriteUtils.pixToWorld(sprite.x), y: SpriteUtils.pixToWorld(sprite.y)};
+};
+
+
+// How the city is doing, for the news ticker (see TickerNews): the census is that of the last complete scan
+Simulation.prototype.getCityStatus = function() {
+  var census = this._censusSnapshot;
+  var budget = this.budget;
+  var evaluation = this.evaluation;
+  var valves = this._valves;
+
+  var problems = [];
+  for (var i = 0; i < 4; i++) {
+    var problem = evaluation.getProblemNumber(i);
+    if (problem !== null && problem !== undefined)
+      problems.push({problem: problem, votes: evaluation.getProblemVotes(i)});
+  }
+
+  return {
+    census: census,
+    cityTime: this._cityTime,
+    population: evaluation.computePopulation(census),
+    populationDelta: evaluation.cityPopDelta,
+    cityClass: evaluation.cityClass,
+    score: evaluation.cityScore,
+    approval: evaluation.cityYes,
+    problems: problems,
+    funds: budget.totalFunds,
+    tax: budget.cityTax,
+    cashFlow: budget.cashFlow,
+    roadPercent: budget.roadPercent,
+    firePercent: budget.firePercent,
+    policePercent: budget.policePercent,
+    roadMaintenance: budget.roadMaintenanceBudget,
+    fireMaintenance: budget.fireMaintenanceBudget,
+    policeMaintenance: budget.policeMaintenanceBudget,
+    resValve: valves.resValve,
+    comValve: valves.comValve,
+    indValve: valves.indValve,
+    resCap: valves.resCap,
+    comCap: valves.comCap,
+    indCap: valves.indCap,
+    monster: spriteLocation(this.spriteManager.getSprite(SPRITE_MONSTER)),
+    tornado: spriteLocation(this.spriteManager.getSprite(SPRITE_TORNADO)),
+    flooding: this.disasterManager.isFlooding(),
+    pollutionMax: {x: this._map.pollutionMaxX, y: this._map.pollutionMaxY}
+  };
 };
 
 
