@@ -123,6 +123,7 @@ var InputStatus = EventEmitter(function(map, gameCanvas) {
   canvas.addEventListener('pointermove', pointerMoveHandler.bind(this));
   canvas.addEventListener('pointerup', pointerUpHandler.bind(this));
   canvas.addEventListener('pointercancel', pointerCancelHandler.bind(this));
+  canvas.addEventListener('lostpointercapture', lostPointerCaptureHandler.bind(this));
   canvas.addEventListener('pointerleave', pointerLeaveHandler.bind(this));
   canvas.addEventListener('wheel', wheelHandler.bind(this), {passive: false});
   canvas.addEventListener('contextmenu', function(e) { e.preventDefault(); });
@@ -131,7 +132,10 @@ var InputStatus = EventEmitter(function(map, gameCanvas) {
   var self = this;
   $('.toolButton').click(function(e) {
     e.preventDefault();
-    self.selectTool($(this).attr('data-tool'));
+    // Clicking the selected tool's button again deselects it, except in a palette (opening the palette's category
+    // has already taken up its tool, which is then picked from the palette) and on the second click of a double click
+    var keep = $(this).closest('.toolPalette').length > 0 || (e.originalEvent && e.originalEvent.detail > 1);
+    self.selectTool($(this).attr('data-tool'), keep);
   });
 
   // The menu of less used buttons, on smaller screens
@@ -289,6 +293,13 @@ var pointerDownHandler = function(e) {
   if (this.isBlocked())
     return;
 
+  // A primary pointer is the first of its kind to go down: any pointer still tracked lost its pointerup (the browser
+  // may swallow it, when another window takes the focus for example), and its gesture would block the tools
+  if (e.isPrimary && this._pointers.size > 0) {
+    this._pointers.clear();
+    this._gesture = null;
+  }
+
   var coords = getRelativeCoordinates.call(this, e);
   this._pointers.set(e.pointerId, coords);
   this._hover = e.pointerType === 'mouse' ? coords : null;
@@ -421,6 +432,13 @@ var pointerCancelHandler = function(e) {
   this._pointers.delete(e.pointerId);
   if (this._pointers.size === 0)
     this._cancelGesture();
+};
+
+
+// The capture is released after a pointerup: if the pointer is still tracked, the browser took it away
+var lostPointerCaptureHandler = function(e) {
+  if (this._pointers.has(e.pointerId))
+    pointerCancelHandler.call(this, e);
 };
 
 
