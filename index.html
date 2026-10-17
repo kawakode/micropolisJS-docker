@@ -51,6 +51,7 @@
       <nav id="miscButtons" class="hudMenu" aria-label="Game menu">
         <button id="budgetRequest" class="hudButton">Budget</button>
         <button id="evalRequest" class="hudButton">Evaluation</button>
+        <button id="graphsRequest" class="hudButton">Graphs</button>
         <button id="disasterRequest" class="hudButton optionalButton">Disasters</button>
         <button id="screenshotRequest" class="hudButton optionalButton">Picture</button>
         <button id="settingsRequest" class="hudButton">Settings</button>
@@ -264,6 +265,32 @@
           </div>
           <form id="evalButtons" class="modalButtons">
             <input type="submit" id="evalOK" class="button primary dialogOK" value="OK">
+          </form>
+        </div>
+      </div>
+
+      <div class="hidden modal wide" id="graphsWindow" role="dialog" aria-labelledby="graphsHeader">
+        <header id="graphsHeader" class="modalHeader">Graphs</header>
+        <div id="graphsContainer" class="modalBody">
+          <form id="graphsForm">
+            <fieldset class="choice" id="graphsRangeSelect">
+              <legend class="visuallyHidden">Period</legend>
+              <input type="radio" class="graphsRange" name="graphsRange" id="graphsRange10" value="10" checked="checked"><label for="graphsRange10">10 years</label>
+              <input type="radio" class="graphsRange" name="graphsRange" id="graphsRange120" value="120"><label for="graphsRange120">120 years</label>
+            </fieldset>
+            <canvas id="graphsCanvas" width="520" height="240"></canvas>
+            <fieldset class="choice graphsLegend" id="graphsSeriesSelect">
+              <legend class="visuallyHidden">Show</legend>
+              <input type="checkbox" class="graphsSeries" id="graphsRes" value="res" checked="checked"><label for="graphsRes"><span class="swatch" style="background: #4cc464"></span>Residential</label>
+              <input type="checkbox" class="graphsSeries" id="graphsCom" value="com" checked="checked"><label for="graphsCom"><span class="swatch" style="background: #5c9cff"></span>Commercial</label>
+              <input type="checkbox" class="graphsSeries" id="graphsInd" value="ind" checked="checked"><label for="graphsInd"><span class="swatch" style="background: #f8c838"></span>Industrial</label>
+              <input type="checkbox" class="graphsSeries" id="graphsMoney" value="money" checked="checked"><label for="graphsMoney"><span class="swatch" style="background: #6ee0d0"></span>Cash flow</label>
+              <input type="checkbox" class="graphsSeries" id="graphsCrime" value="crime" checked="checked"><label for="graphsCrime"><span class="swatch" style="background: #e04836"></span>Crime</label>
+              <input type="checkbox" class="graphsSeries" id="graphsPollution" value="pollution" checked="checked"><label for="graphsPollution"><span class="swatch" style="background: #b08850"></span>Pollution</label>
+            </fieldset>
+            <div class="modalButtons">
+              <input type="submit" id="graphsOK" class="button primary dialogOK" value="OK">
+            </div>
           </form>
         </div>
       </div>

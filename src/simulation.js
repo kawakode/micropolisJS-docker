@@ -303,7 +303,8 @@ var speedCrimeScan = [1, 8, 18];
 var speedPopulationDensityScan = [1, 9,19];
 var speedFireAnalysis = [1, 10, 20];
 var CENSUS_FREQUENCY_10 = 4;
-var CENSUS_FREQUENCY_120 = CENSUS_FREQUENCY_10 * 10;
+// The 120 year history has a sample a year (the original took one every 10 months)
+var CENSUS_FREQUENCY_120 = CENSUS_FREQUENCY_10 * 12;
 var TAX_FREQUENCY = 48;
 
 
@@ -593,6 +594,21 @@ Simulation.prototype._onValveChange  = function() {
   this._emitEvent(Messages.VALVES_UPDATED, {residential: this._valves.resValve,
                                             commercial: this._valves.comValve,
                                             industrial: this._valves.indValve});
+};
+
+
+Simulation.prototype.getCensus = function() {
+  return this._census;
+};
+
+
+Simulation.prototype.getCityTime = function() {
+  return this._cityTime;
+};
+
+
+Simulation.prototype.getStartingYear = function() {
+  return this._startingYear;
 };
 
 

@@ -355,7 +355,7 @@ fieldset {
   width: 100%;
 }
 
-.choice input[type="radio"] {
+.choice input[type="radio"], .choice input[type="checkbox"] {
   position: absolute;
   opacity: 0;
   pointer-events: none;
@@ -383,7 +383,17 @@ fieldset {
   font-size: 11px;
 }
 
-.choice input[type="radio"]:focus-visible + label {
+.choice input[type="checkbox"]:checked + label {
+  background: var(--win-inset-light);
+  box-shadow: inset 2px 2px 0 #7f95ec, inset -2px -2px 0 #1d2c78;
+}
+
+.choice input[type="checkbox"]:not(:checked) + label {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.choice input[type="radio"]:focus-visible + label, .choice input[type="checkbox"]:focus-visible + label {
   outline: 2px dashed var(--gold);
   outline-offset: 2px;
 }
@@ -1515,4 +1525,39 @@ kbd {
   font-weight: 700;
   font-size: 13px;
   text-align: center;
+}
+
+
+/* Graphs */
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+#graphsCanvas {
+  display: block;
+  width: 520px;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border: 2px solid var(--win-outline);
+  image-rendering: pixelated;
+}
+
+.graphsLegend label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.graphsLegend .swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--win-outline);
 }

@@ -20,6 +20,7 @@ import { CongratsWindow } from './congratsWindow.js';
 import { DebugWindow } from './debugWindow.js';
 import { DisasterWindow } from './disasterWindow.js';
 import { EvaluationWindow } from './evaluationWindow.js';
+import { GraphsWindow } from './graphsWindow.js';
 import { GameCanvas } from './gameCanvas.js';
 import { GameMap } from './gameMap.js';
 import { InfoBar } from './infoBar.js';
@@ -140,6 +141,16 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.evalWindow = new EvaluationWindow(opacityLayerID, 'evalWindow');
   this.evalWindow.addEventListener(Messages.EVAL_WINDOW_CLOSED, this.genericDialogClosure);
   this.inputStatus.addEventListener(Messages.EVAL_REQUESTED, this.handleEvalRequest.bind(this));
+
+  // ... the graphs window
+  this.handleGraphsRequest = makeWindowOpenHandler('graphs', function() {
+    return [{census: this.simulation.getCensus(), cityTime: this.simulation.getCityTime(),
+             startingYear: this.simulation.getStartingYear()}];
+  }.bind(this));
+
+  this.graphsWindow = new GraphsWindow(opacityLayerID, 'graphsWindow');
+  this.graphsWindow.addEventListener(Messages.GRAPHS_WINDOW_CLOSED, this.genericDialogClosure);
+  this.inputStatus.addEventListener(Messages.GRAPHS_REQUESTED, this.handleGraphsRequest.bind(this));
 
   // ... and similarly for the budget window
   this.handleBudgetRequest = makeWindowOpenHandler('budget', function() {
