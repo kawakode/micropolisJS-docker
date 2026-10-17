@@ -18,10 +18,20 @@ import { Position } from './position.ts';
 import { NOT_ENOUGH_POWER } from './messages.ts';
 import { Random } from './random.ts';
 import { ANIMBIT, BURNBIT, CONDBIT, POWERBIT } from "./tileFlags.ts";
-import { NUCLEAR, POWERPLANT } from "./tileValues.ts";
+import { GASPLANT, NUCLEAR, POWERPLANT, SOLARPLANT, WINDTURBINE } from "./tileValues.ts";
 
 var COAL_POWER_STRENGTH = 700;
 var NUCLEAR_POWER_STRENGTH = 2000;
+// KawaCity's power plants: cleaner, but smaller
+var GAS_POWER_STRENGTH = 500;
+var SOLAR_POWER_STRENGTH = 250;
+var WIND_POWER_STRENGTH = 50;
+
+// The tiles that produce power
+var isPowerSource = function(tileValue) {
+  return tileValue === NUCLEAR || tileValue === POWERPLANT || tileValue === GASPLANT || tileValue === SOLARPLANT ||
+         tileValue === WINDTURBINE;
+};
 
 
 var PowerManager = EventEmitter(function(map) {
@@ -35,8 +45,7 @@ PowerManager.prototype.setTilePower = function(x, y) {
   var tile = this._map.getTile(x, y);
   var tileValue = tile.getValue();
 
-  if (tileValue === NUCLEAR || tileValue === POWERPLANT ||
-      this.powerGridMap.worldGet(x, y) > 0) {
+  if (isPowerSource(tileValue) || this.powerGridMap.worldGet(x, y) > 0) {
     tile.addFlags(POWERBIT);
     return;
   }
@@ -74,7 +83,10 @@ PowerManager.prototype.doPowerScan = function(census) {
 
   // Power that the combined coal and nuclear power plants can deliver.
   var maxPower = census.coalPowerPop * COAL_POWER_STRENGTH +
-                 census.nuclearPowerPop * NUCLEAR_POWER_STRENGTH;
+                 census.nuclearPowerPop * NUCLEAR_POWER_STRENGTH +
+                 census.gasPowerPop * GAS_POWER_STRENGTH +
+                 census.solarPowerPop * SOLAR_POWER_STRENGTH +
+                 census.windPowerPop * WIND_POWER_STRENGTH;
 
   var powerConsumption = 0; // Amount of power used.
 
@@ -149,9 +161,27 @@ PowerManager.prototype.nuclearPowerFound = function(map, x, y, simData) {
 };
 
 
+// KawaCity's power plants simply feed the grid
+var makePlantHandler = function(counter) {
+  return function(map, x, y, simData) {
+    simData.census[counter] += 1;
+    this._powerStack.push(new Position(x, y));
+  };
+};
+
+PowerManager.prototype.gasPowerFound = makePlantHandler('gasPowerPop');
+PowerManager.prototype.solarPowerFound = makePlantHandler('solarPowerPop');
+PowerManager.prototype.windPowerFound = makePlantHandler('windPowerPop');
+
+
 PowerManager.prototype.registerHandlers = function(mapScanner, repairManager) {
   mapScanner.addAction(POWERPLANT, this.coalPowerFound.bind(this));
   mapScanner.addAction(NUCLEAR, this.nuclearPowerFound.bind(this));
+  mapScanner.addAction(GASPLANT, this.gasPowerFound.bind(this));
+  mapScanner.addAction(SOLARPLANT, this.solarPowerFound.bind(this));
+  mapScanner.addAction(WINDTURBINE, this.windPowerFound.bind(this));
+  repairManager.addAction(GASPLANT, 7, 3);
+  repairManager.addAction(SOLARPLANT, 7, 3);
   repairManager.addAction(POWERPLANT, 7, 4);
   repairManager.addAction(NUCLEAR, 7, 4);
 };

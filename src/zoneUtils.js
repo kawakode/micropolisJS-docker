@@ -14,6 +14,7 @@
 import { MiscUtils } from './miscUtils.js';
 import { BULLBIT, POWERBIT } from "./tileFlags.ts";
 import * as TileValues from "./tileValues.ts";
+import { KawaBuildings } from './kawaBuildings.js';
 
 var checkBigZone = function(tileValue) {
   var result;
@@ -143,6 +144,9 @@ var checkZoneSize = function(tileValue) {
 
 // As checkZoneSize, but also recognises the 6x6 airport
 var getZoneSize = function(tileValue) {
+  if (tileValue >= TileValues.KAWABASE)
+    return KawaBuildings.getZoneSize(tileValue);
+
   if (tileValue >= TileValues.AIRPORTBASE && tileValue < TileValues.COALBASE)
     return 6;
 
@@ -166,6 +170,13 @@ var findCoveringZone = function(map, x, y) {
       if (size === 0)
         continue;
 
+      // A building of a single tile is its own centre
+      if (size === 1) {
+        if (cx === x && cy === y)
+          return {x: cx, y: cy, zoneSize: 1};
+        continue;
+      }
+
       if (x >= cx - 1 && x < cx - 1 + size && y >= cy - 1 && y < cy - 1 + size)
         return {x: cx, y: cy, zoneSize: size};
     }
@@ -184,7 +195,9 @@ var fireZone = function(map, x, y, blockMaps) {
   value = MiscUtils.clamp(value - 20, -200, 200);
   blockMaps.rateOfGrowthMap.worldSet(x, y, value);
 
-  if (tileValue === TileValues.AIRPORT)
+  if (tileValue >= TileValues.KAWABASE)
+    zoneSize = KawaBuildings.getZoneSize(tileValue) - 1;
+  else if (tileValue === TileValues.AIRPORT)
     zoneSize = 5;
   else if (tileValue >= TileValues.PORTBASE)
     zoneSize = 3;

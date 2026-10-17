@@ -13,7 +13,7 @@
 
 import { Random } from './random.ts';
 import { TileUtils } from './tileUtils.js';
-import { DIRT, IZB, RADTILE } from "./tileValues.ts";
+import { DIRT, GASPLANT, IZB, KAWABASE, RADTILE } from "./tileValues.ts";
 import { ZoneUtils } from './zoneUtils.js';
 
 var xDelta = [-1,  0,  1,  0 ];
@@ -45,8 +45,9 @@ var fireFound = function(map, x, y, simData) {
       // Neighbour is a zone and burnable
       ZoneUtils.fireZone(map, xTem, yTem, simData.blockMaps);
 
-      // Industrial zones etc really go boom
-      if (tile.getValue() > IZB)
+      // Industrial zones etc really go boom (of KawaCity's buildings, only the gas plant)
+      var burning = tile.getValue();
+      if ((burning > IZB && burning < KAWABASE) || burning === GASPLANT)
         simData.spriteManager.makeExplosion(xTem, yTem);
     }
 

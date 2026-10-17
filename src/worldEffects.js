@@ -16,6 +16,7 @@ import { Tile } from "./tile.ts";
 function WorldEffects(map) {
   this._map = map;
   this._data = {};
+  this._roadClasses = {};
 }
 
 
@@ -32,6 +33,22 @@ var fromKey = function(k) {
 
 WorldEffects.prototype.clear = function() {
   this._data = {};
+  this._roadClasses = {};
+};
+
+
+// The kind of road at (x, y) (see GameMap)
+WorldEffects.prototype.getRoadClass = function(x, y) {
+  var key = toKey(x, y);
+  if (key in this._roadClasses)
+    return this._roadClasses[key];
+
+  return this._map.getRoadClass(x, y);
+};
+
+
+WorldEffects.prototype.setRoadClass = function(x, y, roadClass) {
+  this._roadClasses[toKey(x, y)] = roadClass;
 };
 
 
@@ -76,6 +93,12 @@ WorldEffects.prototype.apply = function() {
   for (var i = 0, l = keys.length; i < l; i++) {
     var coords = fromKey(keys[i]);
     this._map.setTo(coords, this._data[keys[i]]);
+  }
+
+  keys = Object.keys(this._roadClasses);
+  for (i = 0, l = keys.length; i < l; i++) {
+    coords = fromKey(keys[i]);
+    this._map.setRoadClass(coords.x, coords.y, this._roadClasses[keys[i]]);
   }
 };
 

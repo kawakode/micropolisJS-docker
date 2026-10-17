@@ -13,7 +13,7 @@
 
 import { ANIMBIT, BIT_MASK, POWERBIT, ZONEBIT } from './tileFlags.ts';
 import { TileHistory } from './tileHistory.js';
-import { LASTTINYEXP, LIGHTNINGBOLT, TILE_COUNT, TILE_INVALID } from "./tileValues.ts";
+import { BIGPARK, LASTTINYEXP, LIGHTNINGBOLT, TILE_COUNT, TILE_INVALID } from "./tileValues.ts";
 import { TileUtils } from './tileUtils.js';
 
 
@@ -105,7 +105,8 @@ AnimationManager.prototype.getTiles = function(tileValues, offsetX, offsetY, xBo
       if (tile === TILE_INVALID)
         continue;
 
-      if (shouldBlink && (tile & ZONEBIT) && !(tile & POWERBIT)) {
+      // Unpowered zones blink (a park needs no power)
+      if (shouldBlink && (tile & ZONEBIT) && !(tile & POWERBIT) && (tile & BIT_MASK) !== BIGPARK) {
         tileValues[index] = LIGHTNINGBOLT;
         continue;
       }
@@ -173,6 +174,8 @@ AnimationManager.prototype.registerSingleAnimation = function(arr) {
 
 AnimationManager.prototype.registerAnimations = function() {
   this.registerSingleAnimation([56, 57, 58, 59, 60, 61, 62, 63, 56]);
+  // KawaCity: the rotor of the wind turbine
+  this.registerSingleAnimation([1024, 1025, 1026, 1027, 1024]);
   this.registerSingleAnimation([80, 128, 112, 96, 80]);
   this.registerSingleAnimation([81, 129, 113, 97, 81]);
   this.registerSingleAnimation([82, 130, 114, 98, 82]);

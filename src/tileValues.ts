@@ -317,7 +317,24 @@ export const CHURCH7LAST    = 1018;
 
 // tiles 1020-1023 unused
 
-// KawaCity's tiles: 1024-2047 (see tools/pixelart)
+// KawaCity's tiles: 1024-2047 (drawn by tools/pixelart/kawa.py: keep the numbers in sync)
+export const KAWABASE       = 1024;
+export const WINDTURBINE    = 1024; // A 1x1 power plant, whose centre is itself
+export const WINDTURBINE1   = 1025; // Animation frames of the rotor
+export const WINDTURBINE3   = 1027;
+export const GASBASE        = 1028; // Gas power plant (tiles 1028--1036)
+export const GASPLANT       = 1032;
+export const SOLARBASE      = 1037; // Solar farm (tiles 1037--1045)
+export const SOLARPLANT     = 1041;
+export const SCHOOLBASE     = 1046; // School (tiles 1046--1054)
+export const SCHOOL         = 1050;
+export const UNIVERSITYBASE = 1055; // University (tiles 1055--1070)
+export const UNIVERSITY     = 1060;
+export const BIGPARKBASE    = 1071; // Big park (tiles 1071--1079)
+export const BIGPARK        = 1075;
+export const GARDEN         = 1080;
+export const PLAZA          = 1081;
+export const KAWALAST       = 1081;
 
 export const TILE_COUNT     = 2048;
 

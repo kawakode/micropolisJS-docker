@@ -30,6 +30,7 @@
     <img id="snowtiles" class="imageData" src="images/tilessnow.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
     <img id="watertiles" class="imageData" src="images/tiles-water.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
     <img id="lighttiles" class="imageData" src="images/tiles-lights.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="roadtiles" class="imageData" src="images/tiles-roads.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
     <img id="sprites" class="imageData" src="images/sprites.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
 
     <header id="hud" class="initialHidden">
@@ -209,26 +210,11 @@
             <button id="commercialButton" data-size="3" data-tool="commercial" data-colour="#60a5fa" data-label="Commercial zone" data-cost="100" data-key="2" class="toolButton unselected">Commercial</button>
             <button id="industrialButton" data-size="3" data-tool="industrial" data-colour="#facc15" data-label="Industrial zone" data-cost="100" data-key="3" class="toolButton unselected">Industrial</button>
           </div>
-          <div class="toolGroup">
-            <button id="roadButton" data-size="1" data-tool="road" data-colour="#94a3b8" data-label="Road" data-cost="10" data-key="4" class="toolButton unselected">Road</button>
-            <button id="railButton" data-size="1" data-tool="rail" data-colour="#c2410c" data-label="Rail" data-cost="20" data-key="5" class="toolButton unselected">Rail</button>
-            <button id="wireButton" data-size="1" data-tool="wire" data-colour="#fde68a" data-label="Power line" data-cost="5" data-key="6" class="toolButton unselected">Wire</button>
-          </div>
-          <div class="toolGroup">
-            <button id="parkButton" data-size="1" data-tool="park" data-colour="#16a34a" data-label="Park" data-cost="10" data-key="7" class="toolButton unselected">Park</button>
-            <button id="policeButton" data-size="3" data-tool="police" data-colour="#1d4ed8" data-label="Police station" data-cost="500" data-key="8" class="toolButton unselected">Police</button>
-            <button id="fireButton" data-size="3" data-tool="fire" data-colour="#dc2626" data-label="Fire station" data-cost="500" data-key="9" class="toolButton unselected">Fire</button>
-          </div>
-          <div class="toolGroup">
-            <button id="coalButton" data-size="4" data-tool="coal" data-colour="#9ca3af" data-label="Coal power plant" data-cost="3000" class="toolButton unselected">Coal</button>
-            <button id="nuclearButton" data-size="4" data-tool="nuclear" data-colour="#f0abfc" data-label="Nuclear power plant" data-cost="5000" class="toolButton unselected">Nuclear</button>
-            <button id="stadiumButton" data-size="4" data-tool="stadium" data-colour="#a78bfa" data-label="Stadium" data-cost="5000" class="toolButton unselected">Stadium</button>
-            <button id="portButton" data-size="4" data-tool="port" data-colour="#0ea5e9" data-label="Seaport" data-cost="3000" class="toolButton unselected">Port</button>
-            <button id="airportButton" data-size="6" data-tool="airport" data-colour="#e879f9" data-label="Airport" data-cost="10000" class="toolButton unselected">Airport</button>
-          </div>
+          <div class="toolGroup" id="categoryButtons"></div>
         </div>
         <div id="toolInfo"><span id="toolOutput">Tools</span></div>
       </aside>
+      <div id="toolFlyout" class="panel toolFlyout"></div>
 
       <aside id="sidePanel" class="initialHidden" aria-label="City overview">
         <div id="minimapPanel" class="panel">

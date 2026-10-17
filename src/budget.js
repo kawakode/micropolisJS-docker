@@ -239,7 +239,7 @@ Budget.prototype.collectTax = function(gameLevel, census) {
   this.policeMaintenanceBudget = census.policeStationPop * policeMaintenanceCost;
   this.fireMaintenanceBudget = census.fireStationPop * fireMaintenanceCost;
 
-  var roadCost = census.roadTotal * roadMaintenanceCost;
+  var roadCost = Math.max(0, census.roadTotal + (census.roadUpkeep || 0)) * roadMaintenanceCost;
   var railCost = census.railTotal * railMaintenanceCost;
   this.roadMaintenanceBudget = Math.floor((roadCost + railCost) * RLevels[gameLevel]);
 

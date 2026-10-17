@@ -11,6 +11,7 @@
 
 import $ from "jquery";
 
+import { ROAD_STYLE_TILES } from './roadStyles.js';
 import * as TileValues from "./tileValues.ts";
 
 // Tool icons are drawn from the game's own tiles. Buildings are drawn in full: the tile at the top-left of a
@@ -31,6 +32,20 @@ var iconSpecs = {
   port: buildingIcon(TileValues.PORT, 4),
   airport: buildingIcon(TileValues.AIRPORT, 6),
   road: {tiles: [TileValues.INTERSECTION]},
+  dirtroad: {tiles: [TileValues.INTERSECTION], roadStyle: 1},
+  avenue: {tiles: [TileValues.INTERSECTION], roadStyle: 2},
+  highway: {tiles: [TileValues.ROADS], roadStyle: 3},
+  wind: {tiles: [TileValues.WINDTURBINE]},
+  solar: buildingIcon(TileValues.SOLARPLANT, 3),
+  gas: buildingIcon(TileValues.GASPLANT, 3),
+  school: buildingIcon(TileValues.SCHOOL, 3),
+  university: buildingIcon(TileValues.UNIVERSITY, 4),
+  bigpark: buildingIcon(TileValues.BIGPARK, 3),
+  garden: {tiles: [TileValues.GARDEN]},
+  plaza: {tiles: [TileValues.PLAZA]},
+  trees: {tiles: [TileValues.WOODS]},
+  water: {tiles: [TileValues.RIVER]},
+  landfill: {tiles: [13]},
   rail: {tiles: [TileValues.LHRAIL]},
   wire: {tiles: [TileValues.LHPOWER]},
   park: {tiles: [TileValues.WOODS2]},
@@ -80,6 +95,12 @@ var makeIcon = function(spec, tileSet) {
 
   if (spec.tiles) {
     drawTile(ctx, tileSet, spec.tiles[0], 0, 0, pixels);
+
+    // Dirt roads, avenues and highways are painted over a street (see GameCanvas)
+    var row = ROAD_STYLE_TILES.indexOf(spec.tiles[0]);
+    if (spec.roadStyle && tileSet.roadsImage && row >= 0)
+      ctx.drawImage(tileSet.roadsImage, (spec.roadStyle - 1) * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE,
+                    0, 0, pixels, pixels);
     return canvas;
   }
 
@@ -122,7 +143,13 @@ var decorateToolButtons = function(tileSet) {
     if (key)
       button.append($('<span class="toolKey" aria-hidden="true"></span>').text(key));
 
-    var title = label + (cost ? ' ($' + Number(cost).toLocaleString('en-US') + ')' : '') + (key ? ' [' + key + ']' : '');
+    // What the tool does, shown in the palettes of the tool bar
+    var description = button.attr('data-description');
+    if (description)
+      button.append($('<span class="toolDescription"></span>').text(description));
+
+    var title = label + (cost ? ' ($' + Number(cost).toLocaleString('en-US') + ')' : '') + (key ? ' [' + key + ']' : '') +
+                (description ? ': ' + description : '');
     button.attr('title', title);
     button.attr('aria-label', title);
     button.attr('aria-pressed', 'false');

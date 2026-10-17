@@ -21,6 +21,15 @@ import { TileUtils } from './tileUtils.js';
 import { DIRT, POWERBASE, ROADBASE } from "./tileValues.ts";
 import * as TileValues from "./tileValues.ts";
 
+// KawaCity's kinds of road (see GameMap.ROAD_*: street, dirt road, avenue, highway):
+//   - how much traffic a trip adds to a road: wider roads take more traffic before they jam;
+//   - how many half steps of a trip a tile of road uses up: trips go further on highways, less far on dirt roads;
+//   - highways have no access to the buildings beside them: trips join and leave them from other roads.
+var ROAD_TRAFFIC = [50, 100, 25, 15];
+var ROAD_HALF_STEPS = [2, 3, 2, 1];
+var HIGHWAY = 3;
+
+
 function Traffic(map, spriteManager) {
   this._map = map;
   this._stack = [];
@@ -61,7 +70,7 @@ Traffic.prototype.addToTrafficDensityMap = function(blockMaps) {
     if (tileValue >= ROADBASE && tileValue < POWERBASE) {
       // Update traffic density.
       var traffic = trafficDensityMap.worldGet(pos.x, pos.y);
-      traffic += 50;
+      traffic += ROAD_TRAFFIC[this._map.getRoadClass(pos.x, pos.y)] || 50;
       traffic = Math.min(traffic, 240);
       trafficDensityMap.worldSet(pos.x, pos.y, traffic);
 
@@ -81,12 +90,23 @@ Traffic.prototype.addToTrafficDensityMap = function(blockMaps) {
 var perimX = [-1, 0, 1, 2, 2, 2, 1, 0,-1,-2,-2,-2];
 var perimY = [-2,-2,-2,-1, 0, 1, 2, 2, 2, 1, 0,-1];
 
+// Whether the tile is a highway (rails and other tiles may have been built where a highway once was)
+Traffic.prototype._isHighway = function(x, y) {
+  if (this._map.getRoadClass(x, y) !== HIGHWAY)
+    return false;
+
+  var tileValue = TileUtils.normalizeRoad(this._map.getTileValue(x, y));
+  return (tileValue >= ROADBASE && tileValue <= TileValues.LASTROAD) ||
+         tileValue === TileValues.HRAILROAD || tileValue === TileValues.VRAILROAD;
+};
+
+
 Traffic.prototype.findPerimeterRoad = function(pos) {
   for (var i = 0; i < 12; i++) {
     var xx = pos.x + perimX[i];
     var yy = pos.y + perimY[i];
 
-    if (this._map.testBounds(xx, yy)) {
+    if (this._map.testBounds(xx, yy) && !this._isHighway(xx, yy)) {
       if (TileUtils.isDriveable(this._map.getTileValue(xx, yy))) {
         pos.x = xx;
         pos.y = yy;
@@ -119,24 +139,27 @@ Traffic.prototype.tryDrive = function(startPos, destFn) {
   // Note: Positions are immutable, so can be shared freely
   var drivePos = new Position(startPos.x, startPos.y);
 
-  /* Maximum distance to try */
-  for (var dist = 0; dist < MAX_TRAFFIC_DISTANCE; dist++) {
+  // The distance is counted in half steps: how many each tile uses up depends on the kind of road
+  var steps = 0;
+  for (var dist = 0; dist < MAX_TRAFFIC_DISTANCE * 2;) {
     var  dir = this.tryGo(drivePos, dirLast);
     if (dir) {
       drivePos = Position.move(drivePos, dir);
       dirLast = dir.oppositeDirection();
+      dist += ROAD_HALF_STEPS[this._map.getRoadClass(drivePos.x, drivePos.y)] || 2;
 
-      if (dist & 1)
+      if (steps++ & 1)
         this._stack.push(drivePos);
 
-      if (this.driveDone(drivePos, destFn))
+      // Buildings can't be reached from a highway
+      if (!this._isHighway(drivePos.x, drivePos.y) && this.driveDone(drivePos, destFn))
         return true;
     } else {
       // Dead end. As in the original game, forget the last position recorded and use up 3 more steps: the trip
       // fails unless a way on is found
       if (this._stack.length > 0) {
         this._stack.pop();
-        dist += 3;
+        dist += 8;
       } else {
         return false;
       }

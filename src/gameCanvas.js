@@ -21,6 +21,7 @@ import { MiscUtils } from './miscUtils.js';
 import { Position } from './position.ts';
 import { TILE_COUNT, TILE_INVALID } from "./tileValues.ts";
 import { LIGHT_TILES } from './lightTiles.js';
+import { ROAD_STYLE_TILES } from './roadStyles.js';
 import { WATER_FRAME_COUNT, WATER_TILES } from './waterTiles.js';
 
 // World coordinates are expressed in "world pixels": each tile is TILE_SIZE world pixels square
@@ -38,6 +39,12 @@ var WATER_FRAME_MS = 160;
 var waterRows = new Int16Array(TILE_COUNT).fill(-1);
 WATER_TILES.forEach(function(tile, row) {
   waterRows[tile] = row;
+});
+
+// Dirt roads, avenues and highways are painted over the street tiles: the row of each tile in the overlays
+var roadStyleRows = new Int16Array(TILE_COUNT).fill(-1);
+ROAD_STYLE_TILES.forEach(function(tile, row) {
+  roadStyleRows[tile] = row;
 });
 
 // At night, some tiles have lights: windows, street lamps, flames. They are laid out like the tile set, in the tile
@@ -493,6 +500,9 @@ GameCanvas.prototype._paintTiles = function(ctx, isPaused) {
   // Adjust for animations
   this.animationManager.getTiles(tileValues, firstX, firstY, width, height, isPaused);
 
+  var map = this._map;
+  var roadsImage = this._tileSet.roadsImage;
+
   for (var y = 0; y < height; y++) {
     var mapY = firstY + y;
     var dy = this._toDeviceY(mapY * TILE_SIZE);
@@ -503,7 +513,16 @@ GameCanvas.prototype._paintTiles = function(ctx, isPaused) {
       var dx = this._toDeviceX(mapX * TILE_SIZE);
       var dw = this._toDeviceX((mapX + 1) * TILE_SIZE) - dx;
 
-      this._drawTile(ctx, tileValues[y * width + x], dx, dy, dw, dh);
+      var tileVal = tileValues[y * width + x];
+      this._drawTile(ctx, tileVal, dx, dy, dw, dh);
+
+      // The kind of road, if it isn't a street
+      if (tileVal >= 0 && roadStyleRows[tileVal] >= 0 && roadsImage) {
+        var roadClass = map.getRoadClass(mapX, mapY);
+        if (roadClass > 0)
+          ctx.drawImage(roadsImage, (roadClass - 1) * TILE_SIZE, roadStyleRows[tileVal] * TILE_SIZE, TILE_SIZE, TILE_SIZE,
+                        dx, dy, dw, dh);
+      }
     }
   }
 };

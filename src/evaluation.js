@@ -100,6 +100,12 @@ Evaluation.prototype.getAssessedValue = function(census) {
   value += census.airportPop * 10000;
   value += census.coalPowerPop * 3000;
   value += census.nuclearPowerPop * 6000;
+  value += census.gasPowerPop * 2000;
+  value += census.solarPowerPop * 2500;
+  value += census.windPowerPop * 200;
+  value += census.schoolPop * 1500;
+  value += census.universityPop * 4000;
+  value += census.parkPop * 300;
 
   this.cityAssessedValue = value * 1000;
 };

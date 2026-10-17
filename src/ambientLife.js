@@ -10,7 +10,7 @@
  */
 
 import { BIT_MASK, ZONEBIT } from "./tileFlags.ts";
-import { CHANNEL, COMBASE, FIRE, HHTHR, HOUSE, HRAILROAD, INDBASE, LASTFIRE, LASTROAD, NUCLEAR, PORTBASE, POWERPLANT,
+import { CHANNEL, COMBASE, FIRE, GASPLANT, HHTHR, HOUSE, HRAILROAD, INDBASE, LASTFIRE, LASTROAD, NUCLEAR, PORTBASE, POWERPLANT,
          RIVER, ROADBASE, VRAILROAD } from "./tileValues.ts";
 import { ZoneUtils } from './zoneUtils.js';
 
@@ -254,6 +254,9 @@ AmbientLife.prototype._findEmitters = function(x, y, value, emitters) {
     top = (y - 1) * TILE;
     emitters.push({x: left + 30, y: top + 9, rate: 2.5, kind: 'steam'});
     emitters.push({x: left + 53, y: top + 9, rate: 2.5, kind: 'steam'});
+  } else if (value === GASPLANT) {
+    // A light plume from the gas plant's chimney
+    emitters.push({x: (x - 1) * TILE + 41, y: (y - 1) * TILE + 3, rate: 1.6, kind: 'steam'});
   }
 };
 

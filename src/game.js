@@ -44,6 +44,7 @@ import { Text } from './text.js';
 import { AmbientLife } from './ambientLife.js';
 import { Minimap } from './minimap.js';
 import { ToolIcons } from './toolIcons.js';
+import { Toolbar } from './toolbar.js';
 
 var disasterTimeout = 20 * 1000;
 
@@ -94,8 +95,15 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
     this.gameCanvas.setZoom(2);
   this.gameCanvas.centreOn(Math.floor(this.gameMap.width / 2), Math.floor(this.gameMap.height / 2));
 
+  // The tool bar: categories, and their palettes of tools
+  Toolbar.build();
   ToolIcons.decorateToolButtons(tileSet);
   this.inputStatus = new InputStatus(this.gameMap, this.gameCanvas);
+  Toolbar.bind(this.inputStatus.selectTool.bind(this.inputStatus));
+  Toolbar.refresh(null);
+  this.inputStatus.addEventListener(Messages.TOOL_CHANGED, function(toolName) {
+    Toolbar.refresh(toolName);
+  });
 
   this.dialogOpen = false;
   this._openWindow = null;
@@ -852,8 +860,8 @@ Game.prototype._updateSpeedButtons = function() {
 
 
 Game.prototype.handleEscape = function() {
-  // Close the menu first, if it is open
-  if (InputStatus.toggleMoreMenu(false))
+  // Close the menus first, if one is open
+  if (InputStatus.toggleMoreMenu(false) || Toolbar.closeFlyout())
     return;
 
   // A lost scenario can't be escaped

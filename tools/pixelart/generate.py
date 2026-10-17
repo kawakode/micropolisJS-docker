@@ -864,6 +864,12 @@ def main():
                            'the frames of tile WATER_TILES[n].',
                            [('WATER_FRAME_COUNT', WATER_FRAMES), ('WATER_TILES', animated)])
 
+    kawa.road_styles(source).save(os.path.join(OUTPUT, 'tiles-roads.png'), optimize=True)
+    write_tile_list_module('roadStyles.js', 'The road tiles that dirt roads, avenues and highways are painted over. Row n '
+                           'of images/tiles-roads.png holds the overlays of tile ROAD_STYLE_TILES[n], one column per '
+                           'kind of road, in the order of ROAD_STYLES.',
+                           [('ROAD_STYLE_TILES', kawa.ROAD_STYLE_TILES), ('ROAD_STYLES', "['dirt', 'avenue', 'highway']")])
+
     lights, lit = generate_lights(source)
     lights, extra = kawa.extend_lights(lights)
     lit += extra

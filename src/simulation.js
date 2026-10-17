@@ -21,6 +21,7 @@ import { EventEmitter } from './eventEmitter.js';
 import { EmergencyServices } from './emergencyServices.js';
 import { Evaluation } from './evaluation.js';
 import { Industrial } from './industrial.js';
+import { KawaBuildings } from './kawaBuildings.js';
 import { MapScanner } from './mapScanner.js';
 import * as Messages from './messages.ts';
 import { MiscTiles } from './miscTiles.js';
@@ -97,6 +98,12 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame) {
 
     // Holds a value representing population density of a block, in the range 0-510
     populationDensityMap: new BlockMap(this._map.width, this._map.height, 2),
+
+    // KawaCity: positions and strength of schools and universities, noted during the map scan
+    educationMap: new BlockMap(this._map.width, this._map.height, 8),
+
+    // KawaCity: how well educated each neighbourhood is (the education map, smoothed), range 0-1000
+    educationEffectMap: new BlockMap(this._map.width, this._map.height, 8),
 
     // Holds a value representing the rate of growth of a neighbourhood in the range -200 to +200
     rateOfGrowthMap: new BlockMap(this._map.width, this._map.height, 8),
@@ -246,6 +253,7 @@ Simulation.prototype._clearCensus = function() {
   this._powerManager.clearPowerStack();
   this.blockMaps.fireStationMap.clear();
   this.blockMaps.policeStationMap.clear();
+  this.blockMaps.educationMap.clear();
 };
 
 
@@ -305,6 +313,7 @@ Simulation.prototype.init = function() {
   Commercial.registerHandlers(this._mapScanner, this._repairManager);
   EmergencyServices.registerHandlers(this._mapScanner, this._repairManager);
   Industrial.registerHandlers(this._mapScanner, this._repairManager);
+  KawaBuildings.registerHandlers(this._mapScanner, this._repairManager);
   MiscTiles.registerHandlers(this._mapScanner, this._repairManager);
   this._powerManager.registerHandlers(this._mapScanner, this._repairManager);
   Road.registerHandlers(this._mapScanner, this._repairManager);
@@ -452,7 +461,8 @@ Simulation.prototype._sendMessages = function() {
 
   var totalZonePop = this._census.resZonePop + this._census.comZonePop +
                      this._census.indZonePop;
-  var powerPop = this._census.nuclearPowerPop + this._census.coalPowerPop;
+  var powerPop = this._census.nuclearPowerPop + this._census.coalPowerPop + this._census.gasPowerPop +
+                 this._census.solarPowerPop + this._census.windPowerPop;
 
   switch (this._cityTime & 63) {
     case 1:

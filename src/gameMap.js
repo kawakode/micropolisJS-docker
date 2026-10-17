@@ -59,6 +59,9 @@ function GameMap(width, height, defaultValue) {
     data[i] = new Tile(defaultValue);
   this._data = data;
 
+  // KawaCity: the kind of each road (see GameMap.ROAD_*). It only means something where there is a road
+  this._roadClass = new Uint8Array(width * height);
+
   // Generally set externally
   this.cityCentreX = Math.floor(this.width / 2);
   this.cityCentreY = Math.floor(this.height / 2);
@@ -76,6 +79,9 @@ GameMap.prototype.save = function(saveData) {
   saveData.map = this._data.map(function(t) {
     return {value: t.getRawValue()};
   });
+
+  // One digit per tile
+  saveData.roadClass = Array.prototype.join.call(this._roadClass, '');
 };
 
 
@@ -86,6 +92,27 @@ GameMap.prototype.load = function(saveData) {
   var map = saveData.map;
   for (i = 0, l = map.length; i < l; i++)
     this.setTileValue(i % this.width, Math.floor(i / this.width), map[i].value);
+
+  this._roadClass = new Uint8Array(this.width * this.height);
+  var roadClass = saveData.roadClass;
+  if (typeof(roadClass) === 'string' && roadClass.length === this._roadClass.length) {
+    for (i = 0, l = roadClass.length; i < l; i++)
+      this._roadClass[i] = (roadClass.charCodeAt(i) - 48) & 3;
+  }
+};
+
+
+GameMap.prototype.getRoadClass = function(x, y) {
+  if (!this.testBounds(x, y))
+    return GameMap.ROAD_STREET;
+
+  return this._roadClass[x + y * this.width];
+};
+
+
+GameMap.prototype.setRoadClass = function(x, y, roadClass) {
+  if (this.testBounds(x, y))
+    this._roadClass[x + y * this.width] = roadClass;
 };
 
 
@@ -394,6 +421,13 @@ GameMap.prototype.putZone = function(centreX, centreY, centreTile, size) {
     }
   }
 };
+
+
+// The kinds of road
+GameMap.ROAD_STREET = 0;
+GameMap.ROAD_DIRT = 1;
+GameMap.ROAD_AVENUE = 2;
+GameMap.ROAD_HIGHWAY = 3;
 
 
 export { GameMap };

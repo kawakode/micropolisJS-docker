@@ -270,3 +270,79 @@ def extend_lights(lights):
 
     from PIL import Image
     return Image.fromarray(out, 'RGBA'), lit
+
+
+# --- Kinds of road ----------------------------------------------------------------------------------------------------
+#
+# Dirt roads, avenues and highways use the same tiles as streets (so that they connect, cross rails and power lines,
+# bridge water and carry traffic in the same way): their look is painted over the street, from an overlay that only
+# covers the road surface (see images/tiles-roads.png and src/gameCanvas.js).
+
+ROAD_STYLE_TILES = list(range(64, 207)) + [237, 238]
+ROAD_STYLES = ['dirt', 'avenue', 'highway']
+
+
+def road_shape(index):
+    """The plain road tile that a tile with traffic (or not) is drawn from"""
+    if 80 <= index <= 143:
+        return 64 + (index - 80) % 16
+    if 144 <= index <= 206:
+        return 64 + (index - 144) % 16
+    return index
+
+
+def road_overlay(src, index, style):
+    """The overlay that paints a road tile in another style. Cars on the road are left as they are."""
+    base = g.names_of(g.get_tile(src, road_shape(index)))
+    names = g.names_of(g.get_tile(src, index))
+    surface = (base == 'dgrey') & (names == 'dgrey')
+    marking = (base == 'white') & (names == 'white')
+    road = (base == 'dgrey') | (base == 'white')
+
+    # The edges of the road: surface next to anything else
+    edge = np.zeros_like(surface)
+    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        edge |= surface & ~g.neighbours(road, dx, dy)
+
+    # Straight centre lines: fill the gaps between the dashes
+    line = marking.copy()
+    for y in range(TS):
+        xs = np.nonzero(marking[y])[0]
+        if len(xs) >= 2:
+            line[y, xs[0]:xs[-1] + 1] |= surface[y, xs[0]:xs[-1] + 1]
+    for x in range(TS):
+        ys = np.nonzero(marking[:, x])[0]
+        if len(ys) >= 2:
+            line[ys[0]:ys[-1] + 1, x] |= surface[ys[0]:ys[-1] + 1, x]
+
+    out = np.zeros((TS, TS, 4), dtype=np.uint8)
+
+    def paint(mask, colour):
+        out[mask] = colour + (255,)
+
+    if style == 'dirt':
+        for y, x in zip(*np.nonzero(surface | marking)):
+            n = g.hash_noise(x, y, index * 3 + 1)
+            out[y, x] = (138, 112, 80, 255) if n > 0.28 else (118, 94, 66, 255)
+        # Tracks worn by the wheels, a little darker
+        paint(edge, (104, 84, 60))
+    elif style == 'avenue':
+        paint(surface | marking, (54, 52, 68))
+        paint(edge & ~line, (176, 176, 190))
+        paint(line, (248, 200, 64))
+    else:
+        paint(surface | marking, (58, 66, 92))
+        paint(marking, (238, 240, 232))
+        paint(edge, (248, 200, 64))
+    return out
+
+
+def road_styles(source_path):
+    """The overlays for each kind of road: one column per style, one row per road tile"""
+    from PIL import Image
+    src = np.array(Image.open(source_path).convert('RGBA'))[:, :, :3]
+    atlas = np.zeros((len(ROAD_STYLE_TILES) * TS, len(ROAD_STYLES) * TS, 4), dtype=np.uint8)
+    for row, index in enumerate(ROAD_STYLE_TILES):
+        for col, style in enumerate(ROAD_STYLES):
+            atlas[row * TS:(row + 1) * TS, col * TS:(col + 1) * TS] = road_overlay(src, index, style)
+    return Image.fromarray(atlas, 'RGBA')

@@ -67,6 +67,8 @@ Census.prototype.clearCensus = function() {
   this.unpoweredZoneCount = 0;
   this.firePop = 0;
   this.roadTotal = 0;
+  // KawaCity: the upkeep of roads beyond that of streets, in street tiles (negative for dirt roads)
+  this.roadUpkeep = 0;
   this.railTotal = 0;
   this.resPop = 0;
   this.comPop = 0;
@@ -81,6 +83,12 @@ Census.prototype.clearCensus = function() {
   this.stadiumPop = 0;
   this.coalPowerPop = 0;
   this.nuclearPowerPop = 0;
+  this.gasPowerPop = 0;
+  this.solarPowerPop = 0;
+  this.windPowerPop = 0;
+  this.schoolPop = 0;
+  this.universityPop = 0;
+  this.parkPop = 0;
   this.seaportPop = 0;
   this.airportPop = 0;
 };

@@ -31,10 +31,18 @@ var TOOL_SINGLE = 'single';     // Acts on a single tile on click (query)
 
 var toolCategories = {
   road: TOOL_LINE,
+  dirtroad: TOOL_LINE,
+  avenue: TOOL_LINE,
+  highway: TOOL_LINE,
   rail: TOOL_LINE,
   wire: TOOL_LINE,
   bulldozer: TOOL_AREA,
   park: TOOL_AREA,
+  garden: TOOL_AREA,
+  plaza: TOOL_AREA,
+  trees: TOOL_AREA,
+  water: TOOL_AREA,
+  landfill: TOOL_AREA,
   query: TOOL_SINGLE
 };
 
@@ -641,10 +649,11 @@ InputStatus.prototype._updateCursor = function() {
 };
 
 
-InputStatus.prototype.selectTool = function(toolName) {
-  // Selecting the current tool again deselects it
+// Selecting the current tool again deselects it, unless keep is true
+InputStatus.prototype.selectTool = function(toolName, keep) {
   if (toolName === this.toolName) {
-    this.clearTool();
+    if (!keep)
+      this.clearTool();
     return;
   }
 
