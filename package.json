@@ -1,6 +1,6 @@
 {
   "name": "kawacity",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "KawaCity, a city simulator based on micropolisJS, a port of the open-source simulator \"Micropolis\" to Javascript/HTML5",
   "repository": {
     "type": "git",

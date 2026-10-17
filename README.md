@@ -9,12 +9,18 @@ KawaCity is a modified version of [micropolisJS](https://github.com/graememcc/mi
 
 ### With Docker ###
 
+The image is published on the GitHub Container Registry, for amd64 and arm64:
+
+```sh
+docker run --rm -p 8080:80 ghcr.io/kawakode/kawacity
+```
+
+Then open <http://localhost:8080>. To run a given version, add its tag (`ghcr.io/kawakode/kawacity:0.1.0`). To build the image yourself:
+
 ```sh
 docker build -t kawacity .
 docker run --rm -p 8080:80 kawacity
 ```
-
-Then open <http://localhost:8080>.
 
 ### With Node.js ###
 
@@ -36,6 +42,17 @@ npm run lint    # type check
 ```
 
 Adding `?debug=1` to the game's URL shows the frame rate and a debug menu, and exposes the game as `window.kawaCity` in the browser console.
+
+### Releasing ###
+
+Pushing a tag publishes the Docker image (see `.github/workflows/docker-publish.yml`): the tests run, then the image is built for amd64 and arm64 and published as `ghcr.io/<owner>/kawacity`, with the tag's name. A version tag such as `v1.2.3` is also published as `1.2.3` and `1.2` (and `1` from version 1 on), and as `latest` unless it is a pre-release (`v1.2.3-rc.1`).
+
+```sh
+npm version 1.2.3 --no-git-tag-version   # optional: keep package.json in step
+git commit -am "Version 1.2.3"
+git tag v1.2.3
+git push origin v1.2.3
+```
 
 ## Playing ##
 

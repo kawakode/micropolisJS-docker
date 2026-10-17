@@ -5,7 +5,9 @@
 #
 # then open http://localhost:8080
 
-FROM node:22-alpine AS build
+# The site is static, so it is built once, natively, whatever the platforms of the image (see the workflow in
+# .github/workflows, which publishes it for amd64 and arm64)
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 
 WORKDIR /app
 
