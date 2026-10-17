@@ -8,6 +8,7 @@
 import $ from "jquery";
 
 import { I18n } from './i18n.js';
+import { ToolIcons } from './toolIcons.js';
 
 // The tool bar: the zones and the query tool are always at hand; everything else is grouped in categories (the
 // bulldozer's sizes too). Clicking a category takes up its last used tool, and opens a palette of all the category's tools.
@@ -135,7 +136,7 @@ var build = function() {
 };
 
 
-// After ToolIcons has drawn the icons: show each category's current tool on its button
+// Shows each category's current tool on its button
 var refresh = function(currentTool) {
   $('.categoryButton').each(function() {
     var button = $(this);
@@ -147,13 +148,7 @@ var refresh = function(currentTool) {
       button.attr('data-tool', currentTool);
 
     var shown = button.attr('data-tool');
-    var icon = palette.find('.toolButton[data-tool="' + shown + '"] .toolIcon')[0];
-    var holder = button.find('.categoryIcon').empty();
-    if (icon) {
-      var copy = icon.cloneNode(false);
-      copy.getContext('2d').drawImage(icon, 0, 0);
-      holder.append(copy);
-    }
+    button.find('.categoryIcon').empty().append(ToolIcons.makeIcon(shown));
 
     button.toggleClass('selected', !!inCategory).toggleClass('unselected', !inCategory);
     button.attr('title', button.find('.toolName').text() + ': ' + I18n.t(TOOLS[shown].name));

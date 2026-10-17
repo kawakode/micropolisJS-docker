@@ -11,6 +11,7 @@ import { I18n } from './i18n.js';
 import { NEIGHBOURS_WINDOW_CLOSED } from './messages.ts';
 import { ModalWindow } from './modalWindow.js';
 import { Neighbours } from './neighbours.js';
+import { PixelIcons } from './pixelIcons.js';
 import { Text } from './text.js';
 
 // The deals with the neighbouring cities (see Neighbours): a card for each neighbour, with its links and the deals that
@@ -157,13 +158,17 @@ NeighboursWindow.prototype._render = function() {
         '</li>';
     }, this);
 
-    return '<section class="neighbour" aria-label="' + escape(n.name) + '">' +
-      '<header class="neighbourHeader"><span class="neighbourSide">' + escape(I18n.t(Text.sides[n.side])) +
-      '</span><span class="neighbourName">' + escape(n.name) + '</span><span class="neighbourPopulation">' +
+    // The neighbour's picture grows with it
+    var picture = PixelIcons.picture('town', PixelIcons.townFor(n.population), 2).outerHTML;
+
+    return '<section class="neighbour" aria-label="' + escape(n.name) + '"><div class="neighbourTop">' + picture +
+      '<div class="neighbourInfo"><header class="neighbourHeader"><span class="neighbourSide">' +
+      escape(I18n.t(Text.sides[n.side])) + '</span><span class="neighbourName">' + escape(n.name) +
+      '</span><span class="neighbourPopulation">' +
       escape(I18n.t('{n} inhabitants', {n: I18n.formatNumber(n.population)})) + '</span></header>' +
       '<p class="neighbourLinks">' + link(n.links.transport, I18n.t('Road or railway')) +
       link(n.links.power, I18n.t('Power line')) +
-      '</p><ul class="deals">' + deals.join('') + '</ul></section>';
+      '</p></div></div><ul class="deals">' + deals.join('') + '</ul></section>';
   }, this);
 
   $(listID).html(cards.join(''));

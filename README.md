@@ -38,7 +38,7 @@ npm run lint    # type check
 - `docker build -t kawacity .` builds the image.
 - The texts are written in English; `src/lang/fr.js` translates them into French (see `src/i18n.js`). `npm test` checks that every text has its translation.
 - `python3 tools/pixelart/generate.py` regenerates the tiles and sprites in `images/` from the original artwork (needs Pillow and numpy).
-- `python3 tools/icon/generate.py` draws the favicon and the icons in `images/icons/` (needs Pillow).
+- `python3 tools/icon/generate.py` draws, in pixel art, the favicon and the icons in `images/icons/`, and the interface's pictures in `images/ui/` with their places in `src/uiIcons.js` (needs Pillow).
 
 **Releasing**: push a version tag. The tests run, then the image is published with the tag's version (`1.2.3`, `1.2`, `1`) and as `latest` (except pre-releases such as `v1.2.3-rc.1`).
 

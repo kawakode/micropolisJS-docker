@@ -21,7 +21,7 @@ var strings = {
   'Budget': 'Budget',
   'Evaluation': 'Bilan',
   'Graphs': 'Courbes',
-  'More ▾': 'Plus ▾',
+  'More': 'Plus',
   'Disasters': 'Catastrophes',
   'Picture': 'Photo',
   'About': 'À propos',

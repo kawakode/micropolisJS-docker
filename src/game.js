@@ -101,7 +101,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
 
   // The tool bar: categories, and their palettes of tools
   Toolbar.build();
-  ToolIcons.decorateToolButtons(tileSet);
+  ToolIcons.decorateToolButtons();
   this.inputStatus = new InputStatus(this.gameMap, this.gameCanvas);
   Toolbar.bind(this.inputStatus.selectTool.bind(this.inputStatus));
   Toolbar.refresh(null);

@@ -113,6 +113,15 @@ button:disabled {
 
 /* Utilities */
 
+/* A picture of the interface, cut from its sheet (see PixelIcons), enlarged without smoothing */
+.pixelIcon {
+  display: inline-block;
+  flex: none;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  vertical-align: middle;
+}
+
 .awaitGeneration, .hidden, .initialHidden, .imageData {
   display: none;
 }
@@ -538,6 +547,18 @@ fieldset {
   white-space: nowrap;
 }
 
+.hudButton[data-icon] {
+  gap: 6px;
+}
+
+/* Where room is short, the menu's buttons show only their icon (their title tells what they do), but in the menu of
+   less used buttons */
+@media (min-width: 1301px) and (max-width: 1600px), (max-width: 600px) {
+  .hudMenu > .hudButton[data-icon] > [data-i18n] {
+    display: none;
+  }
+}
+
 a.hudButton, a.hudButton:visited {
   color: var(--text);
 }
@@ -649,8 +670,11 @@ a.hudButton, a.hudButton:visited {
 .toolIcon {
   width: 32px;
   height: 32px;
-  image-rendering: pixelated;
-  border: 1px solid var(--win-outline);
+}
+
+.toolPalette .toolIcon {
+  width: 64px;
+  height: 64px;
 }
 
 .toolName {
@@ -1017,8 +1041,29 @@ a.hudButton, a.hudButton:visited {
 }
 
 .splashTitle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
   text-align: center;
   margin-bottom: 22px;
+}
+
+/* The game's island, as on its icon */
+.splashArt {
+  flex: none;
+  width: 128px;
+  height: 128px;
+  margin: -14px 0;
+  image-rendering: pixelated;
+}
+
+@media (max-width: 600px) {
+  .splashArt {
+    width: 64px;
+    height: 64px;
+    margin: 0;
+  }
 }
 
 .splashTitle .logo {
@@ -1166,6 +1211,17 @@ a.hudButton, a.hudButton:visited {
   content: '\25B6\00A0';
   font-size: 10px;
   vertical-align: 2px;
+}
+
+/* A window with an icon has it instead of the arrow */
+.modalHeader[data-icon] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modalHeader[data-icon]::before {
+  content: none;
 }
 
 #disasterHeader { color: #ff8a70; }
@@ -1336,7 +1392,7 @@ a.hudButton, a.hudButton:visited {
   display: none;
 }
 
-@media (max-width: 1800px) {
+@media (max-width: 2000px) {
   .moreButton {
     display: inline-flex;
   }
@@ -1579,6 +1635,22 @@ a.hudButton, a.hudButton:visited {
     gap: 2px;
   }
 
+  /* The menu of less used buttons is only an arrow, and the buttons are closer */
+  .moreLabel {
+    display: none;
+  }
+
+  .hudButton {
+    padding: 3px 5px;
+  }
+}
+
+/* On the smallest screens, the speed is chosen in the settings: only the pause button stays */
+@media (max-width: 380px) {
+  .speedButton {
+    display: none;
+  }
+
   .hudMenu {
     flex: 1 1 0;
     min-width: 0;
@@ -1764,6 +1836,18 @@ kbd {
   box-shadow: inset 2px 2px 0 #050820, inset -2px -2px 0 var(--win-inset-light);
 }
 
+.neighbourTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.neighbourInfo {
+  flex: 1;
+  min-width: 0;
+}
+
 .neighbourHeader {
   display: flex;
   flex-wrap: wrap;
@@ -1793,7 +1877,7 @@ kbd {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 14px;
-  margin: 6px 0 8px;
+  margin: 6px 0 0;
   font-size: 14px;
   color: var(--muted);
 }
@@ -2381,7 +2465,7 @@ kbd {
   width: auto;
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 36px 1fr auto;
+  grid-template-columns: 64px 1fr auto;
   grid-template-rows: auto auto;
   align-items: center;
   column-gap: 8px;

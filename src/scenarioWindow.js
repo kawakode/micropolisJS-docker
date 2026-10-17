@@ -61,7 +61,7 @@ ScenarioWindow.prototype.open = function(mode, scenario) {
     paragraphs = scenario.text;
   }
 
-  $('#scenarioHeader').text(title);
+  $('#scenarioName').text(title);
   $('#scenarioWindow').toggleClass('won', mode === ScenarioWindow.WON).toggleClass('lost', mode === ScenarioWindow.LOST);
   $('#scenarioPlace').text(I18n.t(scenario.place).toUpperCase() + '  ' + scenario.year);
   $('#scenarioText').empty();

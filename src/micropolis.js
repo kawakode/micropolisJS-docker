@@ -15,6 +15,7 @@ import $ from "jquery";
 
 import { Config } from './config.js';
 import { I18n } from './i18n.js';
+import { PixelIcons } from './pixelIcons.js';
 import { SplashScreen } from './splashScreen.js';
 import { TileSet } from './tileSet.js';
 import { TileSetURI } from './tileSetURI.ts';
@@ -112,9 +113,10 @@ if (Config.debug)
   window.kawaI18n = I18n;
 
 
-// The page, in the player's language
+// The page, in the player's language, with its icons
 document.documentElement.lang = I18n.getLanguage();
 I18n.translateDocument();
+PixelIcons.decorate();
 
 
 var tiles = $('#tiles')[0];

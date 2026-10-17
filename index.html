@@ -36,6 +36,9 @@
     <img id="lighttiles" class="imageData" src="images/tiles-lights.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
     <img id="roadtiles" class="imageData" src="images/tiles-roads.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
     <img id="sprites" class="imageData" src="images/sprites.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="toolIcons" class="imageData" src="images/ui/tools.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="hudIcons" class="imageData" src="images/ui/hud.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="townPictures" class="imageData" src="images/ui/towns.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
 
     <header id="hud" class="initialHidden">
       <div class="brand">KawaCity</div>
@@ -54,18 +57,18 @@
         <button id="speedFastRequest" class="hudButton speedButton" data-speed="3" title="Fast" data-i18n-title>3×</button>
       </div>
       <nav id="miscButtons" class="hudMenu" aria-label="Game menu" data-i18n-aria-label>
-        <button id="budgetRequest" class="hudButton" data-i18n>Budget</button>
-        <button id="evalRequest" class="hudButton" data-i18n>Evaluation</button>
-        <button id="graphsRequest" class="hudButton" data-i18n>Graphs</button>
-        <button id="moreRequest" class="hudButton moreButton" aria-haspopup="true" aria-expanded="false" aria-controls="hudMore" data-i18n>More &#9662;</button>
+        <button id="budgetRequest" class="hudButton" data-icon="budget" title="Budget" data-i18n-title><span data-i18n>Budget</span></button>
+        <button id="evalRequest" class="hudButton" data-icon="evaluation" title="Evaluation" data-i18n-title><span data-i18n>Evaluation</span></button>
+        <button id="graphsRequest" class="hudButton" data-icon="graphs" title="Graphs" data-i18n-title><span data-i18n>Graphs</span></button>
+        <button id="moreRequest" class="hudButton moreButton" aria-haspopup="true" aria-expanded="false" aria-controls="hudMore" title="More" data-i18n-title><span class="moreLabel" data-i18n>More</span>&nbsp;&#9662;</button>
         <div id="hudMore" class="hudMore">
-          <button id="neighboursRequest" class="hudButton" data-i18n>Neighbours</button>
-          <button id="disasterRequest" class="hudButton" data-i18n>Disasters</button>
-          <button id="screenshotRequest" class="hudButton" data-i18n>Picture</button>
-          <a class="hudButton hudLink" href="about.html" target="_blank" rel="noopener" data-i18n>About</a>
+          <button id="neighboursRequest" class="hudButton" data-icon="neighbours" title="Neighbours" data-i18n-title><span data-i18n>Neighbours</span></button>
+          <button id="disasterRequest" class="hudButton" data-icon="disasters" title="Disasters" data-i18n-title><span data-i18n>Disasters</span></button>
+          <button id="screenshotRequest" class="hudButton" data-icon="picture" title="Picture" data-i18n-title><span data-i18n>Picture</span></button>
+          <a class="hudButton hudLink" href="about.html" target="_blank" rel="noopener" data-icon="about" title="About" data-i18n-title><span data-i18n>About</span></a>
         </div>
-        <button id="settingsRequest" class="hudButton" data-i18n>Settings</button>
-        <button id="saveRequest" class="hudButton loadSave accentButton" disabled data-i18n>Save</button>
+        <button id="settingsRequest" class="hudButton" data-icon="settings" title="Settings" data-i18n-title><span data-i18n>Settings</span></button>
+        <button id="saveRequest" class="hudButton loadSave accentButton" disabled data-icon="save" title="Save" data-i18n-title><span data-i18n>Save</span></button>
       </nav>
     </header>
 
@@ -76,8 +79,11 @@
 
         <div id="splash" class="card centred awaitGeneration">
           <div class="splashTitle">
-            <h1 class="logo">KawaCity</h1>
-            <p class="tagline" data-i18n>Build the city of your dreams, right in your browser.</p>
+            <img class="splashArt" src="images/ui/island.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="" width="128" height="128">
+            <div class="splashHeading">
+              <h1 class="logo">KawaCity</h1>
+              <p class="tagline" data-i18n>Build the city of your dreams, right in your browser.</p>
+            </div>
           </div>
           <div class="splashBody">
             <div id="splashContainer"></div>
@@ -247,7 +253,7 @@
       </aside>
 
       <div class="hidden modal" id="budget" role="dialog" aria-labelledby="budgetHeader">
-        <header id="budgetHeader" class="modalHeader" data-i18n>Budget</header>
+        <header id="budgetHeader" class="modalHeader" data-icon="budget"><span data-i18n>Budget</span></header>
         <div id="budgetFormContainer" class="modalBody">
           <form id="budgetForm">
             <div class="budgetSummary">
@@ -289,7 +295,7 @@
       </div>
 
       <div class="hidden modal wide" id="evalWindow" role="dialog" aria-labelledby="evalHeader">
-        <header id="evalHeader" class="modalHeader" data-i18n>Evaluation</header>
+        <header id="evalHeader" class="modalHeader" data-icon="evaluation"><span data-i18n>Evaluation</span></header>
         <div id="evalContainer" class="modalBody">
           <div class="evalColumns">
             <section id="opinion">
@@ -324,7 +330,7 @@
       </div>
 
       <div class="hidden modal wide" id="graphsWindow" role="dialog" aria-labelledby="graphsHeader">
-        <header id="graphsHeader" class="modalHeader" data-i18n>Graphs</header>
+        <header id="graphsHeader" class="modalHeader" data-icon="graphs"><span data-i18n>Graphs</span></header>
         <div id="graphsContainer" class="modalBody">
           <form id="graphsForm">
             <fieldset class="choice" id="graphsRangeSelect">
@@ -359,7 +365,7 @@
       </div>
 
       <div class="hidden modal" id="scenarioWindow" role="dialog" aria-labelledby="scenarioHeader">
-        <header id="scenarioHeader" class="modalHeader">Scenario</header>
+        <header id="scenarioHeader" class="modalHeader" data-icon="scenario"><span id="scenarioName">Scenario</span></header>
         <div class="modalBody">
           <p id="scenarioPlace" class="scenarioPlace"></p>
           <div id="scenarioText" class="scenarioText"></div>
@@ -373,7 +379,7 @@
       </div>
 
       <div class="hidden modal" id="disasterWindow" role="dialog" aria-labelledby="disasterHeader">
-        <header id="disasterHeader" class="modalHeader" data-i18n>Disasters</header>
+        <header id="disasterHeader" class="modalHeader" data-icon="disasters"><span data-i18n>Disasters</span></header>
         <div id="disasterContainer" class="modalBody">
           <form id="disasterForm">
             <div id="disasterSelectContainer">
@@ -398,7 +404,7 @@
       </div>
 
       <div class="hidden modal" id="queryWindow" role="dialog" aria-labelledby="queryHeader">
-        <header id="queryHeader" class="modalHeader" data-i18n>Query</header>
+        <header id="queryHeader" class="modalHeader" data-icon="query"><span data-i18n>Query</span></header>
         <div id="queryContainer" class="modalBody">
           <div class="queryList">
             <dl class="keyValueList">
@@ -459,7 +465,7 @@
       </div>
 
       <div class="hidden modal" id="congratsWindow" role="dialog" aria-labelledby="congratsHeader">
-        <header id="congratsHeader" class="modalHeader" data-i18n>Congratulations!</header>
+        <header id="congratsHeader" class="modalHeader" data-icon="trophy"><span data-i18n>Congratulations!</span></header>
         <div id="congratsContainer" class="modalBody">
           <div id="congratsMessage" class="alignCenter">Congratulations!</div>
           <form id="congratsForm" class="modalButtons">
@@ -469,7 +475,7 @@
       </div>
 
       <div class="hidden modal" id="nagWindow" role="dialog" aria-labelledby="nagHeader">
-        <header id="nagHeader" class="modalHeader">KawaCity</header>
+        <header id="nagHeader" class="modalHeader" data-icon="heart"><span>KawaCity</span></header>
         <div id="nagContainer" class="modalBody">
           <div id="nagMessage" data-i18n-html="nag">
             Whoa! You've been playing this thing for half an hour?!? If you're enjoying it, Graeme McCutcheon, the author of micropolisJS on which KawaCity is based, would be glad to see your money reach <a class="nag" href="https://www.refuweegee.co.uk/your-donations" target="_blank" rel="noopener">Refuweegee</a>, a charity assisting refugees in Scotland.
@@ -481,7 +487,7 @@
       </div>
 
       <div class="hidden modal" id="saveWindow" role="dialog" aria-labelledby="saveHeader">
-        <header id="saveHeader" class="modalHeader" data-i18n>Save</header>
+        <header id="saveHeader" class="modalHeader" data-icon="save"><span data-i18n>Save</span></header>
         <div id="saveContainer" class="modalBody">
           <div id="saveMessage" class="alignCenter">Game saved!</div>
           <p class="alignCenter saveFile" data-i18n-html="saveFile">Or <a id="saveDownload" href="#" download="city.kawacity">keep a copy as a file</a>, to open it from the title screen.</p>
@@ -492,7 +498,7 @@
       </div>
 
       <div class="hidden modal wide" id="neighboursWindow" role="dialog" aria-labelledby="neighboursHeader">
-        <header id="neighboursHeader" class="modalHeader" data-i18n>Neighbouring cities</header>
+        <header id="neighboursHeader" class="modalHeader" data-icon="neighbours"><span data-i18n>Neighbouring cities</span></header>
         <div id="neighboursContainer" class="modalBody">
           <form id="neighboursForm">
             <p class="neighboursIntro" data-i18n>Make deals with the cities around yours. Most need a link reaching their edge of the map: build it, and the deal comes into force.</p>
@@ -518,7 +524,7 @@
       </div>
 
       <div class="hidden modal wide" id="screenshotWindow" role="dialog" aria-labelledby="screenshotHeader">
-        <header id="screenshotHeader" class="modalHeader" data-i18n>Share a picture</header>
+        <header id="screenshotHeader" class="modalHeader" data-icon="picture"><span data-i18n>Share a picture</span></header>
         <div id="screenshotContainer" class="modalBody">
           <form id="screenshotForm">
             <div class="pictureOptions">
@@ -546,7 +552,7 @@
       </div>
 
       <div class="hidden modal" id="settingsWindow" role="dialog" aria-labelledby="settingsHeader">
-        <header id="settingsHeader" class="modalHeader" data-i18n>Settings</header>
+        <header id="settingsHeader" class="modalHeader" data-icon="settings"><span data-i18n>Settings</span></header>
         <div id="settingsContainer" class="modalBody">
           <form id="settingsForm">
             <div id="settingsFormContainer">

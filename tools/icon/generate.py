@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 #
-# KawaCity: draws the game's icons in pixel art: a floating island seen in isometric view, in the style of the city
-# simulators of the 16-bit era, with homes, shops and factories (the green, blue and yellow of the zones) around a
-# crossroads, under a night-blue sky framed like the game's windows.
+# KawaCity: draws the game's icons and the pictures of its interface in pixel art, in the style of the city simulators
+# of the 16-bit era. The icon is a floating island seen in isometric view, with homes, shops and factories (the green,
+# blue and yellow of the zones) around a crossroads, under a night-blue sky framed like the game's windows; the title
+# screen shows the same island. The tool bar's icons (tool_icons.py), the small icons of the heads-up display and of
+# the windows (hud_icons.py) and the neighbouring cities (towns.py) are drawn into sheets, and src/uiIcons.js tells
+# where each picture is in them.
 #
 # This code is released under the GNU GPL v3, with some additional terms. Please see the files LICENSE and COPYING
 # for details.
 #
-# The island is modelled as boxes on a grid, and drawn pixel by pixel: each pixel shows the nearest face of the boxes
-# it sees, so that edges are clean 2:1 isometric lines. Each size has a scene of its own, plainer the smaller it is.
+# The pictures are drawn pixel by pixel by an isometric renderer (iso.py), or by hand. Each size of the icon has a scene
+# of its own, plainer the smaller it is.
 #
 # Usage (from the repository root): python3 tools/icon/generate.py
 # Requires Pillow.
@@ -17,172 +20,17 @@ import os
 
 from PIL import Image
 
+import hud_icons
+import tool_icons
+import towns
+from iso import (Box, Sprite, render, to_image, enlarge, fit, transparent, walls, mix, shade, OUTLINE, FRAME, SKY_TOP,
+                 SKY_BOTTOM, STAR, GRASS, GRASS_LIGHT, GRASS_DARK, EARTH_LEFT, EARTH_RIGHT, EARTH_LINE, ROAD, ROAD_LINE,
+                 KERB, RES, COM, IND, TREE, TREE_SMALL, TREE_PALETTE, SMOKE, SMOKE_PALETTE)
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 OUTPUT = os.path.join(ROOT, 'images', 'icons')
-
-
-# --- Palette (the game's) -------------------------------------------------------------------------------------------
-
-OUTLINE = (7, 10, 31)
-FRAME = (232, 236, 255)
-SKY_TOP = (24, 34, 96)
-SKY_BOTTOM = (70, 100, 200)
-STAR = (232, 236, 255)
-
-GRASS = (94, 162, 74)
-GRASS_LIGHT = (124, 186, 92)
-GRASS_DARK = (68, 132, 56)
-EARTH_LEFT = (150, 104, 64)
-EARTH_RIGHT = (112, 76, 48)
-EARTH_LINE = (90, 60, 40)
-ROAD = (70, 66, 84)
-ROAD_LINE = (250, 210, 72)
-KERB = (188, 188, 200)
-
-RES = (110, 196, 92)
-COM = (92, 156, 255)
-IND = (240, 200, 70)
-
-
-def shade(colour, factor):
-    return tuple(max(0, min(255, int(round(c * factor)))) for c in colour)
-
-
-def mix(a, b, t):
-    return tuple(int(round(a[i] + (b[i] - a[i]) * t)) for i in range(3))
-
-
-# --- The isometric renderer -----------------------------------------------------------------------------------------
-#
-# World coordinates: X runs to the bottom right of the screen, Y to the bottom left, Z up. A point is drawn at
-# sx = X - Y, sy = (X + Y) / 2 - Z, and is nearer the viewer the larger X + Y + Z.
-
-class Box:
-    """A box from (x0, y0, z0) to (x1, y1, z1). paint(face, u, v) gives the colour of a point of a face ('top',
-    'left' facing +Y, 'right' facing +X), where u runs along the face and v up it (or along Y on the top)."""
-
-    def __init__(self, x0, y0, z0, x1, y1, z1, paint):
-        self.x0, self.y0, self.z0, self.x1, self.y1, self.z1 = x0, y0, z0, x1, y1, z1
-        self.paint = paint
-
-    def hit(self, px, py):
-        """The nearest point of the box seen at (px, py): (depth, face, u, v), or None"""
-        best = None
-        # Top: Z = z1
-        s = 2 * (py + self.z1)
-        x = (px + s) / 2
-        y = (s - px) / 2
-        if self.x0 <= x < self.x1 and self.y0 <= y < self.y1:
-            best = (x + y + self.z1, 'top', x - self.x0, y - self.y0)
-
-        # Right: X = x1
-        y = self.x1 - px
-        z = (self.x1 + y) / 2 - py
-        if self.y0 <= y < self.y1 and self.z0 <= z < self.z1:
-            depth = self.x1 + y + z
-            if best is None or depth > best[0]:
-                best = (depth, 'right', self.y1 - y, z - self.z0)
-
-        # Left: Y = y1
-        x = px + self.y1
-        z = (x + self.y1) / 2 - py
-        if self.x0 <= x < self.x1 and self.z0 <= z < self.z1:
-            depth = x + self.y1 + z
-            if best is None or depth > best[0]:
-                best = (depth, 'left', x - self.x0, z - self.z0)
-
-        return best
-
-
-class Sprite:
-    """A small picture standing at a point of the world: rows of characters, coloured by palette ('.' is empty)"""
-
-    def __init__(self, x, y, z, rows, palette):
-        self.x, self.y, self.z = x, y, z
-        self.rows = rows
-        self.palette = palette
-
-
-def render(width, height, boxes, sprites, origin, background):
-    """Draws the boxes and sprites over the background (a function of the pixel), with outlines. Returns the pixels
-    and, for each pixel, the object it shows (None for the background)."""
-    ox, oy = origin
-    pixels = [[background(i, j) for i in range(width)] for j in range(height)]
-    owner = [[None] * width for _ in range(height)]
-    face = [[None] * width for _ in range(height)]
-    depth = [[-1e9] * width for _ in range(height)]
-
-    for j in range(height):
-        for i in range(width):
-            px = i + 0.5 - ox
-            py = j + 0.5 - oy
-            for index, box in enumerate(boxes):
-                hit = box.hit(px, py)
-                if hit and hit[0] > depth[j][i]:
-                    depth[j][i] = hit[0]
-                    pixels[j][i] = box.paint(hit[1], hit[2], hit[3])
-                    owner[j][i] = index
-                    face[j][i] = hit[1]
-
-    # Sprites are drawn bottom centre on their point, in front of what is behind them
-    for number, sprite in enumerate(sprites):
-        d = sprite.x + sprite.y + sprite.z
-        base_x = int(round(ox + sprite.x - sprite.y))
-        base_y = int(round(oy + (sprite.x + sprite.y) / 2 - sprite.z))
-        h = len(sprite.rows)
-        w = len(sprite.rows[0])
-        for r, row in enumerate(sprite.rows):
-            for c, char in enumerate(row):
-                if char == '.':
-                    continue
-                i = base_x - w // 2 + c
-                j = base_y - h + 1 + r
-                if 0 <= i < width and 0 <= j < height and d + 0.75 >= depth[j][i]:
-                    pixels[j][i] = sprite.palette[char]
-                    owner[j][i] = ('sprite', number)
-                    face[j][i] = 'sprite'
-                    depth[j][i] = d + 0.75
-
-    # Highlights: the top of a box is lighter along its front edges
-    for j in range(height - 1):
-        for i in range(width):
-            if face[j][i] == 'top' and face[j + 1][i] in ('left', 'right') and owner[j + 1][i] == owner[j][i]:
-                pixels[j][i] = mix(pixels[j][i], (255, 255, 255), 0.35)
-
-    # Outlines: around the whole picture, and between objects where the one behind shows above the other
-    outlined = [row[:] for row in pixels]
-    for j in range(height):
-        for i in range(width):
-            if owner[j][i] is None:
-                near = [(i + di, j + dj) for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1))]
-                if any(0 <= a < width and 0 <= b < height and owner[b][a] is not None for a, b in near):
-                    outlined[j][i] = OUTLINE
-            elif j + 1 < height and owner[j + 1][i] is not None and owner[j + 1][i] != owner[j][i] and \
-                    depth[j + 1][i] > depth[j][i] + 1.5:
-                # The edge of a nearer object, seen over a farther one
-                outlined[j][i] = shade(pixels[j][i], 0.55)
-
-    return outlined, owner
-
-
-# --- Painting -------------------------------------------------------------------------------------------------------
-
-def walls(left, right, top, windows=None, lit=None, roof_edge=None):
-    """A building: plain walls, with windows every few pixels if given (windows: (colour, spacing u, spacing v))"""
-    def paint(face, u, v):
-        if face == 'top':
-            return top
-        base = left if face == 'left' else right
-        if windows:
-            colour, su, sv = windows
-            iu, iv = int(u), int(v)
-            if iu % su == su - 1 and iv % sv != 0 and iv >= 1:
-                w = colour
-                if lit and (iu * 7 + iv * 13) % lit[1] == 0:
-                    w = lit[0]
-                return w if face == 'left' else shade(w, 0.8)
-        return base
-    return paint
+UI_OUTPUT = os.path.join(ROOT, 'images', 'ui')
+UI_MODULE = os.path.join(ROOT, 'src', 'uiIcons.js')
 
 
 def island_paint(size, road_at, road_width, details):
@@ -227,14 +75,6 @@ def island_paint(size, road_at, road_width, details):
 
 
 # --- The scene ------------------------------------------------------------------------------------------------------
-
-TREE = ['.ggg.', 'gGgGg', 'GgGgD', 'gGgDD', '.DDD.', '..t..']
-TREE_SMALL = ['.g.', 'gGD', '.t.']
-TREE_PALETTE = {'g': (100, 166, 78), 'G': (58, 130, 56), 'D': (38, 98, 46), 't': (110, 74, 44)}
-
-SMOKE = ['..ss', 'sSs.']
-SMOKE_PALETTE = {'s': (200, 204, 220), 'S': (232, 236, 255)}
-
 
 def scene(detail):
     """The island and its buildings, in world units. detail: 'large' (64 pixels and up), 'small' (32 or 48) or 'tiny'
@@ -345,7 +185,7 @@ def draw_icon(size, detail, framed=True):
 
     stars = {(int(size * x), int(size * y)) for x, y in ((0.16, 0.18), (0.82, 0.14), (0.9, 0.36), (0.1, 0.42),
                                                          (0.7, 0.07))} if size >= 32 else set()
-    pixels, _ = render(size, size, boxes, sprites, (ox, oy), sky(size, size, stars))
+    pixels = render(size, size, boxes, sprites, (ox, oy), sky(size, size, stars))
 
     image = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     if framed:
@@ -364,15 +204,75 @@ def draw_icon(size, detail, framed=True):
                 else:
                     image.putpixel((i, j), pixels[j][i] + (255,))
     else:
-        for j in range(size):
-            for i in range(size):
-                image.putpixel((i, j), pixels[j][i] + (255,))
+        image = to_image(pixels)
 
     return image
 
 
-def enlarge(image, factor):
-    return image.resize((image.width * factor, image.height * factor), Image.NEAREST)
+# --- The pictures of the interface ----------------------------------------------------------------------------------
+
+def draw_sheet(pictures, size, columns):
+    """Lays the pictures out in a sheet, in rows of columns. Returns the sheet and where each picture is in it."""
+    rows = (len(pictures) + columns - 1) // columns
+    sheet = Image.new('RGBA', (size * min(columns, len(pictures)), size * rows), (0, 0, 0, 0))
+    at = {}
+    for k, (name, image) in enumerate(pictures):
+        x, y = (k % columns) * size, (k // columns) * size
+        sheet.alpha_composite(image, (x, y))
+        at[name] = (x, y)
+    return sheet, at
+
+
+def sheet_js(name, sheet, size, at, width=120):
+    """The sheet's entry in the module, its lines broken between the pictures"""
+    parts = ['var %s = {size: %d, width: %d, height: %d, at: {' % (name, size, sheet.width, sheet.height)]
+    parts += ['%s: [%d, %d]' % (key, x, y) for key, (x, y) in at.items()]
+    lines, line = [], parts[0]
+    for k, part in enumerate(parts[1:]):
+        last = k == len(parts) - 2
+        text = part + ('}};' if last else ',')
+        if len(line) + 1 + len(text) > width:
+            lines.append(line)
+            line = '  ' + text
+        else:
+            line += ('' if line.endswith('{') else ' ') + text
+    lines.append(line)
+    return '\n'.join(lines)
+
+
+def draw_interface():
+    os.makedirs(UI_OUTPUT, exist_ok=True)
+    modules = []
+
+    sheets = [
+        ('TOOL_ICONS', 'tools.png', tool_icons.SIZE, 11, [(n, tool_icons.draw(b)) for n, b in tool_icons.ICONS]),
+        ('HUD_ICONS', 'hud.png', hud_icons.SIZE, 16, [(n, hud_icons.draw(rows)) for n, rows in hud_icons.ICONS]),
+        ('TOWNS', 'towns.png', towns.SIZE, 4, [(n, towns.draw(b)) for n, b in towns.TOWNS]),
+    ]
+    for name, file_name, size, columns, pictures in sheets:
+        sheet, at = draw_sheet(pictures, size, columns)
+        sheet.save(os.path.join(UI_OUTPUT, file_name))
+        modules.append(sheet_js(name, sheet, size, at))
+
+    # The title screen's island, without its sky
+    boxes, sprites = scene('large')
+    to_image(render(64, 64, boxes, sprites, fit(boxes, sprites, 64, 64), transparent)) \
+        .save(os.path.join(UI_OUTPUT, 'island.png'))
+
+    with open(UI_MODULE, 'w') as module:
+        module.write('''/* KawaCity. Generated by tools/icon/generate.py: do not edit by hand.
+ *
+ * This code is released under the GNU GPL v3, with some additional terms.
+ * Please see the files LICENSE and COPYING for details.
+ *
+ */
+
+// The pictures of the interface, in their sheets (images/ui/): the size of the pictures, the size of the sheet, and
+// where each picture is in it ([x, y], in pixels)
+%s
+
+export { HUD_ICONS, TOOL_ICONS, TOWNS };
+''' % '\n'.join(modules))
 
 
 def main():
@@ -396,7 +296,10 @@ def main():
     # Apple's systems round the corners themselves
     enlarge(draw_icon(60, 'large', framed=False), 3).save(os.path.join(OUTPUT, 'apple-touch-icon.png'))
 
-    print('Icons written to', os.path.relpath(OUTPUT, ROOT), 'and favicon.ico')
+    draw_interface()
+
+    print('Icons written to', os.path.relpath(OUTPUT, ROOT), 'and favicon.ico; the interface\'s pictures to',
+          os.path.relpath(UI_OUTPUT, ROOT), 'and', os.path.relpath(UI_MODULE, ROOT))
 
 
 if __name__ == '__main__':
