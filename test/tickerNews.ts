@@ -1,4 +1,5 @@
 import { GameMap } from "../src/gameMap.js";
+import { I18n } from "../src/i18n.js";
 import * as Messages from "../src/messages";
 import { Simulation } from "../src/simulation.js";
 import { TickerNews } from "../src/tickerNews.js";
@@ -33,7 +34,13 @@ const take = (news: any, status: any, count: number): any[] => {
     return items;
 };
 
+const Jokes = (TickerNews as any).JOKES;
+
 describe("The news ticker", () => {
+
+    beforeEach(() => {
+        I18n.setLanguage("en", false);
+    });
 
     it("starts with the city's news", () => {
         expect(makeNews().next(makeStatus()).kind).not.toBe("joke");
@@ -95,7 +102,7 @@ describe("The news ticker", () => {
         const news = makeNews(3);
         news.record("nuclear");
         const jokes = take(news, makeStatus(), 12).filter(item => item.kind === "joke");
-        expect(jokes.some(item => (TickerNews as any).JOKES.nuclear.indexOf(item.text) !== -1)).toBe(true);
+        expect(jokes.some(item => Jokes.en.nuclear.indexOf(item.text) !== -1)).toBe(true);
     });
 
     it("jokes about the mayor doing nothing", () => {
@@ -103,7 +110,7 @@ describe("The news ticker", () => {
         const news = makeNews(5, () => now);
         now = 10 * 60 * 1000;
         const jokes = take(news, makeStatus(), 30).filter(item => item.kind === "joke");
-        expect(jokes.some(item => (TickerNews as any).JOKES.idle.indexOf(item.text) !== -1)).toBe(true);
+        expect(jokes.some(item => Jokes.en.idle.indexOf(item.text) !== -1)).toBe(true);
     });
 
     it("treats the bulldozer's sizes as one topic, and ignores unknown topics", () => {
@@ -120,13 +127,22 @@ describe("The news ticker", () => {
         expect(new Set(jokes.slice(0, 12)).size).toBe(12);
     });
 
-    it("fills in every joke", () => {
+    it("fills in every joke, in every language", () => {
         const news = makeNews();
-        const context = {pop: 12000, yes: 70, no: 30, tax: 7, funds: 15000, n: "12"};
-        Object.keys((TickerNews as any).JOKES).forEach(topic => {
-            (TickerNews as any).JOKES[topic].forEach((joke: string) => {
-                expect(news._fill(joke, context)).not.toMatch(/[{}]/);
+        const context = {pop: 12000, yes: 70, no: 30, tax: 7, funds: "$15,000", n: 12};
+        Object.keys(Jokes).forEach(language => {
+            Object.keys(Jokes[language]).forEach(topic => {
+                Jokes[language][topic].forEach((joke: string) => {
+                    expect(news._fill(joke, context)).not.toMatch(/[{}]/);
+                });
             });
+        });
+    });
+
+    it("has jokes on every topic in every language", () => {
+        Object.keys(Jokes).forEach(language => {
+            expect(Object.keys(Jokes[language]).sort()).toEqual(Object.keys(Jokes.en).sort());
+            Object.keys(Jokes[language]).forEach(topic => expect(Jokes[language][topic].length).toBeGreaterThan(0));
         });
     });
 
@@ -200,5 +216,76 @@ describe("The city's status", () => {
         simulation._census.poweredZoneCount = 99;
         simulation._clearCensus();
         expect(simulation.getCityStatus().census).toBe(status.census);
+    });
+});
+
+
+describe("The news ticker in French", () => {
+
+    beforeEach(() => {
+        I18n.setLanguage("fr", false);
+        Object.keys(I18n.missing).forEach(key => delete (I18n.missing as any)[key]);
+    });
+
+    afterEach(() => {
+        I18n.setLanguage("en", false);
+    });
+
+    it("tells French jokes", () => {
+        const news = makeNews(3);
+        news.record("nuclear");
+        const items = take(news, makeStatus(), 30);
+        const jokes = items.filter(item => item.kind === "joke");
+        const french = Object.keys(Jokes.fr).reduce((all: string[], topic) => all.concat(Jokes.fr[topic]), []);
+
+        expect(jokes.length).toBeGreaterThan(10);
+        jokes.forEach(item => {
+            expect(["POTINS", "RUMEUR", "TRIBUNE", "SATIRE"]).toContain(item.tag);
+            expect(french.some(joke => news._fill(I18n.typeset(joke), news._context(makeStatus())) === item.text)).toBe(true);
+        });
+    });
+
+    it("writes numbers, money and punctuation the French way", () => {
+        const news = makeNews();
+        const report = news.cityReport(makeStatus({funds: 500}));
+        const funds = report.find((item: any) => item.key === "funds");
+        expect(funds.text).toBe("Plus que 500\u00a0$ en caisse\u00a0: dépensez avec sagesse, ou augmentez les impôts.");
+
+        const summary = report.find((item: any) => item.key === "summary");
+        expect(summary.text).toBe("Testville, ville\u00a0: 12\u00a0000 habitants, 70\u00a0% d'opinions favorables, score 600.");
+    });
+
+    it("has every piece of news in French", () => {
+        const news = makeNews();
+        const crisis = makeStatus({monster: {x: 1, y: 2}, tornado: {x: 3, y: 4}, flooding: true, funds: 50, cashFlow: -300,
+                                   resCap: true, comCap: true, indCap: true, tax: 15, approval: 20, populationDelta: -50,
+                                   policePercent: 0.5, firePercent: 0.5, roadPercent: 0.5, resValve: 1500, comValve: 1000,
+                                   indValve: 1000, problems: [0, 1, 2, 3, 4, 5, 6].map(problem => ({problem: problem, votes: 20}))},
+                                  {firePop: 4, unpoweredZoneCount: 20, policeStationPop: 0, fireStationPop: 0,
+                                   pollutionAverage: 100, crimeAverage: 150, trafficAverage: 100});
+        const variants = [
+            crisis,
+            makeStatus({resValve: -1500, comValve: -1000, indValve: -1000, populationDelta: -1, funds: 500}, {firePop: 1, unpoweredZoneCount: 1}),
+            makeStatus({populationDelta: 1}),
+            makeStatus({population: 0}, {resZonePop: 0, comZonePop: 0, indZonePop: 0}),
+            makeStatus({}, {coalPowerPop: 0}),
+        ];
+        ["VILLAGE", "TOWN", "CITY", "CAPITAL", "METROPOLIS", "MEGALOPOLIS"].forEach(cityClass => variants.push(makeStatus({cityClass})));
+
+        // Each problem in first place, and in second
+        [0, 1, 2, 3, 4, 5, 6].forEach(problem => variants.push(makeStatus({problems: [{problem: problem, votes: 20}, {problem: (problem + 1) % 7, votes: 20}]})));
+
+        variants.forEach(status => news.cityReport(status).forEach((item: any) => expect(item.text).not.toMatch(/[{}]/)));
+        variants.forEach(status => take(news, status, 4));
+
+        Object.keys(Messages).forEach(name => {
+            const subject = (Messages as any)[name];
+            if (typeof subject === "string") {
+                news.report(subject, {x: 1, y: 1});
+                take(news, makeStatus(), 4);
+            }
+        });
+
+        expect(Object.keys(I18n.missing)).toEqual([]);
     });
 });

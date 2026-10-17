@@ -7,6 +7,8 @@
 
 import $ from "jquery";
 
+import { I18n } from './i18n.js';
+
 // The news ticker along the bottom of the screen. Its items scroll from right to left; each one is asked for (see
 // TickerNews) when there is room for it, so that it is up to date as it comes into view. The ticker stops under the
 // mouse, to be read, and an item about a place on the map shows it when clicked. When the system asks for reduced
@@ -57,6 +59,12 @@ Ticker.prototype._setStill = function(still) {
 };
 
 
+// Forgets the items shown, to start again with new ones (in another language, for example)
+Ticker.prototype.reset = function() {
+  this._clear();
+};
+
+
 Ticker.prototype._clear = function() {
   this._items.forEach(function(item) { item.element.remove(); });
   this._items = [];
@@ -72,7 +80,7 @@ Ticker.prototype._add = function(x) {
   $('<span class="tickerText"></span>').text(item.text).appendTo(element);
 
   if (typeof(item.x) === 'number' && typeof(item.y) === 'number')
-    element.addClass('tickerLink').attr({'data-x': item.x, 'data-y': item.y, title: 'Show on the map'});
+    element.addClass('tickerLink').attr({'data-x': item.x, 'data-y': item.y, title: I18n.t('Show on the map')});
   else if (this._still)
     element.attr('title', item.text);
 

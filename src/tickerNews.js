@@ -6,6 +6,8 @@
  */
 
 import { Evaluation } from './evaluation.js';
+import { I18n } from './i18n.js';
+import { French } from './lang/fr.js';
 import * as Messages from './messages.ts';
 
 // What the news ticker says (see Ticker). At least one item in three tells how the city is doing: disasters as they
@@ -14,6 +16,9 @@ import * as Messages from './messages.ts';
 //
 // Each item is {kind, tag, text}, with the coordinates x and y of the place it is about, if any. Its kind is alert,
 // warning, advice or good for the city's news, and joke for the jokes.
+//
+// The news is written in English, and translated (see I18n); the jokes are written anew in each language, as puns
+// don't translate.
 
 var ALERT = 3;
 var WARNING = 2;
@@ -49,6 +54,15 @@ MILESTONES[Messages.REACHED_CAPITAL] = '{city} is now a capital: the population 
 MILESTONES[Messages.REACHED_METROPOLIS] = '{city} is now a metropolis: the population passes 100,000!';
 MILESTONES[Messages.REACHED_MEGALOPOLIS] = '{city} is now a megalopolis: the population passes 500,000!';
 
+// How the city's classes are named in a sentence
+var CLASSES = {};
+CLASSES[Evaluation.CC_VILLAGE] = 'class|village';
+CLASSES[Evaluation.CC_TOWN] = 'class|town';
+CLASSES[Evaluation.CC_CITY] = 'class|city';
+CLASSES[Evaluation.CC_CAPITAL] = 'class|capital';
+CLASSES[Evaluation.CC_METROPOLIS] = 'class|metropolis';
+CLASSES[Evaluation.CC_MEGALOPOLIS] = 'class|megalopolis';
+
 // The problems citizens complain about in the evaluation, and how to solve them
 var PROBLEMS = {};
 PROBLEMS[Evaluation.CRIME] = ['crime', 'build police stations where it is worst, and fund them fully'];
@@ -61,7 +75,8 @@ PROBLEMS[Evaluation.FIRE] = ['fires', 'build fire stations, and fund them fully'
 
 // The jokes, by topic: something the mayor did (a tool's name, a change of the budget...), idle when the mayor has
 // done nothing for a while, and generic jokes for any time. {city}, {n} (how many times the mayor did it), {pop},
-// {yes} and {no} (the approval rating), {tax} and {funds} are filled in; a joke is only told when they make sense.
+// {yes} and {no} (the approval rating), {tax} and {funds} (with its currency) are filled in; a joke is only told when
+// they make sense. Each language has jokes on the same topics (see lang/).
 var JOKES = {
   road: [
     'Mayor paves the way for re-election, one street at a time.',
@@ -311,7 +326,7 @@ var JOKES = {
     'Local cat named honorary deputy mayor. Approval ratings soar.',
     'The Mayor denies rumours of a secret monorail. For now.',
     'The Mayor\'s lunch break enters its third hour. City Hall calls it a working lunch.',
-    '${funds} in the bank. The Mayor reportedly wants to spend it all on fountains.',
+    '{funds} in the bank. The Mayor reportedly wants to spend it all on fountains.',
     'Population {pop}. The Mayor has personally met at least six of them.'
   ]
 };
@@ -329,13 +344,11 @@ var IDLE_TIME = 3 * 60 * 1000;
 var ACTION_MEMORY = 10 * 60 * 1000;
 
 
-var formatNumber = function(n) {
-  return Math.round(n).toLocaleString('en-US');
-};
+var JOKES_BY_LANGUAGE = {en: JOKES, fr: French.jokes};
 
 
-var plural = function(n, word) {
-  return formatNumber(n) + ' ' + word + (n === 1 ? '' : 's');
+var jokes = function() {
+  return JOKES_BY_LANGUAGE[I18n.getLanguage()] || JOKES;
 };
 
 
@@ -345,7 +358,7 @@ function TickerNews(cityName, random, now) {
   this._random = random || Math.random;
   this._now = now || Date.now;
 
-  // News to be shown next
+  // News to be shown next: {subject, x, y}
   this._breaking = [];
 
   // The last places where fires and floods were reported
@@ -378,20 +391,13 @@ TickerNews.prototype.report = function(subject, data) {
   else if (subject === Messages.FLOODING_REPORTED)
     this._lastFlood = at || this._lastFlood;
 
-  var text = BREAKING[subject];
-  var kind = ALERT;
-  if (text === undefined) {
-    text = MILESTONES[subject];
-    kind = GOOD;
-  }
-
-  if (text === undefined)
+  if (BREAKING[subject] === undefined && MILESTONES[subject] === undefined)
     return;
 
   // The same news again before it was shown replaces it
   this._breaking = this._breaking.filter(function(item) { return item.subject !== subject; });
 
-  var item = {subject: subject, kind: KINDS[kind], tag: kind === ALERT ? 'BREAKING' : 'GOOD NEWS', text: this._fill(text, {})};
+  var item = {subject: subject};
   if (at !== null) {
     item.x = at.x;
     item.y = at.y;
@@ -423,8 +429,7 @@ TickerNews.prototype.next = function(status) {
   var item;
 
   if (this._breaking.length > 0) {
-    item = this._breaking.shift();
-    delete item.subject;
+    item = this._breakingNews(this._breaking.shift());
   } else {
     var report = this.cityReport(status);
     var emergency = report.length > 0 && report[0].severity === ALERT;
@@ -441,13 +446,27 @@ TickerNews.prototype.next = function(status) {
 };
 
 
-// What is worth saying about the city, the most pressing first: [{severity, key, text, x, y}]
+TickerNews.prototype._breakingNews = function(news) {
+  var alert = BREAKING[news.subject] !== undefined;
+  var item = {kind: KINDS[alert ? ALERT : GOOD], tag: I18n.t(alert ? 'BREAKING' : 'GOOD NEWS'),
+              text: I18n.t(alert ? BREAKING[news.subject] : MILESTONES[news.subject], {city: this._city})};
+  if (typeof(news.x) === 'number') {
+    item.x = news.x;
+    item.y = news.y;
+  }
+
+  return item;
+};
+
+
+// What is worth saying about the city, the most pressing first: [{severity, key, text, x, y}]. Each text is filled in
+// with the context of the jokes (see _context), and the item's own params.
 TickerNews.prototype.cityReport = function(status) {
   var report = [];
   var census = status.census;
 
-  var add = function(severity, key, text, at) {
-    var item = {severity: severity, key: key, text: text};
+  var add = function(severity, key, text, params, at) {
+    var item = {severity: severity, key: key, text: text, params: params || {}};
     if (at) {
       item.x = at.x;
       item.y = at.y;
@@ -457,28 +476,30 @@ TickerNews.prototype.cityReport = function(status) {
 
   // Disasters
   if (status.monster)
-    add(ALERT, 'monster', 'A monster is rampaging through {city}! It will leave in time: rebuild behind it.', status.monster);
+    add(ALERT, 'monster', 'A monster is rampaging through {city}! It will leave in time: rebuild behind it.', null, status.monster);
 
   if (status.tornado)
-    add(ALERT, 'tornado', 'A tornado is tearing across {city}! Rebuild once it has blown over.', status.tornado);
+    add(ALERT, 'tornado', 'A tornado is tearing across {city}! Rebuild once it has blown over.', null, status.tornado);
 
   if (status.flooding)
-    add(ALERT, 'flood', 'Flood water covers part of {city}. It will recede on its own.', this._lastFlood);
+    add(ALERT, 'flood', 'Flood water covers part of {city}. It will recede on its own.', null, this._lastFlood);
 
   if (census.firePop > 0) {
     add(ALERT, 'fire', census.firePop === 1 ? 'A fire is burning! Fire stations nearby put it out faster.' :
-                       'Fire is spreading over ' + formatNumber(census.firePop) + ' tiles! Fire stations nearby put it out faster.',
-        this._lastFire);
+                       'Fire is spreading over {n} tiles! Fire stations nearby put it out faster.',
+        {n: census.firePop}, this._lastFire);
   }
 
   // Money
   if (status.funds < 100)
-    add(ALERT, 'broke', '{city} is broke ($' + formatNumber(status.funds) + ')! Raise taxes or cut services in the Budget window.');
+    add(ALERT, 'broke', '{city} is broke ({funds})! Raise taxes or cut services in the Budget window.');
   else if (status.funds < 1000)
-    add(WARNING, 'funds', 'Only $' + formatNumber(status.funds) + ' left in the treasury: spend wisely, or raise taxes.');
+    add(WARNING, 'funds', 'Only {funds} left in the treasury: spend wisely, or raise taxes.');
 
-  if (status.cashFlow < 0)
-    add(WARNING, 'deficit', 'Upkeep costs $' + formatNumber(-status.cashFlow) + ' a year more than taxes bring in: raise taxes or trim services.');
+  if (status.cashFlow < 0) {
+    add(WARNING, 'deficit', 'Upkeep costs {deficit} a year more than taxes bring in: raise taxes or trim services.',
+        {deficit: I18n.money(-status.cashFlow)});
+  }
 
   // Power
   var zones = census.poweredZoneCount + census.unpoweredZoneCount;
@@ -492,7 +513,8 @@ TickerNews.prototype.cityReport = function(status) {
     add(WARNING, 'noPower', 'No power plant in {city}: zones won\'t grow without electricity.');
   } else if (census.unpoweredZoneCount > 0) {
     add(census.unpoweredZoneCount > zones * 0.3 ? WARNING : ADVICE, 'unpowered',
-        plural(census.unpoweredZoneCount, 'zone') + ' without power: build another plant, or connect them with power lines.');
+        census.unpoweredZoneCount === 1 ? 'A zone has no power: build another plant, or connect it with power lines.' :
+        '{n} zones without power: build another plant, or connect them with power lines.', {n: census.unpoweredZoneCount});
   }
 
   // Buildings the city needs to grow
@@ -512,12 +534,15 @@ TickerNews.prototype.cityReport = function(status) {
     add(WARNING, 'noFire', 'Citizens demand a fire station: nothing would stop a fire today.');
 
   // The budget
-  var funding = [['police', 'Police stations', status.policePercent, status.policeMaintenance, 'crime will rise'],
-                 ['fire', 'Fire stations', status.firePercent, status.fireMaintenance, 'fires will spread further'],
-                 ['road', 'Roads', status.roadPercent, status.roadMaintenance, 'they are falling apart']];
+  var funding = [['policeFunding', 'Police stations are funded at {percent}%: crime will rise.', status.policePercent,
+                  status.policeMaintenance],
+                 ['fireFunding', 'Fire stations are funded at {percent}%: fires will spread further.', status.firePercent,
+                  status.fireMaintenance],
+                 ['roadFunding', 'Roads are funded at {percent}%: they are falling apart.', status.roadPercent,
+                  status.roadMaintenance]];
   funding.forEach(function(f) {
     if (f[3] > 0 && f[2] < 0.9)
-      add(WARNING, f[0] + 'Funding', f[1] + ' are funded at ' + Math.round(f[2] * 100) + '%: ' + f[4] + '.');
+      add(WARNING, f[0], f[1], {percent: Math.round(f[2] * 100)});
   });
 
   if (status.tax > 12)
@@ -526,7 +551,7 @@ TickerNews.prototype.cityReport = function(status) {
   // Living conditions
   if (census.pollutionAverage > 60)
     add(WARNING, 'pollution', 'Pollution is very high: keep industry away from homes, plant parks and choose clean power.',
-        status.pollutionMax);
+        null, status.pollutionMax);
 
   if (census.crimeAverage > 100)
     add(WARNING, 'crime', 'Crime is very high: build police stations where it is worst.');
@@ -537,8 +562,10 @@ TickerNews.prototype.cityReport = function(status) {
   if (status.population > 0 && status.approval < 30 && status.cityTime > 48)
     add(WARNING, 'approval', 'Only {yes}% of citizens approve of the Mayor: time to listen to their worries.');
 
-  if (status.populationDelta < 0)
-    add(WARNING, 'shrinking', '{city} lost ' + plural(-status.populationDelta, 'resident') + ' last year.');
+  if (status.populationDelta < 0) {
+    add(WARNING, 'shrinking', status.populationDelta === -1 ? '{city} lost a resident last year.' :
+                              '{city} lost {n} residents last year.', {n: -status.populationDelta});
+  }
 
   // Demand
   if (status.resValve > 1000)
@@ -560,29 +587,34 @@ TickerNews.prototype.cityReport = function(status) {
   status.problems.slice(0, status.population > 0 ? 2 : 0).forEach(function(p, i) {
     var problem = PROBLEMS[p.problem];
     if (problem && p.votes >= 10) {
-      add(ADVICE, 'problem' + p.problem, (i === 0 ? 'Citizens\' biggest worry: ' : 'Also worrying citizens: ') +
-          problem[0] + ' (' + p.votes + '% of voters). To fix it, ' + problem[1] + '.');
+      add(ADVICE, 'problem' + p.problem,
+          i === 0 ? 'Citizens\' biggest worry: {problem} ({votes}% of voters). To fix it, {advice}.' :
+                    'Also worrying citizens: {problem} ({votes}% of voters). To fix it, {advice}.',
+          {problem: I18n.t(problem[0]), votes: p.votes, advice: I18n.t(problem[1])});
     }
   });
 
   // And how well it is going
   if (status.population > 0) {
-    add(GOOD, 'summary', '{city}, ' + String(status.cityClass).toLowerCase() + ': population {pop}, approval {yes}%, score ' +
-        formatNumber(status.score) + '.');
+    add(GOOD, 'summary', '{city}, {class}: population {pop}, approval {yes}%, score {score}.',
+        {class: I18n.t(CLASSES[status.cityClass] || 'class|village'), score: status.score});
   }
 
-  if (status.populationDelta > 0)
-    add(GOOD, 'growing', '{city} welcomed ' + plural(status.populationDelta, 'new resident') + ' last year.');
+  if (status.populationDelta > 0) {
+    add(GOOD, 'growing', status.populationDelta === 1 ? '{city} welcomed a new resident last year.' :
+                         '{city} welcomed {n} new residents last year.', {n: status.populationDelta});
+  }
 
   if (status.funds >= 1000)
-    add(GOOD, 'treasury', 'Treasury: ${funds}, with taxes at {tax}%.');
+    add(GOOD, 'treasury', 'Treasury: {funds}, with taxes at {tax}%.');
 
   if (!report.some(function(item) { return item.severity >= WARNING; }))
     add(GOOD, 'quiet', 'All quiet in {city}: no disaster, no crisis. Enjoy it while it lasts.');
 
   var context = this._context(status);
   report.forEach(function(item) {
-    item.text = this._fill(item.text, context);
+    item.text = this._fill(I18n.t(item.text), Object.assign({}, context, item.params));
+    delete item.params;
   }, this);
 
   report.sort(function(a, b) { return b.severity - a.severity; });
@@ -608,7 +640,7 @@ TickerNews.prototype._pickNews = function(report) {
   this._newsCount++;
   this._newsShown[best.key] = this._newsCount;
 
-  var item = {kind: KINDS[best.severity], tag: TAGS[best.severity], text: best.text};
+  var item = {kind: KINDS[best.severity], tag: I18n.t(TAGS[best.severity]), text: best.text};
   if (typeof(best.x) === 'number') {
     item.x = best.x;
     item.y = best.y;
@@ -636,7 +668,7 @@ TickerNews.prototype._joke = function(status) {
   }
 
   this._lastTopic = topic;
-  return {kind: 'joke', tag: JOKE_TAGS[Math.floor(this._random() * JOKE_TAGS.length)], text: text};
+  return {kind: 'joke', tag: I18n.t(JOKE_TAGS[Math.floor(this._random() * JOKE_TAGS.length)]), text: text};
 };
 
 
@@ -670,12 +702,13 @@ TickerNews.prototype._pickTopic = function() {
 };
 
 
-// A joke on the topic that was not told lately and makes sense now, filled in; null if there is none
+// A joke on the topic, in the current language, that was not told lately and makes sense now, filled in; null if
+// there is none
 TickerNews.prototype._pickJoke = function(topic, context) {
   var count = this._counts[topic] || 0;
   var told = this._toldJokes;
 
-  var jokes = JOKES[topic].filter(function(joke) {
+  var choices = (jokes()[topic] || []).filter(function(joke) {
     if (told.indexOf(joke) !== -1)
       return false;
 
@@ -685,24 +718,25 @@ TickerNews.prototype._pickJoke = function(topic, context) {
     return context.pop > 0 || (joke.indexOf('{pop}') === -1 && joke.indexOf('{yes}') === -1);
   });
 
-  if (jokes.length === 0)
+  if (choices.length === 0)
     return null;
 
-  var joke = jokes[Math.floor(this._random() * jokes.length)];
+  var joke = choices[Math.floor(this._random() * choices.length)];
   told.push(joke);
   if (told.length > JOKE_MEMORY)
     told.shift();
 
-  context.n = formatNumber(count);
-  return this._fill(joke, context);
+  return this._fill(I18n.typeset(joke), Object.assign({n: count}, context));
 };
 
 
 TickerNews.prototype._context = function(status) {
-  return {pop: status.population, yes: status.approval, no: 100 - status.approval, tax: status.tax, funds: status.funds};
+  return {pop: status.population, yes: status.approval, no: 100 - status.approval, tax: status.tax,
+          funds: I18n.money(status.funds)};
 };
 
 
+// Fills in {city} and the values of context (numbers are written the way the language does)
 TickerNews.prototype._fill = function(text, context) {
   var city = this._city;
 
@@ -714,12 +748,12 @@ TickerNews.prototype._fill = function(text, context) {
     if (value === undefined)
       return match;
 
-    return typeof(value) === 'number' ? formatNumber(value) : value;
+    return typeof(value) === 'number' ? I18n.formatNumber(value) : value;
   });
 };
 
 
-TickerNews.JOKES = JOKES;
+TickerNews.JOKES = JOKES_BY_LANGUAGE;
 
 
 export { TickerNews };

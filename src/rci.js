@@ -13,6 +13,7 @@
 
 import $ from "jquery";
 
+import { I18n } from './i18n.js';
 import { VALVES_UPDATED } from './messages.ts';
 import { MiscUtils } from './miscUtils.js';
 
@@ -104,9 +105,9 @@ RCI.prototype.update = function(data) {
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
   ctx.fillStyle = '#070a1f';
-  ctx.fillText('Demand', 1, midY + 1);
+  ctx.fillText(I18n.t('Demand'), 1, midY + 1);
   ctx.fillStyle = '#f8c838';
-  ctx.fillText('Demand', 0, midY);
+  ctx.fillText(I18n.t('Demand'), 0, midY);
 
   var values = [data.residential, data.commercial, data.industrial];
   for (var i = 0; i < 3; i++) {

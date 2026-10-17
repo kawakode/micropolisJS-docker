@@ -37,101 +37,101 @@
       <div class="brand">KawaCity</div>
       <div id="infobar" class="hudStats">
         <div class="stat cityName"><span id="name">My Town</span><span class="statSub" id="cclass">VILLAGE</span></div>
-        <div class="stat"><span class="statLabel">Date</span><span class="statValue" id="date">Jan 1900</span></div>
-        <div class="stat optionalStat" id="clockStat"><span class="statLabel">Time</span><span class="statValue" id="clock">06:00</span></div>
-        <div class="stat"><span class="statLabel">Funds</span><span class="statValue">$<span id="funds">20000</span></span></div>
-        <div class="stat"><span class="statLabel">Population</span><span class="statValue" id="population">0</span></div>
-        <div class="stat optionalStat"><span class="statLabel">Score</span><span class="statValue" id="score">0</span></div>
+        <div class="stat"><span class="statLabel" data-i18n>Date</span><span class="statValue" id="date">Jan 1900</span></div>
+        <div class="stat optionalStat" id="clockStat"><span class="statLabel" data-i18n>Time</span><span class="statValue" id="clock">06:00</span></div>
+        <div class="stat"><span class="statLabel" data-i18n>Funds</span><span class="statValue" id="funds">$20,000</span></div>
+        <div class="stat"><span class="statLabel" data-i18n>Population</span><span class="statValue" id="population">0</span></div>
+        <div class="stat optionalStat"><span class="statLabel" data-i18n>Score</span><span class="statValue" id="score">0</span></div>
       </div>
-      <div class="hudSpeed" role="group" aria-label="Simulation speed">
-        <button id="pauseRequest" class="hudButton pauseButton" title="Pause or resume (Space)">Pause</button>
-        <button id="speedSlowRequest" class="hudButton speedButton" data-speed="1" title="Slow">1×</button>
-        <button id="speedMedRequest" class="hudButton speedButton" data-speed="2" title="Normal">2×</button>
-        <button id="speedFastRequest" class="hudButton speedButton" data-speed="3" title="Fast">3×</button>
+      <div class="hudSpeed" role="group" aria-label="Simulation speed" data-i18n-aria-label>
+        <button id="pauseRequest" class="hudButton pauseButton" title="Pause or resume (Space)" data-i18n-title>Pause</button>
+        <button id="speedSlowRequest" class="hudButton speedButton" data-speed="1" title="Slow" data-i18n-title>1×</button>
+        <button id="speedMedRequest" class="hudButton speedButton" data-speed="2" title="Normal" data-i18n-title>2×</button>
+        <button id="speedFastRequest" class="hudButton speedButton" data-speed="3" title="Fast" data-i18n-title>3×</button>
       </div>
-      <nav id="miscButtons" class="hudMenu" aria-label="Game menu">
-        <button id="budgetRequest" class="hudButton">Budget</button>
-        <button id="evalRequest" class="hudButton">Evaluation</button>
-        <button id="graphsRequest" class="hudButton">Graphs</button>
-        <button id="moreRequest" class="hudButton moreButton" aria-haspopup="true" aria-expanded="false" aria-controls="hudMore">More &#9662;</button>
+      <nav id="miscButtons" class="hudMenu" aria-label="Game menu" data-i18n-aria-label>
+        <button id="budgetRequest" class="hudButton" data-i18n>Budget</button>
+        <button id="evalRequest" class="hudButton" data-i18n>Evaluation</button>
+        <button id="graphsRequest" class="hudButton" data-i18n>Graphs</button>
+        <button id="moreRequest" class="hudButton moreButton" aria-haspopup="true" aria-expanded="false" aria-controls="hudMore" data-i18n>More &#9662;</button>
         <div id="hudMore" class="hudMore">
-          <button id="disasterRequest" class="hudButton">Disasters</button>
-          <button id="screenshotRequest" class="hudButton">Picture</button>
-          <a class="hudButton hudLink" href="about.html" target="_blank" rel="noopener">About</a>
+          <button id="disasterRequest" class="hudButton" data-i18n>Disasters</button>
+          <button id="screenshotRequest" class="hudButton" data-i18n>Picture</button>
+          <a class="hudButton hudLink" href="about.html" target="_blank" rel="noopener" data-i18n>About</a>
         </div>
-        <button id="settingsRequest" class="hudButton">Settings</button>
-        <button id="saveRequest" class="hudButton loadSave accentButton" disabled>Save</button>
+        <button id="settingsRequest" class="hudButton" data-i18n>Settings</button>
+        <button id="saveRequest" class="hudButton loadSave accentButton" disabled data-i18n>Save</button>
       </nav>
     </header>
 
     <div id="wrapper">
       <main id="canvasContainer">
         <div class="hidden" id="opaque"></div>
-        <div data-hasscript="false" id="loadingBanner" class="card centred">Loading&hellip;</div>
+        <div data-hasscript="false" id="loadingBanner" class="card centred" data-i18n>Loading&hellip;</div>
 
         <div id="splash" class="card centred awaitGeneration">
           <div class="splashTitle">
             <h1 class="logo">KawaCity</h1>
-            <p class="tagline">Build the city of your dreams, right in your browser.</p>
+            <p class="tagline" data-i18n>Build the city of your dreams, right in your browser.</p>
           </div>
           <div class="splashBody">
             <div id="splashContainer"></div>
             <div id="splashButtonContainer">
               <div id="splashButtons">
-                <button id="splashPlay" class="button primary splashButton">Play this map</button>
-                <button id="splashGenerate" class="button splashButton">Generate another</button>
+                <button id="splashPlay" class="button primary splashButton" data-i18n>Play this map</button>
+                <button id="splashGenerate" class="button splashButton" data-i18n>Generate another</button>
                 <details id="mapOptions" class="mapOptions">
-                  <summary>Map options</summary>
-                  <label class="mapOption">Land
+                  <summary data-i18n>Map options</summary>
+                  <label class="mapOption"><span data-i18n>Land</span>
                     <select id="mapLand">
-                      <option value="-1">Random</option>
-                      <option value="0">Mainland</option>
-                      <option value="1">Island</option>
+                      <option value="-1" data-i18n>Random</option>
+                      <option value="0" data-i18n>Mainland</option>
+                      <option value="1" data-i18n>Island</option>
                     </select>
                   </label>
-                  <label class="mapOption">Water
+                  <label class="mapOption"><span data-i18n>Water</span>
                     <select id="mapWater">
-                      <option value="random">Random</option>
-                      <option value="none">Dry</option>
-                      <option value="some">A river</option>
-                      <option value="lots">Lakes</option>
+                      <option value="random" data-i18n>Random</option>
+                      <option value="none" data-i18n>Dry</option>
+                      <option value="some" data-i18n>A river</option>
+                      <option value="lots" data-i18n>Lakes</option>
                     </select>
                   </label>
-                  <label class="mapOption">Forests
+                  <label class="mapOption"><span data-i18n>Forests</span>
                     <select id="mapTrees">
-                      <option value="-1">Random</option>
-                      <option value="0">None</option>
-                      <option value="20">Few</option>
-                      <option value="100">Many</option>
-                      <option value="250">Wild</option>
+                      <option value="-1" data-i18n>Random</option>
+                      <option value="0" data-i18n>None</option>
+                      <option value="20" data-i18n>Few</option>
+                      <option value="100" data-i18n>Many</option>
+                      <option value="250" data-i18n>Wild</option>
                     </select>
                   </label>
                 </details>
-                <button id="splashScenarios" class="button splashButton">Scenarios &amp; cities</button>
-                <button id="splashLoad" class="button loadSave splashButton" disabled>Load saved game</button>
-                <button id="splashOpen" class="button splashButton">Open a city file&hellip;</button>
+                <button id="splashScenarios" class="button splashButton" data-i18n>Scenarios &amp; cities</button>
+                <button id="splashLoad" class="button loadSave splashButton" disabled data-i18n>Load saved game</button>
+                <button id="splashOpen" class="button splashButton" data-i18n>Open a city file&hellip;</button>
                 <input type="file" id="splashFile" class="hidden" accept=".kawacity,.json,.cty">
                 <p id="splashError" class="splashError" role="alert"></p>
               </div>
-              <p class="splashHint">Drag to build roads and zones, right-drag or use the arrow keys to move around, and the mouse wheel to zoom.</p>
+              <p class="splashHint" data-i18n>Drag to build roads and zones, right-drag or use the arrow keys to move around, and the mouse wheel to zoom.</p>
             </div>
           </div>
           <div class="credits">
-            <p>KawaCity by <a href="https://github.com/kawakode" target="_blank" rel="noopener">kawakode</a>, based on <a href="https://github.com/graememcc/micropolisJS" target="_blank" rel="noopener">micropolisJS</a> by <a href="http://www.graememcc.co.uk" target="_blank" rel="noopener">Graeme McCutcheon</a> and <a href="https://github.com/graememcc/micropolisJS/graphs/contributors" target="_blank" rel="noopener">contributors</a>, a port of the open-source city simulator Micropolis. &middot; <a href="about.html" target="_blank" rel="noopener">About</a> &middot; <a href="https://github.com/kawakode/micropolisJS-docker" target="_blank" rel="noopener">GitHub</a></p>
+            <p data-i18n-html="credits">KawaCity by <a href="https://github.com/kawakode" target="_blank" rel="noopener">kawakode</a>, based on <a href="https://github.com/graememcc/micropolisJS" target="_blank" rel="noopener">micropolisJS</a> by <a href="http://www.graememcc.co.uk" target="_blank" rel="noopener">Graeme McCutcheon</a> and <a href="https://github.com/graememcc/micropolisJS/graphs/contributors" target="_blank" rel="noopener">contributors</a>, a port of the open-source city simulator Micropolis. &middot; <a href="about.html" target="_blank" rel="noopener">About</a> &middot; <a href="https://github.com/kawakode/micropolisJS-docker" target="_blank" rel="noopener">GitHub</a></p>
             <p class="nameLicense">Micropolis is a registered trademark of <a href="https://www.micropolis.com" target="_blank" rel="noopener">Micropolis Corporation (Micropolis GmbH)</a> and is licensed here as a courtesy of the owner under the <a href="name_license.html" target="_blank" rel="noopener">Micropolis Public Name License</a>.</p>
             <p class="build">Build <%= htmlWebpackPlugin.options.gitHash %></p>
           </div>
         </div>
 
         <div id="scenarioPicker" class="card centred" data-version="<%= htmlWebpackPlugin.options.gitHash %>">
-          <h2 class="cardTitle">Scenarios &amp; cities</h2>
+          <h2 class="cardTitle" data-i18n>Scenarios &amp; cities</h2>
           <fieldset class="choice pickerTabs">
-            <legend class="srOnly">Show</legend>
-            <input type="radio" class="pickerTab" name="pickerTab" id="pickerTabScenarios" value="scenarios" checked="checked"><label for="pickerTabScenarios">Scenarios</label>
-            <input type="radio" class="pickerTab" name="pickerTab" id="pickerTabCities" value="cities"><label for="pickerTabCities">Cities</label>
+            <legend class="srOnly" data-i18n>Show</legend>
+            <input type="radio" class="pickerTab" name="pickerTab" id="pickerTabScenarios" value="scenarios" checked="checked"><label for="pickerTabScenarios" data-i18n>Scenarios</label>
+            <input type="radio" class="pickerTab" name="pickerTab" id="pickerTabCities" value="cities"><label for="pickerTabCities" data-i18n>Cities</label>
           </fieldset>
           <div class="pickerBody">
-            <div id="scenarioList" class="scenarioList" role="listbox" aria-label="Scenarios"></div>
+            <div id="scenarioList" class="scenarioList" role="listbox" aria-label="Scenarios" data-i18n-aria-label></div>
             <div class="pickerDetails">
               <div id="scenarioPreview"></div>
               <p id="pickerPlace" class="scenarioPlace"></p>
@@ -140,31 +140,31 @@
             </div>
           </div>
           <div class="modalButtons pickerButtons">
-            <button id="pickerBack" class="button cancel">Back</button>
+            <button id="pickerBack" class="button cancel" data-i18n>Back</button>
             <button id="pickerPlay" class="button primary">Play this scenario</button>
           </div>
         </div>
 
         <div id="start" class="card centred">
-          <h2 class="cardTitle">New city</h2>
+          <h2 class="cardTitle" data-i18n>New city</h2>
           <form id="playForm">
-            <label for="nameForm" class="fieldLabel">City name</label>
-            <input id="nameForm" autofocus required type="text" maxlength="15" placeholder="Max. 15 letters" autocomplete="off">
+            <label for="nameForm" class="fieldLabel" data-i18n>City name</label>
+            <input id="nameForm" autofocus required type="text" maxlength="15" placeholder="Max. 15 letters" data-i18n-placeholder autocomplete="off">
             <fieldset class="choice">
-              <legend class="fieldLabel">Difficulty</legend>
-              <input type="radio" class="difficulty" name="difficulty" id="difficultyEasy" value="0" checked="checked"><label for="difficultyEasy">Easy</label>
-              <input type="radio" class="difficulty" name="difficulty" id="difficultyMed" value="1"><label for="difficultyMed">Medium</label>
-              <input type="radio" class="difficulty" name="difficulty" id="difficultyHard" value="2"><label for="difficultyHard">Hard</label>
+              <legend class="fieldLabel" data-i18n>Difficulty</legend>
+              <input type="radio" class="difficulty" name="difficulty" id="difficultyEasy" value="0" checked="checked"><label for="difficultyEasy" data-i18n>Easy</label>
+              <input type="radio" class="difficulty" name="difficulty" id="difficultyMed" value="1"><label for="difficultyMed" data-i18n>Medium</label>
+              <input type="radio" class="difficulty" name="difficulty" id="difficultyHard" value="2"><label for="difficultyHard" data-i18n>Hard</label>
             </fieldset>
             <div id="playSubmitDiv">
-              <input id="playit" class="button primary" type="submit" value="Found the city">
+              <input id="playit" class="button primary" type="submit" value="Found the city" data-i18n-value>
             </div>
           </form>
         </div>
 
         <div id="notifications" class="initialHidden neutral" role="status" aria-live="polite"></div>
 
-        <div id="tooSmall" data-hasscript="false"><div id="tooSmallInner" class="card"><h2 class="cardTitle">Uh-oh!</h2><p>This window is too small to fit the city and all the controls. Try a bigger window, or rotating your device.</p></div></div>
+        <div id="tooSmall" data-hasscript="false"><div id="tooSmallInner" class="card"><h2 class="cardTitle" data-i18n>Uh-oh!</h2><p data-i18n>This window is too small to fit the city and all the controls. Try a bigger window, or rotating your device.</p></div></div>
         <noscript>
           <div id="noscript" class="card centred">
             <h1 class="logo">KawaCity</h1>
@@ -173,18 +173,18 @@
           </div>
         </noscript>
 
-        <div id="zoomControls" class="initialHidden" role="group" aria-label="Zoom">
-          <button id="zoomInRequest" class="mapButton" title="Zoom in (+)" aria-label="Zoom in">+</button>
-          <button id="zoomOutRequest" class="mapButton" title="Zoom out (-)" aria-label="Zoom out">&minus;</button>
+        <div id="zoomControls" class="initialHidden" role="group" aria-label="Zoom" data-i18n-aria-label>
+          <button id="zoomInRequest" class="mapButton" title="Zoom in (+)" data-i18n-title aria-label="Zoom in" data-i18n-aria-label>+</button>
+          <button id="zoomOutRequest" class="mapButton" title="Zoom out (-)" data-i18n-title aria-label="Zoom out" data-i18n-aria-label>&minus;</button>
         </div>
 
         <div id="monstertv" class="hidden panel">
           <div id="monsterTVContainer">
-            <div class="panelTitle">Live</div>
+            <div class="panelTitle" data-i18n>Live</div>
             <div id="tvContainer">
             </div>
             <form id="monsterTVForm">
-              <input type="submit" value="Close" class="button small cancel">
+              <input type="submit" value="Close" data-i18n-value class="button small cancel">
             </form>
           </div>
         </div>
@@ -199,7 +199,7 @@
         </div>
       </main>
 
-      <aside id="controls" class="panel initialHidden" aria-label="Tools">
+      <aside id="controls" class="panel initialHidden" aria-label="Tools" data-i18n-aria-label>
         <div id="buttons">
           <div class="toolGroup" id="basicButtons">
             <button id="queryButton" data-size="1" data-tool="query" data-colour="#38bdf8" data-label="Query" data-key="Q" class="toolButton unselected">Query</button>
@@ -215,24 +215,24 @@
       </aside>
       <div id="toolFlyout" class="panel toolFlyout"></div>
 
-      <aside id="sidePanel" class="initialHidden" aria-label="City overview">
+      <aside id="sidePanel" class="initialHidden" aria-label="City overview" data-i18n-aria-label>
         <div id="minimapPanel" class="panel">
           <div id="minimapContainer"></div>
-          <label class="srOnly" for="overlaySelect">Map overlay</label>
-          <select id="overlaySelect" title="Map overlay">
-            <option value="none">Map</option>
-            <option value="power">Power grid</option>
-            <option value="population">Population density</option>
-            <option value="traffic">Traffic</option>
-            <option value="pollution">Pollution</option>
-            <option value="crime">Crime</option>
-            <option value="landValue">Land value</option>
-            <option value="police">Police coverage</option>
-            <option value="fire">Fire coverage</option>
-            <option value="growth">Rate of growth</option>
+          <label class="srOnly" for="overlaySelect" data-i18n>Map overlay</label>
+          <select id="overlaySelect" title="Map overlay" data-i18n-title>
+            <option value="none" data-i18n>Map</option>
+            <option value="power" data-i18n>Power grid</option>
+            <option value="population" data-i18n>Population density</option>
+            <option value="traffic" data-i18n>Traffic</option>
+            <option value="pollution" data-i18n>Pollution</option>
+            <option value="crime" data-i18n>Crime</option>
+            <option value="landValue" data-i18n>Land value</option>
+            <option value="police" data-i18n>Police coverage</option>
+            <option value="fire" data-i18n>Fire coverage</option>
+            <option value="growth" data-i18n>Rate of growth</option>
           </select>
         </div>
-        <div id="RCIContainer" class="panel" title="Demand for residential, commercial and industrial zones"></div>
+        <div id="RCIContainer" class="panel" title="Demand for residential, commercial and industrial zones" data-i18n-title></div>
         <div id="scenarioPanel" class="panel hidden" aria-live="polite">
           <div class="panelTitle" id="scenarioPanelName"></div>
           <p id="scenarioPanelGoal"></p>
@@ -242,40 +242,40 @@
       </aside>
 
       <div class="hidden modal" id="budget" role="dialog" aria-labelledby="budgetHeader">
-        <header id="budgetHeader" class="modalHeader">Budget</header>
+        <header id="budgetHeader" class="modalHeader" data-i18n>Budget</header>
         <div id="budgetFormContainer" class="modalBody">
           <form id="budgetForm">
             <div class="budgetSummary">
-              <div id="taxInfo" class="budgetData">Tax collected <span id="taxesCollected"></span></div>
-              <div id="cashInfo" class="budgetData">Cash flow <span id="cashFlow"></span></div>
-              <div id="previousInfo" class="budgetData">Previous funds <span id="previousFunds"></span></div>
-              <div id="currentInfo" class="budgetData">Current funds <span id="currentFunds"></span></div>
+              <div id="taxInfo" class="budgetData"><span data-i18n>Tax collected</span> <span id="taxesCollected"></span></div>
+              <div id="cashInfo" class="budgetData"><span data-i18n>Cash flow</span> <span id="cashFlow"></span></div>
+              <div id="previousInfo" class="budgetData"><span data-i18n>Previous funds</span> <span id="previousFunds"></span></div>
+              <div id="currentInfo" class="budgetData"><span data-i18n>Current funds</span> <span id="currentFunds"></span></div>
             </div>
             <div class="budgetSliders">
               <fieldset>
-                <legend>Roads</legend>
+                <legend data-i18n>Roads</legend>
                 <input type="range" id="roadRate" min="0" max="100" step="1" data-source="roadMaintenanceBudget">
                 <label for="roadRate" class="budgetData" id="roadRateLabel">100% of $100 = $100</label>
               </fieldset>
               <fieldset>
-                <legend>Fire</legend>
+                <legend data-i18n="budget|Fire">Fire</legend>
                 <input type="range" id="fireRate" min="0" max="100" step="1" data-source="fireMaintenanceBudget">
                 <label for="fireRate" class="budgetData" id="fireRateLabel">100% of $100 = $100</label>
               </fieldset>
               <fieldset>
-                <legend>Police</legend>
+                <legend data-i18n>Police</legend>
                 <input type="range" id="policeRate" min="0" max="100" step="1" data-source="policeMaintenanceBudget">
                 <label for="policeRate" class="budgetData" id="policeRateLabel">100% of $100 = $100</label>
               </fieldset>
               <fieldset>
-                <legend>Tax</legend>
+                <legend data-i18n>Tax</legend>
                 <input type="range" id="taxRate" min="0" max="20" step="1">
                 <label for="taxRate" class="budgetData" id="taxRateLabel">100% of $100 = $100</label>
               </fieldset>
             </div>
             <div id="budgetButtons" class="modalButtons">
-              <button id="budgetReset" class="button">Reset</button>
-              <button id="budgetCancel" class="button cancel">Cancel</button>
+              <button id="budgetReset" class="button" data-i18n>Reset</button>
+              <button id="budgetCancel" class="button cancel" data-i18n>Cancel</button>
               <input type="submit" id="budgetOK" class="button primary dialogOK" value="OK">
             </div>
           </form>
@@ -283,15 +283,15 @@
       </div>
 
       <div class="hidden modal wide" id="evalWindow" role="dialog" aria-labelledby="evalHeader">
-        <header id="evalHeader" class="modalHeader">Evaluation</header>
+        <header id="evalHeader" class="modalHeader" data-i18n>Evaluation</header>
         <div id="evalContainer" class="modalBody">
           <div class="evalColumns">
             <section id="opinion">
-              <h2>Public opinion</h2>
+              <h2 data-i18n>Public opinion</h2>
               <dl class="opinionList">
-                <dt>Is the mayor doing a good job?</dt>
-                <dd>Yes: <span id="evalYes"></span>% &nbsp; No: <span id="evalNo"></span>%</dd>
-                <dt>What are the worst problems?</dt>
+                <dt data-i18n>Is the mayor doing a good job?</dt>
+                <dd><span data-i18n>Yes:</span> <span id="evalYes"></span> &nbsp; <span data-i18n>No:</span> <span id="evalNo"></span></dd>
+                <dt data-i18n>What are the worst problems?</dt>
                 <dd><ol id="problemList">
                   <li id="evalProb1"></li> <li id="evalProb2"></li>
                   <li id="evalProb3"></li> <li id="evalProb4"></li>
@@ -299,15 +299,15 @@
               </dl>
             </section>
             <section id="statistics">
-              <h2>Statistics</h2>
+              <h2 data-i18n>Statistics</h2>
               <dl id="statisticsList" class="keyValueList">
-                <dt>Population</dt><dd id="evalPopulation"></dd>
-                <dt>Net migration</dt><dd id="evalMigration"></dd>
-                <dt>Assessed value</dt><dd id="evalValue"></dd>
-                <dt>Category</dt><dd id="evalClass"></dd>
-                <dt>Game level</dt><dd id="evalLevel"></dd>
-                <dt>Score</dt><dd id="evalScore"></dd>
-                <dt>Annual change</dt><dd id="evalScoreDelta"></dd>
+                <dt data-i18n>Population</dt><dd id="evalPopulation"></dd>
+                <dt data-i18n>Net migration</dt><dd id="evalMigration"></dd>
+                <dt data-i18n>Assessed value</dt><dd id="evalValue"></dd>
+                <dt data-i18n>Category</dt><dd id="evalClass"></dd>
+                <dt data-i18n>Game level</dt><dd id="evalLevel"></dd>
+                <dt data-i18n>Score</dt><dd id="evalScore"></dd>
+                <dt data-i18n>Annual change</dt><dd id="evalScoreDelta"></dd>
               </dl>
             </section>
           </div>
@@ -318,23 +318,23 @@
       </div>
 
       <div class="hidden modal wide" id="graphsWindow" role="dialog" aria-labelledby="graphsHeader">
-        <header id="graphsHeader" class="modalHeader">Graphs</header>
+        <header id="graphsHeader" class="modalHeader" data-i18n>Graphs</header>
         <div id="graphsContainer" class="modalBody">
           <form id="graphsForm">
             <fieldset class="choice" id="graphsRangeSelect">
-              <legend class="visuallyHidden">Period</legend>
-              <input type="radio" class="graphsRange" name="graphsRange" id="graphsRange10" value="10" checked="checked"><label for="graphsRange10">10 years</label>
-              <input type="radio" class="graphsRange" name="graphsRange" id="graphsRange120" value="120"><label for="graphsRange120">120 years</label>
+              <legend class="visuallyHidden" data-i18n>Period</legend>
+              <input type="radio" class="graphsRange" name="graphsRange" id="graphsRange10" value="10" checked="checked"><label for="graphsRange10" data-i18n>10 years</label>
+              <input type="radio" class="graphsRange" name="graphsRange" id="graphsRange120" value="120"><label for="graphsRange120" data-i18n>120 years</label>
             </fieldset>
             <canvas id="graphsCanvas" width="520" height="240"></canvas>
             <fieldset class="choice graphsLegend" id="graphsSeriesSelect">
-              <legend class="visuallyHidden">Show</legend>
-              <input type="checkbox" class="graphsSeries" id="graphsRes" value="res" checked="checked"><label for="graphsRes"><span class="swatch" style="background: #4cc464"></span>Residential</label>
-              <input type="checkbox" class="graphsSeries" id="graphsCom" value="com" checked="checked"><label for="graphsCom"><span class="swatch" style="background: #5c9cff"></span>Commercial</label>
-              <input type="checkbox" class="graphsSeries" id="graphsInd" value="ind" checked="checked"><label for="graphsInd"><span class="swatch" style="background: #f8c838"></span>Industrial</label>
-              <input type="checkbox" class="graphsSeries" id="graphsMoney" value="money" checked="checked"><label for="graphsMoney"><span class="swatch" style="background: #6ee0d0"></span>Cash flow</label>
-              <input type="checkbox" class="graphsSeries" id="graphsCrime" value="crime" checked="checked"><label for="graphsCrime"><span class="swatch" style="background: #e04836"></span>Crime</label>
-              <input type="checkbox" class="graphsSeries" id="graphsPollution" value="pollution" checked="checked"><label for="graphsPollution"><span class="swatch" style="background: #b08850"></span>Pollution</label>
+              <legend class="visuallyHidden" data-i18n>Show</legend>
+              <input type="checkbox" class="graphsSeries" id="graphsRes" value="res" checked="checked"><label for="graphsRes"><span class="swatch" style="background: #4cc464"></span><span data-i18n>Residential</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsCom" value="com" checked="checked"><label for="graphsCom"><span class="swatch" style="background: #5c9cff"></span><span data-i18n>Commercial</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsInd" value="ind" checked="checked"><label for="graphsInd"><span class="swatch" style="background: #f8c838"></span><span data-i18n>Industrial</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsMoney" value="money" checked="checked"><label for="graphsMoney"><span class="swatch" style="background: #6ee0d0"></span><span data-i18n>Cash flow</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsCrime" value="crime" checked="checked"><label for="graphsCrime"><span class="swatch" style="background: #e04836"></span><span data-i18n>Crime</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsPollution" value="pollution" checked="checked"><label for="graphsPollution"><span class="swatch" style="background: #b08850"></span><span data-i18n>Pollution</span></label>
             </fieldset>
             <div class="modalButtons">
               <input type="submit" id="graphsOK" class="button primary dialogOK" value="OK">
@@ -350,49 +350,49 @@
           <div id="scenarioText" class="scenarioText"></div>
           <p id="scenarioGoal" class="scenarioGoal"></p>
           <form id="scenarioForm" class="modalButtons">
-            <button id="scenarioTitle" class="button cancel" type="button">Title screen</button>
-            <button id="scenarioRetry" class="button primary" type="button">Try again</button>
+            <button id="scenarioTitle" class="button cancel" type="button" data-i18n>Title screen</button>
+            <button id="scenarioRetry" class="button primary" type="button" data-i18n>Try again</button>
             <input type="submit" id="scenarioOK" class="button primary dialogOK" value="Take office">
           </form>
         </div>
       </div>
 
       <div class="hidden modal" id="disasterWindow" role="dialog" aria-labelledby="disasterHeader">
-        <header id="disasterHeader" class="modalHeader">Disasters</header>
+        <header id="disasterHeader" class="modalHeader" data-i18n>Disasters</header>
         <div id="disasterContainer" class="modalBody">
           <form id="disasterForm">
             <div id="disasterSelectContainer">
-              <label id="disasterLabel" for="disasterSelect">What disaster do you want to befall this unsuspecting world?</label>
+              <label id="disasterLabel" for="disasterSelect" data-i18n>What disaster do you want to befall this unsuspecting world?</label>
               <select id="disasterSelect">
-                <option id="disasterNone" value="None">None</option>
-                <option id="disasterMonster" value="Monster">Monster</option>
-                <option id="disasterFire" value="Fire">Fire</option>
-                <option id="disasterFlood" value="Flood">Flood</option>
-                <option id="disasterCrash" value="Crash">Crash</option>
-                <option id="disasterMeltdown" value="Meltdown">Meltdown</option>
-                <option id="disasterTornado" value="Tornado">Tornado</option>
-                <option id="disasterEarthquake" value="Earthquake">Earthquake</option>
+                <option id="disasterNone" value="None" data-i18n>None</option>
+                <option id="disasterMonster" value="Monster" data-i18n>Monster</option>
+                <option id="disasterFire" value="Fire" data-i18n="disaster|Fire">Fire</option>
+                <option id="disasterFlood" value="Flood" data-i18n>Flood</option>
+                <option id="disasterCrash" value="Crash" data-i18n="disaster|Crash">Crash</option>
+                <option id="disasterMeltdown" value="Meltdown" data-i18n>Meltdown</option>
+                <option id="disasterTornado" value="Tornado" data-i18n>Tornado</option>
+                <option id="disasterEarthquake" value="Earthquake" data-i18n>Earthquake</option>
               </select>
             </div>
             <div id="disasterButtons" class="modalButtons">
-              <button id="disasterCancel" class="button cancel">Cancel</button>
-              <input type="submit" id="disasterOK" class="button danger dialogOK" value="Unleash">
+              <button id="disasterCancel" class="button cancel" data-i18n>Cancel</button>
+              <input type="submit" id="disasterOK" class="button danger dialogOK" value="Unleash" data-i18n-value>
             </div>
           </form>
         </div>
       </div>
 
       <div class="hidden modal" id="queryWindow" role="dialog" aria-labelledby="queryHeader">
-        <header id="queryHeader" class="modalHeader">Query</header>
+        <header id="queryHeader" class="modalHeader" data-i18n>Query</header>
         <div id="queryContainer" class="modalBody">
           <div class="queryList">
             <dl class="keyValueList">
-              <dt>Zone</dt><dd id="queryZoneType"></dd>
-              <dt>Density</dt><dd id="queryDensity"></dd>
-              <dt>Value</dt><dd id="queryLandValue"></dd>
-              <dt>Crime</dt><dd id="queryCrime"></dd>
-              <dt>Pollution</dt><dd id="queryPollution"></dd>
-              <dt>Growth</dt><dd id="queryRate"></dd>
+              <dt data-i18n>Zone</dt><dd id="queryZoneType"></dd>
+              <dt data-i18n>Density</dt><dd id="queryDensity"></dd>
+              <dt data-i18n>Value</dt><dd id="queryLandValue"></dd>
+              <dt data-i18n>Crime</dt><dd id="queryCrime"></dd>
+              <dt data-i18n>Pollution</dt><dd id="queryPollution"></dd>
+              <dt data-i18n>Growth</dt><dd id="queryRate"></dd>
             </dl>
             <div id="queryDebugList" class="queryDebug hidden">
               <dl class="keyValueList">
@@ -444,7 +444,7 @@
       </div>
 
       <div class="hidden modal" id="congratsWindow" role="dialog" aria-labelledby="congratsHeader">
-        <header id="congratsHeader" class="modalHeader">Congratulations!</header>
+        <header id="congratsHeader" class="modalHeader" data-i18n>Congratulations!</header>
         <div id="congratsContainer" class="modalBody">
           <div id="congratsMessage" class="alignCenter">Congratulations!</div>
           <form id="congratsForm" class="modalButtons">
@@ -456,7 +456,7 @@
       <div class="hidden modal" id="nagWindow" role="dialog" aria-labelledby="nagHeader">
         <header id="nagHeader" class="modalHeader">KawaCity</header>
         <div id="nagContainer" class="modalBody">
-          <div id="nagMessage">
+          <div id="nagMessage" data-i18n-html="nag">
             Whoa! You've been playing this thing for half an hour?!? If you're enjoying it, Graeme McCutcheon, the author of micropolisJS on which KawaCity is based, would be glad to see your money reach <a class="nag" href="https://www.refuweegee.co.uk/your-donations" target="_blank" rel="noopener">Refuweegee</a>, a charity assisting refugees in Scotland.
           </div>
           <form id="nagForm" class="modalButtons">
@@ -466,10 +466,10 @@
       </div>
 
       <div class="hidden modal" id="saveWindow" role="dialog" aria-labelledby="saveHeader">
-        <header id="saveHeader" class="modalHeader">Save</header>
+        <header id="saveHeader" class="modalHeader" data-i18n>Save</header>
         <div id="saveContainer" class="modalBody">
           <div id="saveMessage" class="alignCenter">Game saved!</div>
-          <p class="alignCenter saveFile">Or <a id="saveDownload" href="#" download="city.kawacity">keep a copy as a file</a>, to open it from the title screen.</p>
+          <p class="alignCenter saveFile" data-i18n-html="saveFile">Or <a id="saveDownload" href="#" download="city.kawacity">keep a copy as a file</a>, to open it from the title screen.</p>
           <form id="saveForm" class="modalButtons">
             <input type="submit" id="saveOK" class="button primary dialogOK" value="OK">
           </form>
@@ -477,9 +477,9 @@
       </div>
 
       <div class="hidden modal" id="screenshotLinkWindow" role="dialog" aria-labelledby="screenshotLinkHeader">
-        <header id="screenshotLinkHeader" class="modalHeader">Take picture</header>
+        <header id="screenshotLinkHeader" class="modalHeader" data-i18n>Take picture</header>
         <div id="screenshotLinkContainer" class="modalBody">
-          <div id="screenshotLinkMessage" class="alignCenter">
+          <div id="screenshotLinkMessage" class="alignCenter" data-i18n-html="pictureReady">
             Your picture is ready: <a id="screenshotLink" target="_blank" rel="noopener" download="kawacity.png">download it</a>.
           </div>
           <form id="screenshotLinkForm" class="modalButtons">
@@ -489,16 +489,16 @@
       </div>
 
       <div class="hidden modal" id="screenshotWindow" role="dialog" aria-labelledby="screenshotHeader">
-        <header id="screenshotHeader" class="modalHeader">Take picture</header>
+        <header id="screenshotHeader" class="modalHeader" data-i18n>Take picture</header>
         <div id="screenshotContainer" class="modalBody">
           <form id="screenshotForm">
             <fieldset id="screenshotContainerDiv" class="choice">
-              <legend class="fieldLabel">Area to take a picture of</legend>
-              <input type="radio" class="screenshotType" name="screenshotType" id="screenshotVisible" value="visible" checked="checked"><label for="screenshotVisible">Visible map</label>
-              <input type="radio" class="screenshotType" name="screenshotType" id="screenshotAll" value="all"><label for="screenshotAll">Full map</label>
+              <legend class="fieldLabel" data-i18n>Area to take a picture of</legend>
+              <input type="radio" class="screenshotType" name="screenshotType" id="screenshotVisible" value="visible" checked="checked"><label for="screenshotVisible" data-i18n>Visible map</label>
+              <input type="radio" class="screenshotType" name="screenshotType" id="screenshotAll" value="all"><label for="screenshotAll" data-i18n>Full map</label>
             </fieldset>
             <div class="modalButtons">
-              <button id="screenshotCancel" class="button cancel">Cancel</button>
+              <button id="screenshotCancel" class="button cancel" data-i18n>Cancel</button>
               <input type="submit" id="screenshotOK" class="button primary dialogOK" value="OK">
             </div>
           </form>
@@ -506,45 +506,50 @@
       </div>
 
       <div class="hidden modal" id="settingsWindow" role="dialog" aria-labelledby="settingsHeader">
-        <header id="settingsHeader" class="modalHeader">Settings</header>
+        <header id="settingsHeader" class="modalHeader" data-i18n>Settings</header>
         <div id="settingsContainer" class="modalBody">
           <form id="settingsForm">
             <div id="settingsFormContainer">
               <fieldset id="autoBudgetSelect" class="choice">
-                <legend class="fieldLabel">Automatic budget</legend>
-                <input type="radio" class="autoBudgetSetting" name="autoBudgetSetting" id="autoBudgetYes" value="true" checked="checked"><label for="autoBudgetYes">On</label>
-                <input type="radio" class="autoBudgetSetting" name="autoBudgetSetting" id="autoBudgetNo" value="false"><label for="autoBudgetNo">Off</label>
+                <legend class="fieldLabel" data-i18n>Automatic budget</legend>
+                <input type="radio" class="autoBudgetSetting" name="autoBudgetSetting" id="autoBudgetYes" value="true" checked="checked"><label for="autoBudgetYes" data-i18n>On</label>
+                <input type="radio" class="autoBudgetSetting" name="autoBudgetSetting" id="autoBudgetNo" value="false"><label for="autoBudgetNo" data-i18n>Off</label>
               </fieldset>
               <fieldset id="autoBulldozeSelect" class="choice">
-                <legend class="fieldLabel">Automatic bulldozing</legend>
-                <input type="radio" class="autoBulldozeSetting" name="autoBulldozeSetting" id="autoBulldozeYes" value="true" checked="checked"><label for="autoBulldozeYes">On</label>
-                <input type="radio" class="autoBulldozeSetting" name="autoBulldozeSetting" id="autoBulldozeNo" value="false"><label for="autoBulldozeNo">Off</label>
+                <legend class="fieldLabel" data-i18n>Automatic bulldozing</legend>
+                <input type="radio" class="autoBulldozeSetting" name="autoBulldozeSetting" id="autoBulldozeYes" value="true" checked="checked"><label for="autoBulldozeYes" data-i18n>On</label>
+                <input type="radio" class="autoBulldozeSetting" name="autoBulldozeSetting" id="autoBulldozeNo" value="false"><label for="autoBulldozeNo" data-i18n>Off</label>
               </fieldset>
               <fieldset id="speedSelect" class="choice">
-                <legend class="fieldLabel">Speed</legend>
-                <input type="radio" class="speedSetting" name="speedSetting" id="speedSlow" value="1" checked="checked"><label for="speedSlow">Slow</label>
-                <input type="radio" class="speedSetting" name="speedSetting" id="speedMed" value="2"><label for="speedMed">Normal</label>
-                <input type="radio" class="speedSetting" name="speedSetting" id="speedFast" value="3"><label for="speedFast">Fast</label>
+                <legend class="fieldLabel" data-i18n>Speed</legend>
+                <input type="radio" class="speedSetting" name="speedSetting" id="speedSlow" value="1" checked="checked"><label for="speedSlow" data-i18n>Slow</label>
+                <input type="radio" class="speedSetting" name="speedSetting" id="speedMed" value="2"><label for="speedMed" data-i18n>Normal</label>
+                <input type="radio" class="speedSetting" name="speedSetting" id="speedFast" value="3"><label for="speedFast" data-i18n>Fast</label>
               </fieldset>
               <fieldset id="levelSelect" class="choice">
-                <legend class="fieldLabel">Difficulty</legend>
-                <input type="radio" class="levelSetting" name="levelSetting" id="levelEasy" value="0" checked="checked"><label for="levelEasy">Easy</label>
-                <input type="radio" class="levelSetting" name="levelSetting" id="levelMed" value="1"><label for="levelMed">Medium</label>
-                <input type="radio" class="levelSetting" name="levelSetting" id="levelHard" value="2"><label for="levelHard">Hard</label>
+                <legend class="fieldLabel" data-i18n>Difficulty</legend>
+                <input type="radio" class="levelSetting" name="levelSetting" id="levelEasy" value="0" checked="checked"><label for="levelEasy" data-i18n>Easy</label>
+                <input type="radio" class="levelSetting" name="levelSetting" id="levelMed" value="1"><label for="levelMed" data-i18n>Medium</label>
+                <input type="radio" class="levelSetting" name="levelSetting" id="levelHard" value="2"><label for="levelHard" data-i18n>Hard</label>
               </fieldset>
               <fieldset id="disastersSelect" class="choice">
-                <legend class="fieldLabel">Random disasters</legend>
-                <input type="radio" class="enableDisastersSetting" name="disastersSetting" id="disastersYes" value="true" checked="checked"><label for="disastersYes">On</label>
-                <input type="radio" class="enableDisastersSetting" name="disastersSetting" id="disastersNo" value="false"><label for="disastersNo">Off</label>
+                <legend class="fieldLabel" data-i18n>Random disasters</legend>
+                <input type="radio" class="enableDisastersSetting" name="disastersSetting" id="disastersYes" value="true" checked="checked"><label for="disastersYes" data-i18n>On</label>
+                <input type="radio" class="enableDisastersSetting" name="disastersSetting" id="disastersNo" value="false"><label for="disastersNo" data-i18n>Off</label>
               </fieldset>
               <fieldset id="dayNightSelect" class="choice">
-                <legend class="fieldLabel">Day and night</legend>
-                <input type="radio" class="dayNightSetting" name="dayNightSetting" id="dayNightYes" value="true" checked="checked"><label for="dayNightYes">On</label>
-                <input type="radio" class="dayNightSetting" name="dayNightSetting" id="dayNightNo" value="false"><label for="dayNightNo">Off</label>
+                <legend class="fieldLabel" data-i18n>Day and night</legend>
+                <input type="radio" class="dayNightSetting" name="dayNightSetting" id="dayNightYes" value="true" checked="checked"><label for="dayNightYes" data-i18n>On</label>
+                <input type="radio" class="dayNightSetting" name="dayNightSetting" id="dayNightNo" value="false"><label for="dayNightNo" data-i18n>Off</label>
+              </fieldset>
+              <fieldset id="languageSelect" class="choice">
+                <legend class="fieldLabel" data-i18n>Language</legend>
+                <input type="radio" class="languageSetting" name="languageSetting" id="languageEn" value="en" checked="checked"><label for="languageEn" lang="en">English</label>
+                <input type="radio" class="languageSetting" name="languageSetting" id="languageFr" value="fr"><label for="languageFr" lang="fr">Français</label>
               </fieldset>
             </div>
             <div class="modalButtons">
-              <button id="settingsCancel" class="button cancel">Cancel</button>
+              <button id="settingsCancel" class="button cancel" data-i18n>Cancel</button>
               <input type="submit" id="settingsOK" class="button primary dialogOK" value="OK">
             </div>
           </form>
@@ -556,12 +561,12 @@
         <div id="debugContainer" class="modalBody">
           <form id="debugForm">
             <fieldset id="debugFundContainer" class="choice">
-              <legend class="fieldLabel">Add funds</legend>
-              <input type="radio" class="debugAdd" name="debugAdd" id="fundsYes" value="true" checked="checked"><label for="fundsYes">Yes</label>
-              <input type="radio" class="debugAdd" name="debugAdd" id="fundsNo" value="false"><label for="fundsNo">No</label>
+              <legend class="fieldLabel" data-i18n>Add funds</legend>
+              <input type="radio" class="debugAdd" name="debugAdd" id="fundsYes" value="true" checked="checked"><label for="fundsYes" data-i18n>Yes</label>
+              <input type="radio" class="debugAdd" name="debugAdd" id="fundsNo" value="false"><label for="fundsNo" data-i18n>No</label>
             </fieldset>
             <div class="modalButtons">
-              <button id="debugCancel" class="button cancel">Cancel</button>
+              <button id="debugCancel" class="button cancel" data-i18n>Cancel</button>
               <input type="submit" id="debugOK" class="button primary dialogOK" value="OK">
             </div>
           </form>
@@ -570,8 +575,8 @@
     </div>
 
     <footer id="ticker" class="initialHidden">
-      <div class="tickerLabel" aria-hidden="true">Kawa News</div>
-      <div class="tickerTrack" role="marquee" aria-label="City news"></div>
+      <div class="tickerLabel" aria-hidden="true" data-i18n>Kawa News</div>
+      <div class="tickerTrack" role="marquee" aria-label="City news" data-i18n-aria-label></div>
     </footer>
     <script>
       // If we got here, then we have script. Note we don't necessarily have jQuery though

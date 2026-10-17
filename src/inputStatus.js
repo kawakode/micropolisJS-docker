@@ -20,6 +20,7 @@ import $ from "jquery";
 import { EventEmitter } from './eventEmitter.js';
 import { GameCanvas } from './gameCanvas.js';
 import { GameTools } from './gameTools.js';
+import { I18n } from './i18n.js';
 import * as Messages from './messages.ts';
 import { MiscUtils } from './miscUtils.js';
 
@@ -702,7 +703,7 @@ InputStatus.prototype.selectTool = function(toolName, keep) {
   this.currentTool = this.gameTools[toolName];
   this.toolColour = button.attr('data-colour');
   this._cancelGesture();
-  $(toolOutputID).text(button.attr('data-label') || 'Tools');
+  $(toolOutputID).text(I18n.t(button.attr('data-label') || 'Tools'));
 
   this._emitEvent(Messages.TOOL_CHANGED, toolName);
 };
@@ -716,7 +717,7 @@ InputStatus.prototype.clearTool = function() {
   this.toolColour = '';
   this._cancelGesture();
   $('.toolButton.selected').removeClass('selected').addClass('unselected').attr('aria-pressed', 'false');
-  $(toolOutputID).text('Tools');
+  $(toolOutputID).text(I18n.t('Tools'));
 
   this._emitEvent(Messages.TOOL_CHANGED, null);
 };

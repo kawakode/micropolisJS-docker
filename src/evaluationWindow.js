@@ -13,9 +13,11 @@
 
 import $ from "jquery";
 
+import { I18n } from './i18n.js';
 import { ModalWindow } from './modalWindow.js';
 import { EVAL_WINDOW_CLOSED } from './messages.ts';
 import { Text } from './text.js';
+
 
 var EvaluationWindow = ModalWindow(function() {
   $(evaluationFormID).on('submit', submit.bind(this));
@@ -39,12 +41,12 @@ var submit = function(e) {
 
 
 EvaluationWindow.prototype._populateWindow = function(evaluation) {
-  $('#evalYes').text(evaluation.cityYes);
-  $('#evalNo').text(100 - evaluation.cityYes);
+  $('#evalYes').text(I18n.t('{n}%', {n: evaluation.cityYes}));
+  $('#evalNo').text(I18n.t('{n}%', {n: 100 - evaluation.cityYes}));
   for (var i = 0; i < 4; i++) {
     var problemNo = evaluation.getProblemNumber(i);
     if (problemNo !== null) {
-      var text = Text.problems[problemNo] + ' (' + evaluation.getProblemVotes(i) + '%)';
+      var text = I18n.t(Text.problems[problemNo]) + ' (' + I18n.t('{n}%', {n: evaluation.getProblemVotes(i)}) + ')';
       $('#evalProb' + (i + 1)).text(text);
       $('#evalProb' + (i + 1)).show();
     } else {
@@ -52,13 +54,13 @@ EvaluationWindow.prototype._populateWindow = function(evaluation) {
     }
   }
 
-  $('#evalPopulation').text(evaluation.cityPop);
-  $('#evalMigration').text(evaluation.cityPopDelta);
-  $('#evalValue').text(evaluation.cityAssessedValue);
-  $('#evalLevel').text(Text.gameLevel[evaluation.gameLevel]);
-  $('#evalClass').text(Text.cityClass[evaluation.cityClass]);
-  $('#evalScore').text(evaluation.cityScore);
-  $('#evalScoreDelta').text(evaluation.cityScoreDelta);
+  $('#evalPopulation').text(I18n.formatNumber(evaluation.cityPop));
+  $('#evalMigration').text(I18n.formatNumber(evaluation.cityPopDelta));
+  $('#evalValue').text(I18n.money(evaluation.cityAssessedValue));
+  $('#evalLevel').text(I18n.t(Text.gameLevel[evaluation.gameLevel]));
+  $('#evalClass').text(I18n.t(Text.cityClass[evaluation.cityClass]));
+  $('#evalScore').text(I18n.formatNumber(evaluation.cityScore));
+  $('#evalScoreDelta').text(I18n.formatNumber(evaluation.cityScoreDelta));
 };
 
 
