@@ -1,6 +1,6 @@
 {
   "name": "kawacity",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "KawaCity, a city simulator based on micropolisJS, a port of the open-source simulator \"Micropolis\" to Javascript/HTML5",
   "repository": {
     "type": "git",
@@ -15,7 +15,7 @@
     "watch": "webpack --watch --mode development",
     "test": "jest",
     "test:watch": "jest --watch",
-    "lint": "tslint src/*.ts test/*.ts",
+    "lint": "tsc --noEmit --skipLibCheck -p .",
     "dev": "webpack serve --mode development",
     "production": "webpack serve --mode production"
   },

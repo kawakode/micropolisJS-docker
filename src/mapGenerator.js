@@ -16,19 +16,30 @@ import { GameMap } from './gameMap.js';
 import { Position } from './position.ts';
 import { Random } from './random.ts';
 import { BLBNBIT, BULLBIT } from "./tileFlags.ts";
-import { CHANNEL, DIRT, REDGE, RIVER, WATER_LOW, WATER_HIGH, WOODS, WOODS_LOW, WOODS_HIGH } from "./tileValues.ts";
+import { CHANNEL, DIRT, REDGE, RIVER, TILE_INVALID, WATER_LOW, WATER_HIGH, WOODS, WOODS_LOW, WOODS_HIGH } from "./tileValues.ts";
 
-var TERRAIN_CREATE_ISLAND;
+// As in the original game, -1 means "pick at random": the land may be an island (1), not (0), or either (-1);
+// the tree level sets how many forests grow, the lake level how many lakes there are, and the curve level how
+// much rivers wind (0: no river)
+var TERRAIN_CREATE_ISLAND = -1;
 var TERRAIN_TREE_LEVEL = -1;
 var TERRAIN_LAKE_LEVEL = -1;
 var TERRAIN_CURVE_LEVEL = -1;
 var ISLAND_RADIUS = 18;
 
-var MapGenerator = function(w, h) {
+// options: {island, trees, lakes, curve}, each -1 (random) by default
+var MapGenerator = function(w, h, options) {
   w = w || 120;
   h = h || 100;
+  options = options || {};
 
-  TERRAIN_CREATE_ISLAND = Random.getRandom(2) - 1;
+  var level = function(value) {
+    return typeof(value) === 'number' ? value : -1;
+  };
+  TERRAIN_CREATE_ISLAND = level(options.island);
+  TERRAIN_TREE_LEVEL = level(options.trees);
+  TERRAIN_LAKE_LEVEL = level(options.lakes);
+  TERRAIN_CURVE_LEVEL = level(options.curve);
 
   var map = new GameMap(w, h);
   // Construct land.

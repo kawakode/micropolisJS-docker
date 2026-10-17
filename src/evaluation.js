@@ -36,7 +36,7 @@ Evaluation.prototype.cityEvaluation = function(simData) {
 
   if (census.totalPop > 0) {
     for (var i = 0; i < NUMPROBLEMS; i++)
-      problemData.push(0);
+      problemData[i] = 0;
 
     this.getAssessedValue(census);
     this.getPopulation(census);
@@ -67,7 +67,7 @@ Evaluation.prototype.evalInit = function() {
 };
 
 
-var saveProps = ['cityClass', 'cityScore'];
+var saveProps = ['cityClass', 'cityScore', 'cityPop'];
 
 Evaluation.prototype.save = function(saveData) {
   for (var i = 0, l = saveProps.length; i < l; i++)
@@ -78,6 +78,12 @@ Evaluation.prototype.save = function(saveData) {
 Evaluation.prototype.load = function(saveData) {
   for (var i = 0, l = saveProps.length; i < l; i++)
     this[saveProps[i]] = saveData[saveProps[i]];
+
+  // Older saves did not record the population: recompute it from the census data
+  if (typeof(this.cityPop) !== 'number')
+    this.cityPop = ((saveData.resPop || 0) + ((saveData.comPop || 0) + (saveData.indPop || 0)) * 8) * 20;
+
+  this.cityClassLast = this.cityClass;
 };
 
 
@@ -94,40 +100,61 @@ Evaluation.prototype.getAssessedValue = function(census) {
   value += census.airportPop * 10000;
   value += census.coalPowerPop * 3000;
   value += census.nuclearPowerPop * 6000;
+  value += census.gasPowerPop * 2000;
+  value += census.solarPowerPop * 2500;
+  value += census.windPowerPop * 200;
+  value += census.schoolPop * 1500;
+  value += census.universityPop * 4000;
+  value += census.parkPop * 300;
 
   this.cityAssessedValue = value * 1000;
 };
 
 
+// The population of the city, from the census (with no side effects)
+Evaluation.prototype.computePopulation = function(census) {
+  return (census.resPop + (census.comPop + census.indPop) * 8) * 20;
+};
+
+
+// The class of a city of the given population (with no side effects)
+Evaluation.prototype.classify = function(cityPopulation) {
+  if (cityPopulation > 500000)
+    return Evaluation.CC_MEGALOPOLIS;
+
+  if (cityPopulation > 100000)
+    return Evaluation.CC_METROPOLIS;
+
+  if (cityPopulation > 50000)
+    return Evaluation.CC_CAPITAL;
+
+  if (cityPopulation > 10000)
+    return Evaluation.CC_CITY;
+
+  if (cityPopulation > 2000)
+    return Evaluation.CC_TOWN;
+
+  return Evaluation.CC_VILLAGE;
+};
+
+
+// Called once a year by the city evaluation: the net migration is the change since the last evaluation
 Evaluation.prototype.getPopulation = function(census) {
   var oldPopulation = this.cityPop;
-  this.cityPop = (census.resPop + (census.comPop + census.indPop) * 8) * 20;
+  this.cityPop = this.computePopulation(census);
   this.cityPopDelta = this.cityPop - oldPopulation;
 
   if (this.cityPopDelta !== 0)
     this._emitEvent(POPULATION_UPDATED, this.cityPop);
+
+  this.getCityClass(this.cityPop);
 
   return this.cityPop;
 };
 
 
 Evaluation.prototype.getCityClass = function(cityPopulation) {
-  this.cityClass = Evaluation.CC_VILLAGE;
-
-  if (cityPopulation > 2000)
-      this.cityClass = Evaluation.CC_TOWN;
-
-  if (cityPopulation > 10000)
-      this.cityClass = Evaluation.CC_CITY;
-
-  if (cityPopulation > 50000)
-      this.cityClass = Evaluation.CC_CAPITAL;
-
-  if (cityPopulation > 100000)
-      this.cityClass = Evaluation.CC_METROPOLIS;
-
-  if (cityPopulation > 500000)
-      this.cityClass = Evaluation.CC_MEGALOPOLIS;
+  this.cityClass = this.classify(cityPopulation);
 
   if (this.cityClass !== this.cityClassLast) {
     this.cityClassLast = this.cityClass;
@@ -164,6 +191,12 @@ Evaluation.prototype.voteProblems = function() {
 
 
 var getTrafficAverage = function(blockMaps, census) {
+  return census.trafficAverage = computeTrafficAverage(blockMaps);
+};
+
+
+// The average traffic on developed land (with no side effects)
+var computeTrafficAverage = function(blockMaps) {
   var trafficDensityMap = blockMaps.trafficDensityMap;
   var landValueMap = blockMaps.landValueMap;
 
@@ -179,9 +212,7 @@ var getTrafficAverage = function(blockMaps, census) {
     }
   }
 
-  var trafficAverage = census.trafficAverage = Math.floor(trafficTotal / count) * 2.4;
-
-  return trafficAverage;
+  return Math.trunc(trafficTotal / count * 2.4);
 };
 
 
@@ -241,7 +272,7 @@ Evaluation.prototype.getScore = function(simData) {
     score += problemData[i];
 
   score = Math.floor(score / 3);
-  score = (250 - Math.min(score, 250)) * 4;
+  score = MiscUtils.clamp((256 - Math.min(score, 256)) * 4, 0, 1000);
 
   // Penalise the player by 15% if demand for any type of zone is capped due
   // to lack of suitable buildings
@@ -288,7 +319,7 @@ Evaluation.prototype.getScore = function(simData) {
     scale = (this.cityPopDelta / this.cityPop) + 1.0;
   } else if (this.cityPopDelta < 0) {
     // If the city is shrinking, scale down by up to 5% based on level of outward migration
-    scale = 0.95 + Math.floor(this.cityPopDelta / (this.cityPop - this.cityPopDelta));
+    scale = 0.95 + this.cityPopDelta / (this.cityPop - this.cityPopDelta);
   }
 
   score = Math.round(score * scale);
@@ -321,6 +352,20 @@ Evaluation.prototype.doVotes = function() {
     if (this.cityScore > voterExpectation)
       this.cityYes++;
   }
+};
+
+
+Evaluation.prototype.computeTrafficAverage = function(blockMaps) {
+  return computeTrafficAverage(blockMaps);
+};
+
+
+// The share of the voters who named the i-th worst problem, in percent
+Evaluation.prototype.getProblemVotes = function(i) {
+  if (i < 0 || i >= NUM_COMPLAINTS || !this.problemVotes[i])
+    return 0;
+
+  return this.problemVotes[i].voteCount;
 };
 
 

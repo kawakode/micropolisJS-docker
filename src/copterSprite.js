@@ -103,7 +103,7 @@ CopterSprite.prototype.move = function(spriteCycle, disasterManager, blockMaps) 
 CopterSprite.prototype.explodeSprite = function() {
   this.frame = 0;
   this.spriteManager.makeExplosionAt(this.x, this.y);
-  this._emitEvent(HELICOPTER_CRASHED, {x: this.worldX, y: this.worldY});
+  this._emitEvent(HELICOPTER_CRASHED, {showable: true, x: this.worldX, y: this.worldY});
 };
 
 

@@ -33,9 +33,10 @@ function ExplosionSprite(map, spriteManager, x, y) {
 BaseSprite(ExplosionSprite);
 
 
+// x and y are in pixels
 ExplosionSprite.prototype.startFire = function(x, y) {
-  x = this.worldX;
-  y = this.worldY;
+  x = x >> 4;
+  y = y >> 4;
 
   if (!this.map.testBounds(x, y))
     return;
@@ -71,7 +72,7 @@ ExplosionSprite.prototype.move = function(spriteCycle, disasterManager, blockMap
 
     this.startFire(this.x, this.y);
     this.startFire(this.x - 16, this.y - 16);
-    this.startFire(this.x + 16, this.y + 16);
+    this.startFire(this.x + 16, this.y - 16);
     this.startFire(this.x - 16, this.y + 16);
     this.startFire(this.x + 16, this.y + 16);
   }

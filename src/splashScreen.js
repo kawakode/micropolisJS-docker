@@ -13,12 +13,15 @@
 
 import $ from "jquery";
 
+import { CityFile } from './cityFile.js';
 import { Config } from './config.js';
 import { Game } from './game.js';
 import { MapGenerator } from './mapGenerator.js';
+import { Scenarios } from './scenarios.js';
 import { Simulation } from './simulation.js';
 import { SplashCanvas } from './splashCanvas.js';
 import { Storage } from './storage.js';
+import { BIT_MASK } from './tileFlags.ts';
 
 /*
  *
@@ -32,11 +35,15 @@ var onresize = null;
 
 
 // If the window is initially too small, try and relaunch if it gets bigger
-var makeResizeListener = function(tileSet, spriteSheet) {
-  return function(tileSet, spriteSheet, e) {
-    $(window).off('resize');
-    var s = new SplashScreen(tileSet, spriteSheet);
-  }.bind(null, tileSet, spriteSheet);
+var makeResizeListener = function(tileSet, snowTileSet, spriteSheet) {
+  return function(e) {
+    if ($('#tooSmall').is(':visible'))
+      return;
+
+    $(window).off('resize', onresize);
+    onresize = null;
+    var s = new SplashScreen(tileSet, snowTileSet, spriteSheet);
+  };
 };
 
 
@@ -44,21 +51,34 @@ function SplashScreen(tileSet, snowTileSet, spriteSheet) {
   // We don't launch the game if the screen is too small, however, we should retain the right to do so
   // should the situation change...
   if ($('#tooSmall').is(':visible')) {
-    onresize = makeResizeListener(tileSet, spriteSheet);
-    $(window).on('resize', onresize);
+    if (onresize === null) {
+      onresize = makeResizeListener(tileSet, snowTileSet, spriteSheet);
+      $(window).on('resize', onresize);
+    }
     return;
   }
 
   this.tileSet = tileSet;
   this.snowTileSet = snowTileSet;
   this.spriteSheet = spriteSheet;
-  this.map = MapGenerator();
+  this.map = MapGenerator(120, 100, mapOptions());
 
   // Set up listeners on buttons. When play is clicked, we will move on to get the player's desired
   // difficulty level and city name before launching the game properly
   $('#splashGenerate').click(regenerateMap.bind(this));
+  $('#mapOptions select').on('change', regenerateMap.bind(this));
   $('#splashPlay').click(acquireNameAndDifficulty.bind(this));
   $('#splashLoad').click(handleLoad.bind(this));
+  $('#splashScenarios').click(showScenarios.bind(this));
+  $('#splashOpen').click(function(e) {
+    e.preventDefault();
+    $('#splashFile').val('').click();
+  });
+  $('#splashFile').on('change', openFile.bind(this));
+  $('#pickerBack').click(hideScenarios.bind(this));
+  $('#pickerPlay').click(playScenario.bind(this));
+  this._scenarioGames = {};
+  this._scenarioID = Scenarios.list[0].id;
 
   // Conditionally enable load/save buttons
   $('#saveRequest').prop('disabled', !Storage.canStore);
@@ -71,14 +91,244 @@ function SplashScreen(tileSet, snowTileSet, spriteSheet) {
   // Let's get some bits on screen!
   $('.awaitGeneration').toggle();
   $('#splashPlay').focus();
+
+  // Playing a scenario again (see Game) comes back here with the scenario in the address
+  var match = /^#scenario=([a-z]+)$/.exec(window.location.hash);
+  if (match && Scenarios.get(match[1])) {
+    if (window.history && window.history.replaceState)
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    this._scenarioID = match[1];
+    playScenario.call(this);
+  }
 }
+
+
+// The terrain the player asked for (see MapGenerator)
+var mapOptions = function() {
+  var water = $('#mapWater').val();
+  var number = function(id) {
+    var value = parseInt($(id).val(), 10);
+    return isNaN(value) ? -1 : value;
+  };
+
+  return {
+    island: number('#mapLand'),
+    trees: number('#mapTrees'),
+    // No water at all, a river and the odd pond, or a river and many lakes
+    curve: water === 'none' ? 0 : -1,
+    lakes: water === 'none' ? 0 : (water === 'some' ? 2 : (water === 'lots' ? 24 : -1))
+  };
+};
+
+
+// Launches the game with the given saved game (from storage, a file, or a scenario). We won't return from here
+var launch = function(savedGame) {
+  // Remove installed event listeners
+  $('#splashLoad, #splashGenerate, #splashPlay, #splashScenarios, #splashOpen, #pickerBack, #pickerPlay').off('click');
+  $('#splashFile, #mapOptions select').off('change');
+
+  // Hide the title screen
+  $('#splash').hide();
+  $('#scenarioPicker').hide();
+
+  var g = new Game(savedGame, this.tileSet, this.snowTileSet, this.spriteSheet,
+                   savedGame._gameLevel || Simulation.LEVEL_EASY, savedGame.name);
+};
+
+
+var showError = function(message) {
+  $('#splashError').text(message || '');
+};
+
+
+// Opens a city file: a game kept with "Save", or a city file of the original game
+var openFile = function(e) {
+  var file = e.target.files && e.target.files[0];
+  if (!file)
+    return;
+
+  showError('');
+  var name = file.name.replace(/\.[^.]*$/, '').replace(/_/g, ' ').slice(0, 15);
+  name = name.charAt(0).toUpperCase() + name.slice(1);
+  var reader = new FileReader();
+
+  reader.onload = function() {
+    var buffer = reader.result;
+    var savedGame = null;
+
+    if (CityFile.isCityFile(buffer)) {
+      try {
+        savedGame = CityFile.read(buffer, {name: name});
+      } catch (err) {
+        savedGame = null;
+      }
+    } else {
+      savedGame = Storage.parseSavedGame(new TextDecoder().decode(buffer));
+    }
+
+    if (savedGame === null) {
+      showError('Sorry, KawaCity can\'t open this file. Choose a city saved from KawaCity, or a city file (.cty) of the original game.');
+      return;
+    }
+
+    launch.call(this, savedGame);
+  }.bind(this);
+
+  reader.onerror = function() {
+    showError('Sorry, the file could not be read.');
+  };
+
+  reader.readAsArrayBuffer(file);
+};
+
+
+// --- Scenarios and sample cities ---
+
+var showScenarios = function(e) {
+  if (e)
+    e.preventDefault();
+
+  if (!this.scenarioCanvas) {
+    this.scenarioCanvas = new SplashCanvas('scenarioPreview', this.tileSet, 'scenarioPreviewCanvas');
+    $('.pickerTab').on('change', function() {
+      showTab.call(this, $('.pickerTab:checked').val());
+    }.bind(this));
+  }
+
+  $('#splash').hide();
+  $('#scenarioPicker').show();
+  showTab.call(this, this._pickerTab || 'scenarios');
+  $('#scenarioList .scenarioChoice[aria-selected="true"]').focus();
+};
+
+
+var hideScenarios = function(e) {
+  if (e)
+    e.preventDefault();
+
+  $('#scenarioPicker').hide();
+  $('#splash').show();
+  $('#splashScenarios').focus();
+};
+
+
+// Lists the scenarios or the sample cities
+var showTab = function(tab) {
+  this._pickerTab = tab;
+  $('.pickerTab').each(function(i, element) {
+    $(element).prop('checked', $(element).val() === tab);
+  });
+
+  var items = tab === 'cities' ? Scenarios.cities : Scenarios.list;
+  $('#scenarioList').empty();
+  items.forEach(function(item) {
+    var choice = $('<button type="button" class="scenarioChoice" role="option">')
+      .attr('data-id', item.id)
+      .append($('<span>').text(item.name))
+      .on('click', function() { select.call(this, item.id); }.bind(this))
+      .appendTo('#scenarioList');
+    if (item.year)
+      choice.append($('<span class="year">').text(item.year));
+  }, this);
+
+  $('#pickerPlay').text(tab === 'cities' ? 'Play this city' : 'Play this scenario');
+  select.call(this, tab === 'cities' ? (this._cityID || Scenarios.cities[0].id) : this._scenarioID);
+};
+
+
+// The saved game of a scenario or a city, fetched once
+var getGame = function(tab, id) {
+  var key = tab + ':' + id;
+  if (!this._scenarioGames[key]) {
+    var version = $('#scenarioPicker').attr('data-version');
+    this._scenarioGames[key] = tab === 'cities' ? Scenarios.loadCity(id, version) : Scenarios.load(id, version);
+  }
+
+  return this._scenarioGames[key];
+};
+
+
+var select = function(id) {
+  var tab = this._pickerTab || 'scenarios';
+  var scenario = tab === 'cities' ? null : Scenarios.get(id);
+
+  if (tab === 'cities')
+    this._cityID = id;
+  else
+    this._scenarioID = id;
+
+  $('#scenarioList .scenarioChoice').each(function(i, element) {
+    $(element).attr('aria-selected', $(element).attr('data-id') === id ? 'true' : 'false');
+  });
+
+  $('#pickerText').empty();
+  if (scenario) {
+    $('#pickerPlace').text(scenario.place.toUpperCase() + '  ' + scenario.year);
+    scenario.text.forEach(function(text) {
+      $('<p>').text(text).appendTo('#pickerText');
+    });
+    $('#pickerGoal').show().text('Goal: ' + Scenarios.GOAL_TEXT[scenario.goal] + ' within ' +
+                                 Math.round(scenario.scoreWait / 48) + ' years.');
+  } else {
+    $('#pickerPlace').text(Scenarios.getCity(id).name.toUpperCase());
+    $('#pickerGoal').hide();
+  }
+
+  getGame.call(this, tab, id).then(function(savedGame) {
+    // The player may have moved on to another one meanwhile
+    var current = tab === 'cities' ? this._cityID : this._scenarioID;
+    if (this._pickerTab !== tab || current !== id)
+      return;
+
+    if (!scenario) {
+      // A short description of the city
+      var city = Scenarios.getCity(id);
+      var population = (savedGame.resPop + (savedGame.comPop + savedGame.indPop) * 8) * 20;
+      var text = city.empty ? 'An untouched landscape, waiting for its first settlers.' :
+                 'In ' + (1900 + Math.floor(savedGame._cityTime / 48)) + ', ' + population.toLocaleString('en-US') +
+                 ' people live here, and the city has $' + savedGame.totalFunds.toLocaleString('en-US') + ' in the bank.';
+      $('#pickerText').empty().append($('<p>').text(text));
+    }
+
+    var map = savedGame.map;
+    this.scenarioCanvas.paint({width: savedGame.width, height: savedGame.height, getTileValue: function(x, y) {
+      return map[y * savedGame.width + x].value & BIT_MASK;
+    }});
+  }.bind(this)).catch(function(err) {
+    console.error(err);
+  });
+};
+
+
+var playScenario = function(e) {
+  if (e)
+    e.preventDefault();
+
+  var tab = this._pickerTab || 'scenarios';
+  var id = tab === 'cities' ? this._cityID : this._scenarioID;
+  $('#pickerPlay').prop('disabled', true);
+
+  getGame.call(this, tab, id).then(function(savedGame) {
+    // A fresh copy: the cached one is only for the preview
+    var game = JSON.parse(JSON.stringify(savedGame));
+    game.isSavedGame = true;
+    if (tab !== 'cities')
+      game.scenarioBriefing = true;
+    launch.call(this, game);
+  }.bind(this)).catch(function(err) {
+    console.error(err);
+    $('#pickerPlay').prop('disabled', false);
+    hideScenarios.call(this);
+    showError('Sorry, the city could not be loaded.');
+  }.bind(this));
+};
 
 
 // Generate a new map at the user's request, and paint it
 var regenerateMap = function(e) {
   e.preventDefault();
 
-  this.map = MapGenerator();
+  this.map = MapGenerator(120, 100, mapOptions());
   this.splashCanvas.paint(this.map);
 };
 
@@ -92,16 +342,7 @@ var handleLoad = function(e) {
   if (savedGame === null)
     return;
 
-  // Remove installed event listeners
-  $('#splashLoad').off('click');
-  $('#splashGenerate').off('click');
-  $('#splashPlay').off('click');
-
-  // Hide the splashscreen UI
-  $('#splash').toggle();
-
-  // Launch
-  var g = new Game(savedGame, this.tileSet, this.snowTileSet, this.spriteSheet, Simulation.LEVEL_EASY, name);
+  launch.call(this, savedGame);
 };
 
 
@@ -111,9 +352,8 @@ var acquireNameAndDifficulty = function(e) {
   e.preventDefault();
 
   // Remove the initial event listeners
-  $('#splashLoad').off('click');
-  $('#splashGenerate').off('click');
-  $('#splashPlay').off('click');
+  $('#splashLoad, #splashGenerate, #splashPlay, #splashScenarios, #splashOpen, #pickerBack, #pickerPlay').off('click');
+  $('#splashFile, #mapOptions select').off('change');
 
   // Get rid of the initial splash screen
   $('#splash').toggle();

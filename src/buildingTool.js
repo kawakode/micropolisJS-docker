@@ -28,6 +28,12 @@ BuildingTool.prototype.putBuilding = function(leftX, topY) {
   var posX, posY, tileValue, tileFlags;
   var baseTile = this.centreTile - this.size - 1;
 
+  // A building of a single tile is its own centre
+  if (this.size === 1) {
+    this._worldEffects.setTile(leftX, topY, this.centreTile, BNCNBIT | ZONEBIT | (this.animated ? ANIMBIT : 0));
+    return;
+  }
+
   for (var dy = 0; dy < this.size; dy++) {
     posY = topY + dy;
 
@@ -93,9 +99,11 @@ BuildingTool.prototype.prepareBuildingSite = function(leftX, topY) {
 
 
 BuildingTool.prototype.buildBuilding = function(x, y) {
-  // Correct to top left
-  x--;
-  y--;
+  // Correct to top left (buildings are placed by their centre, one tile in from the top left)
+  if (this.size > 1) {
+    x--;
+    y--;
+  }
 
   var prepareResult = this.prepareBuildingSite(x, y);
   if (prepareResult !== this.TOOLRESULT_OK)
@@ -105,7 +113,7 @@ BuildingTool.prototype.buildBuilding = function(x, y) {
 
   this.putBuilding(x, y);
 
-  this.checkBorder(x, y);
+  this.checkBorder(x, y, this.size);
 
   return this.TOOLRESULT_OK;
 };

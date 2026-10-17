@@ -31,18 +31,6 @@ function RCI(parentNode, eventSource, id) {
       throw new Error('Node ' + orig + ' not found');
   }
 
-  // Each bar is 1 unit of padding wide, and there are 2 units
-  // of padding between the 3 bars. There are 2 units of padding
-  // either side. So 9 units of padding total
-  // Each bar can be at most bucket rectangles tall, but we multiply
-  // that by 2 as we can have positive and negative directions. There
-  // should be 1 unit of padding either side. The text box in the middle
-  // is 1 unit of padding
-  this._padding = 3; // 3 rectangles in each bit of padding
-  this._buckets = 10; // 0.2000 is scaled in to 10 buckets
-  this._rectSize = 5; // Each rect is 5px
-  this._scale = Math.floor(2000 / this._buckets);
-
   this._canvas = $('<canvas></canvas>', {id: id})[0];
 
   // Remove any existing element with the same id
@@ -56,82 +44,94 @@ function RCI(parentNode, eventSource, id) {
   } else
     parentNode.appendChild(this._canvas);
 
-  // We might be created before our container has appeared on screen
-  this._initialisedBounds = false;
+  // The last values displayed: we repaint them when the display changes size
+  this._lastData = undefined;
 
   eventSource.addEventListener(VALVES_UPDATED, this.update.bind(this));
 }
 
 
-RCI.prototype._clear = function(ctx) {
-  ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
-};
+var COLOURS = ['#4cc464', '#5a8cf0', '#f8c838'];
+var FONT = '"DotGothic16", system-ui, sans-serif';
+var LABELS = ['R', 'C', 'I'];
 
 
-RCI.prototype._drawRect = function(ctx) {
-  // The rect is inset by one unit of padding
-  var boxLeft = this._padding * this._rectSize;
-  // and is the length of a bar plus a unit of padding down
-  var boxTop = (this._buckets + this._padding) * this._rectSize;
-  // It must accomodate 3 bars, 2 bits of internal padding
-  // with padding either side
-  var boxWidth = 7 * this._padding * this._rectSize;
-  var boxHeight = this._padding * this._rectSize;
-
-  ctx.fillStyle = 'rgb(192, 192, 192)';
-  ctx.fillRect(boxLeft, boxTop, boxWidth, boxHeight);
-};
-
-
-RCI.prototype._drawValue = function(ctx, index, value) {
-  // Need to scale com and ind
-  if (index > 1)
-    value = Math.floor(2000/1500 * value);
-
-  var colours = ['rgb(0,255,0)', 'rgb(0, 0, 139)', 'rgb(255, 255, 0)'];
-  var barHeightRect = Math.floor(Math.abs(value) / this._scale);
-  var barStartY = (value >= 0) ?
-    this._buckets + this._padding - barHeightRect : this._buckets + 2 * this._padding;
-  var barStartX = 2 * this._padding + (index * 2 * this._padding);
-
-  ctx.fillStyle = colours[index];
-  ctx.fillRect(barStartX * this._rectSize, barStartY * this._rectSize,
-               this._padding * this._rectSize, barHeightRect * this._rectSize);
-};
-
-
-RCI.prototype._drawLabel = function(ctx, index) {
-  var labels = ['R', 'C', 'I'];
-  var textLeft = 2 * this._padding + (index * 2 * this._padding) +
-                 Math.floor(this._padding/2);
-
-  ctx.font = 'normal xx-small sans-serif';
-  ctx.fillStyle = 'rgb(0, 0, 0)';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText(labels[index], textLeft * this._rectSize,
-               (this._buckets + 2 * this._padding) * this._rectSize);
+// Values are in the range -2000 to 2000 for residential, and -1500 to 1500 for commercial and industrial
+var normalise = function(index, value) {
+  var max = index === 0 ? 2000 : 1500;
+  return Math.max(-1, Math.min(1, value / max));
 };
 
 
 RCI.prototype.update = function(data) {
-  if (!this._initialised) {
-    // The canvas is assumed to fill its container on-screen
-    var rect = this._canvas.parentNode.getBoundingClientRect();
-    this._canvas.width = rect.width;
-    this._canvas.height = rect.height;
-    this._canvas.style.margin = '0';
-    this._canvas.style.padding = '0';
-    this._intialised = true;
+  if (data !== undefined)
+    this._lastData = data;
+
+  data = this._lastData;
+  if (data === undefined)
+    return;
+
+  // The canvas fills its container; match its backing store to the on-screen size
+  var dpr = window.devicePixelRatio || 1;
+  var cssWidth = this._canvas.clientWidth || this._canvas.parentNode.clientWidth;
+  var cssHeight = this._canvas.clientHeight || 72;
+  if (cssWidth === 0)
+    return;
+
+  var width = Math.round(cssWidth * dpr);
+  var height = Math.round(cssHeight * dpr);
+  if (this._canvas.width !== width || this._canvas.height !== height) {
+    this._canvas.width = width;
+    this._canvas.height = height;
   }
 
   var ctx = this._canvas.getContext('2d');
-  this._clear(ctx);
-  this._drawRect(ctx);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+  var labelWidth = 56;
+  var midY = cssHeight / 2;
+  var half = cssHeight / 2 - 4;
+  var barArea = cssWidth - labelWidth;
+  var slot = barArea / 3;
+  var barWidth = Math.min(28, slot * 0.6);
+
+  // Axis and caption
+  ctx.fillStyle = '#070a1f';
+  ctx.fillRect(labelWidth, Math.round(midY) - 1, barArea, 2);
+  ctx.fillStyle = '#f8c838';
+  ctx.font = '14px ' + FONT;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#070a1f';
+  ctx.fillText('Demand', 1, midY + 1);
+  ctx.fillStyle = '#f8c838';
+  ctx.fillText('Demand', 0, midY);
 
   var values = [data.residential, data.commercial, data.industrial];
   for (var i = 0; i < 3; i++) {
-    this._drawValue(ctx, i, values[i]);
-    this._drawLabel(ctx, i);
+    var value = normalise(i, values[i]);
+    var x = labelWidth + slot * i + (slot - barWidth) / 2;
+    var barHeight = Math.max(1, Math.abs(value) * half);
+
+    // Bars are drawn on whole pixels, with a dark outline
+    x = Math.round(x);
+    var top = Math.round(value >= 0 ? midY - barHeight : midY);
+    var height = Math.max(2, Math.round(barHeight));
+    ctx.fillStyle = '#070a1f';
+    ctx.fillRect(x - 2, top - 2, Math.round(barWidth) + 4, height + 4);
+    ctx.fillStyle = COLOURS[i];
+    ctx.globalAlpha = value >= 0 ? 1 : 0.6;
+    ctx.fillRect(x, top, Math.round(barWidth), height);
+    ctx.globalAlpha = 1;
+
+    ctx.textAlign = 'center';
+    ctx.font = '16px ' + FONT;
+    var labelY = value >= 0 ? midY + 10 : midY - 10;
+    ctx.fillStyle = '#070a1f';
+    ctx.fillText(LABELS[i], x + barWidth / 2 + 1, labelY + 1);
+    ctx.fillStyle = '#f4f5ff';
+    ctx.fillText(LABELS[i], x + barWidth / 2, labelY);
   }
 };
 

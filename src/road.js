@@ -17,20 +17,9 @@ import { ANIMBIT, BIT_MASK, BULLBIT } from "./tileFlags.ts";
 import * as TileValues from "./tileValues.ts";
 import { TileUtils } from './tileUtils.js';
 
+// Opening a bridge raises the pieces of a closed bridge, whatever traffic they carry (as in the original game, only
+// the low 4 bits of the tile number are compared), and the channel underneath
 var openBridge = function(map, origX, origY, xDelta, yDelta, oldTiles, newTiles) {
-  for (var i = 0; i < 7; i++) {
-    var x = origX + xDelta[i];
-    var y = origY + yDelta[i];
-
-    if (map.testBounds(x, y)) {
-      if (map.getTileValue(x, y) === (oldTiles[i] & BIT_MASK))
-        map.setTileValue(x, y, newTiles[i]);
-    }
-  }
-};
-
-
-var closeBridge = function(map, origX, origY, xDelta, yDelta, oldTiles, newTiles) {
   for (var i = 0; i < 7; i++) {
     var x = origX + xDelta[i];
     var y = origY + yDelta[i];
@@ -38,9 +27,29 @@ var closeBridge = function(map, origX, origY, xDelta, yDelta, oldTiles, newTiles
     if (map.testBounds(x, y)) {
       var tileValue = map.getTileValue(x, y);
       if (tileValue === TileValues.CHANNEL || (tileValue & 15) === (oldTiles[i] & 15))
-        map.setTileValue(x, y, newTiles[i]);
+        setBridgeTile(map, x, y, newTiles[i]);
     }
   }
+};
+
+
+// Closing a bridge only lowers the pieces of the open bridge
+var closeBridge = function(map, origX, origY, xDelta, yDelta, oldTiles, newTiles) {
+  for (var i = 0; i < 7; i++) {
+    var x = origX + xDelta[i];
+    var y = origY + yDelta[i];
+
+    if (map.testBounds(x, y)) {
+      if (map.getTileValue(x, y) === (oldTiles[i] & BIT_MASK))
+        setBridgeTile(map, x, y, newTiles[i]);
+    }
+  }
+};
+
+
+// Sets both the tile and its flags: water must not keep the flags of the bridge piece it replaces
+var setBridgeTile = function(map, x, y, value) {
+  map.setTile(x, y, value & BIT_MASK, value & ~BIT_MASK);
 };
 
 
@@ -112,8 +121,12 @@ var doBridge = function(map, x, y, currentTile, simData) {
 
 var densityTable = [TileValues.ROADBASE, TileValues.LTRFBASE, TileValues.HTRFBASE];
 
+// The upkeep of each kind of road, compared with a street (see GameMap.ROAD_*)
+var ROAD_UPKEEP = [0, -0.75, 1, 2];
+
 var roadFound = function(map, x, y, simData) {
   simData.census.roadTotal += 1;
+  simData.census.roadUpkeep += ROAD_UPKEEP[map.getRoadClass(x, y)] || 0;
 
   var currentTile = map.getTile(x, y);
   var tileValue = currentTile.getValue();

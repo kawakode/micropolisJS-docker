@@ -11,6 +11,7 @@
  *
  */
 
+import { assert } from "./debugAssert";
 import { Position } from "./position";
 
 export class Bounds {
@@ -26,8 +27,8 @@ export class Bounds {
                 private readonly inclusiveStartY: number,
                 widthCount: number,
                 heightCount: number) {
-        // assert(widthCount > 0, "bounded region must have a width");
-        // assert(heightCount > 0, "bounded region must have a width");
+        assert(widthCount > 0, "bounded region must have a width");
+        assert(heightCount > 0, "bounded region must have a height");
 
         this.exclusiveEndX = inclusiveStartX + widthCount;
         this.exclusiveEndY = inclusiveStartY + heightCount;

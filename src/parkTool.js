@@ -15,7 +15,7 @@ import { BaseTool } from './baseTool.js';
 import { Random } from './random.ts';
 import { ANIMBIT, BULLBIT, BURNBIT, CONDBIT } from "./tileFlags.ts";
 import { TileUtils } from './tileUtils.js';
-import { DIRT, FOUNTAIN, WOODS2 } from "./tileValues.ts";
+import { FOUNTAIN, WOODS2, WOODS5 } from "./tileValues.ts";
 
 var makeTool = BaseTool.makeTool;
 var ParkTool = makeTool(function(map) {
@@ -24,10 +24,16 @@ var ParkTool = makeTool(function(map) {
 
 
 ParkTool.prototype.doTool = function(x, y, blockMaps) {
-  if (this._worldEffects.getTileValue(x, y) !== DIRT) {
-    this.result = this.TOOLRESULT_NEEDS_BULLDOZE;
+  // Nothing to do on a park (which saves warning about it when dragging over parks)
+  var current = this._worldEffects.getTileValue(x, y);
+  if ((current >= WOODS2 && current <= WOODS5) || current === FOUNTAIN) {
+    this.result = this.TOOLRESULT_FAILED;
     return;
   }
+
+  this.result = this.clearTile(x, y);
+  if (this.result !== this.TOOLRESULT_OK)
+    return;
 
   var value = Random.getRandom(4);
   var tileFlags = BURNBIT | BULLBIT;

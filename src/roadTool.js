@@ -12,17 +12,51 @@
  */
 
 import { ConnectingTool } from './connectingTool.js';
+import { GameMap } from './gameMap.js';
 import { BULLBIT, BURNBIT, CONDBIT } from "./tileFlags.ts";
 import { TileUtils } from './tileUtils.js';
 import * as TileValues from "./tileValues.ts";
 
-var RoadTool = ConnectingTool(function(map) {
-  this.init(10, map, true, true);
+// Lays roads of a kind (see GameMap.ROAD_*): streets by default. bridgeCost is the cost of a tile of bridge, or 0
+// if this kind of road can't cross water. Laying a road over a road of another kind rebuilds it as this kind.
+var RoadTool = ConnectingTool(function(map, roadClass, cost, bridgeCost) {
+  this.init(cost || 10, map, true, true);
+  this.roadClass = roadClass || GameMap.ROAD_STREET;
+  this.bridgeCost = bridgeCost === undefined ? 50 : bridgeCost;
 });
 
 
+// Whether the tile is a road (including bridges and crossings with rails and power lines)
+var isRoad = function(tile) {
+  tile = TileUtils.normalizeRoad(tile);
+  return (tile >= TileValues.ROADBASE && tile <= TileValues.LASTROAD) ||
+         tile === TileValues.HRAILROAD || tile === TileValues.VRAILROAD;
+};
+
+
 RoadTool.prototype.layRoad = function(x, y) {
-  this.doAutoBulldoze(x, y);
+  var current = this._worldEffects.getTileValue(x, y);
+
+  // Rebuild an existing road as this kind of road
+  if (isRoad(current)) {
+    if (this._worldEffects.getRoadClass(x, y) === this.roadClass)
+      return this.TOOLRESULT_FAILED;
+
+    this._worldEffects.setRoadClass(x, y, this.roadClass);
+    this.addCost(this.toolCost);
+    return this.TOOLRESULT_OK;
+  }
+
+  var result = this._layRoadTile(x, y);
+  if (result === this.TOOLRESULT_OK)
+    this._worldEffects.setRoadClass(x, y, this.roadClass);
+
+  return result;
+};
+
+
+RoadTool.prototype._layRoadTile = function(x, y) {
+  var needsBulldoze = this.doAutoBulldoze(x, y);
   var tile = this._worldEffects.getTileValue(x, y);
   var cost = this.toolCost;
 
@@ -34,7 +68,10 @@ RoadTool.prototype.layRoad = function(x, y) {
     case TileValues.RIVER:
     case TileValues.REDGE:
     case TileValues.CHANNEL:
-      cost = 50;
+      if (this.bridgeCost === 0)
+        return this.TOOLRESULT_FAILED;
+
+      cost = this.bridgeCost;
 
       if (x < this._map.width - 1) {
         tile = this._worldEffects.getTileValue(x + 1, y);
@@ -99,7 +136,7 @@ RoadTool.prototype.layRoad = function(x, y) {
       break;
 
     default:
-      return this.TOOLRESULT_FAILED;
+      return needsBulldoze ? this.TOOLRESULT_NEEDS_BULLDOZE : this.TOOLRESULT_FAILED;
   }
 
   this.addCost(cost);

@@ -19,303 +19,401 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, height=device-height, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="description" content="Play KawaCity and build a virtual city in your browser! KawaCity is based on micropolisJS, a handwritten HTML5/Javascript port of the open-source city simulator Micropolis.">
-    <link rel="stylesheet" media="screen" type="text/css" href="css/style.css">
+    <meta name="theme-color" content="#0b1220">
+    <link rel="stylesheet" media="screen" type="text/css" href="css/style.css?v=<%= htmlWebpackPlugin.options.gitHash %>">
     <title>KawaCity</title>
   </head>
-  <body>
-    <img id="tiles" class="imageData" src="images/tiles.png" alt="These are the game's principal tiles">
-    <img id="snowtiles" class="imageData" src="images/tilessnow.png" alt="These are the game's alternate tiles">
-    <img id="sprites" class="imageData" src="images/sprites.png" alt="These are the game's sprites">
-    <header id="header" class="chunk border-bottom padding10">
-      <div class="left inlineblock">
-        <h1 id="title" class="white fontlarge">KawaCity</h1>
+  <body class="gamePage">
+    <img id="tiles" class="imageData" src="images/tiles.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="snowtiles" class="imageData" src="images/tilessnow.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="watertiles" class="imageData" src="images/tiles-water.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="lighttiles" class="imageData" src="images/tiles-lights.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="roadtiles" class="imageData" src="images/tiles-roads.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+    <img id="sprites" class="imageData" src="images/sprites.png?v=<%= htmlWebpackPlugin.options.gitHash %>" alt="">
+
+    <header id="hud" class="initialHidden">
+      <div class="brand">KawaCity</div>
+      <div id="infobar" class="hudStats">
+        <div class="stat cityName"><span id="name">My Town</span><span class="statSub" id="cclass">VILLAGE</span></div>
+        <div class="stat"><span class="statLabel">Date</span><span class="statValue" id="date">Jan 1900</span></div>
+        <div class="stat optionalStat" id="clockStat"><span class="statLabel">Time</span><span class="statValue" id="clock">06:00</span></div>
+        <div class="stat"><span class="statLabel">Funds</span><span class="statValue">$<span id="funds">20000</span></span></div>
+        <div class="stat"><span class="statLabel">Population</span><span class="statValue" id="population">0</span></div>
+        <div class="stat optionalStat"><span class="statLabel">Score</span><span class="statValue" id="score">0</span></div>
       </div>
-      <nav class="white right padding10 inlineblock">
-        <ul>
-          <li class="padding10"><a href="about.html" target="_blank">About</a></li>
-          <li class="padding10"><a href="https://github.com/kawakode/micropolisJS-docker" target="_blank">GitHub</a></li>
-        </ul>
+      <div class="hudSpeed" role="group" aria-label="Simulation speed">
+        <button id="pauseRequest" class="hudButton pauseButton" title="Pause or resume (Space)">Pause</button>
+        <button id="speedSlowRequest" class="hudButton speedButton" data-speed="1" title="Slow">1×</button>
+        <button id="speedMedRequest" class="hudButton speedButton" data-speed="2" title="Normal">2×</button>
+        <button id="speedFastRequest" class="hudButton speedButton" data-speed="3" title="Fast">3×</button>
+      </div>
+      <nav id="miscButtons" class="hudMenu" aria-label="Game menu">
+        <button id="budgetRequest" class="hudButton">Budget</button>
+        <button id="evalRequest" class="hudButton">Evaluation</button>
+        <button id="graphsRequest" class="hudButton">Graphs</button>
+        <button id="moreRequest" class="hudButton moreButton" aria-haspopup="true" aria-expanded="false" aria-controls="hudMore">More &#9662;</button>
+        <div id="hudMore" class="hudMore">
+          <button id="disasterRequest" class="hudButton">Disasters</button>
+          <button id="screenshotRequest" class="hudButton">Picture</button>
+          <a class="hudButton hudLink" href="about.html" target="_blank" rel="noopener">About</a>
+        </div>
+        <button id="settingsRequest" class="hudButton">Settings</button>
+        <button id="saveRequest" class="hudButton loadSave accentButton" disabled>Save</button>
       </nav>
     </header>
+
     <div id="wrapper">
       <main id="canvasContainer">
         <div class="hidden" id="opaque"></div>
-        <div data-hasscript="false" id="loadingBanner" class="alignCenter padding10 mintcream chunk shadow centred">Loading</div>
-        <div id="splash" class="mintcream awaitGeneration open shadow padding10 centred">
-          <h2 class="chunk alignCenter">Welcome!</h2>
-          <p>KawaCity is based on micropolisJS, a handmade Javascript port of the open-source city simulator <cite>Micropolis</cite></p>
-          <div id="splashContainer"></div>
-          <div id="splashButtonContainer">
-            <div id="splashButtons">
-              <button id="splashLoad" class="width140 block loadSave splashButton" disabled>Load game</button>
-              <button id="splashPlay" class="width140 block margin10 splashButton">Play this map</button>
-              <button id="splashGenerate" class="width140 block margin10 splashButton">Generate another</button>
+        <div data-hasscript="false" id="loadingBanner" class="card centred">Loading&hellip;</div>
+
+        <div id="splash" class="card centred awaitGeneration">
+          <div class="splashTitle">
+            <h1 class="logo">KawaCity</h1>
+            <p class="tagline">Build the city of your dreams, right in your browser.</p>
+          </div>
+          <div class="splashBody">
+            <div id="splashContainer"></div>
+            <div id="splashButtonContainer">
+              <div id="splashButtons">
+                <button id="splashPlay" class="button primary splashButton">Play this map</button>
+                <button id="splashGenerate" class="button splashButton">Generate another</button>
+                <details id="mapOptions" class="mapOptions">
+                  <summary>Map options</summary>
+                  <label class="mapOption">Land
+                    <select id="mapLand">
+                      <option value="-1">Random</option>
+                      <option value="0">Mainland</option>
+                      <option value="1">Island</option>
+                    </select>
+                  </label>
+                  <label class="mapOption">Water
+                    <select id="mapWater">
+                      <option value="random">Random</option>
+                      <option value="none">Dry</option>
+                      <option value="some">A river</option>
+                      <option value="lots">Lakes</option>
+                    </select>
+                  </label>
+                  <label class="mapOption">Forests
+                    <select id="mapTrees">
+                      <option value="-1">Random</option>
+                      <option value="0">None</option>
+                      <option value="20">Few</option>
+                      <option value="100">Many</option>
+                      <option value="250">Wild</option>
+                    </select>
+                  </label>
+                </details>
+                <button id="splashScenarios" class="button splashButton">Scenarios &amp; cities</button>
+                <button id="splashLoad" class="button loadSave splashButton" disabled>Load saved game</button>
+                <button id="splashOpen" class="button splashButton">Open a city file&hellip;</button>
+                <input type="file" id="splashFile" class="hidden" accept=".kawacity,.json,.cty">
+                <p id="splashError" class="splashError" role="alert"></p>
+              </div>
+              <p class="splashHint">Drag to build roads and zones, right-drag or use the arrow keys to move around, and the mouse wheel to zoom.</p>
             </div>
           </div>
+          <div class="credits">
+            <p>KawaCity by <a href="https://github.com/kawakode" target="_blank" rel="noopener">kawakode</a>, based on <a href="https://github.com/graememcc/micropolisJS" target="_blank" rel="noopener">micropolisJS</a> by <a href="http://www.graememcc.co.uk" target="_blank" rel="noopener">Graeme McCutcheon</a> and <a href="https://github.com/graememcc/micropolisJS/graphs/contributors" target="_blank" rel="noopener">contributors</a>, a port of the open-source city simulator Micropolis. &middot; <a href="about.html" target="_blank" rel="noopener">About</a> &middot; <a href="https://github.com/kawakode/micropolisJS-docker" target="_blank" rel="noopener">GitHub</a></p>
+            <p class="nameLicense">Micropolis is a registered trademark of <a href="https://www.micropolis.com" target="_blank" rel="noopener">Micropolis Corporation (Micropolis GmbH)</a> and is licensed here as a courtesy of the owner under the <a href="name_license.html" target="_blank" rel="noopener">Micropolis Public Name License</a>.</p>
+            <p class="build">Build <%= htmlWebpackPlugin.options.gitHash %></p>
+          </div>
         </div>
-        <div id="start" class="mintcream open shadow padding10 centred">
-          <h2 class="chunk alignCenter">New Game</h2>
+
+        <div id="scenarioPicker" class="card centred" data-version="<%= htmlWebpackPlugin.options.gitHash %>">
+          <h2 class="cardTitle">Scenarios &amp; cities</h2>
+          <fieldset class="choice pickerTabs">
+            <legend class="srOnly">Show</legend>
+            <input type="radio" class="pickerTab" name="pickerTab" id="pickerTabScenarios" value="scenarios" checked="checked"><label for="pickerTabScenarios">Scenarios</label>
+            <input type="radio" class="pickerTab" name="pickerTab" id="pickerTabCities" value="cities"><label for="pickerTabCities">Cities</label>
+          </fieldset>
+          <div class="pickerBody">
+            <div id="scenarioList" class="scenarioList" role="listbox" aria-label="Scenarios"></div>
+            <div class="pickerDetails">
+              <div id="scenarioPreview"></div>
+              <p id="pickerPlace" class="scenarioPlace"></p>
+              <div id="pickerText" class="scenarioText"></div>
+              <p id="pickerGoal" class="scenarioGoal"></p>
+            </div>
+          </div>
+          <div class="modalButtons pickerButtons">
+            <button id="pickerBack" class="button cancel">Back</button>
+            <button id="pickerPlay" class="button primary">Play this scenario</button>
+          </div>
+        </div>
+
+        <div id="start" class="card centred">
+          <h2 class="cardTitle">New city</h2>
           <form id="playForm">
-            <label for="nameForm">City name (max 15 letters)</label>
-            <input id="nameForm" autofocus required class="margin10" type="text" maxlength="15">
-            Difficulty
-            <input type="radio" class="difficulty" name="difficulty" id="difficultyEasy" value="0" checked="checked"><label for="difficultyEasy">Easy</label>
-            <input type="radio" class="difficulty" name="difficulty" id="difficultyMed" value="1"><label for="difficultyMed">Medium</label>
-            <input type="radio" class="difficulty" name="difficulty" id="difficultyHard" value="2"><label for="difficultyHard">Hard</label>
+            <label for="nameForm" class="fieldLabel">City name</label>
+            <input id="nameForm" autofocus required type="text" maxlength="15" placeholder="Max. 15 letters" autocomplete="off">
+            <fieldset class="choice">
+              <legend class="fieldLabel">Difficulty</legend>
+              <input type="radio" class="difficulty" name="difficulty" id="difficultyEasy" value="0" checked="checked"><label for="difficultyEasy">Easy</label>
+              <input type="radio" class="difficulty" name="difficulty" id="difficultyMed" value="1"><label for="difficultyMed">Medium</label>
+              <input type="radio" class="difficulty" name="difficulty" id="difficultyHard" value="2"><label for="difficultyHard">Hard</label>
+            </fieldset>
             <div id="playSubmitDiv">
-              <input id="playit" type="submit" value="Play!">
+              <input id="playit" class="button primary" type="submit" value="Found the city">
             </div>
           </form>
         </div>
-        <div id="infobar" class="alignCenter leftedge open width140 padding10 controlShadow mintcream z1 initialHidden">
-          <div class="inner">
-            <div class="semibold chunk">
-              <span id="name">Your Name Here</span>
-            </div>
-            <div>
-              <span id="date">Jan 1900</span>
-            </div>
-            <div class="elided">
-              Funds $<span id="funds">20000</span>
-            </div>
-            <div class="elided">
-              Score: <span id="score">0</span>
-            </div>
-            <div>
-              <span id="cclass">VILLAGE</span>
-            </div>
-            <div class="elided">
-              Population:<br /> <span id="population">0</span>
-            </div>
+
+        <div id="notifications" class="initialHidden neutral" role="status" aria-live="polite"></div>
+
+        <div id="tooSmall" data-hasscript="false"><div id="tooSmallInner" class="card"><h2 class="cardTitle">Uh-oh!</h2><p>This window is too small to fit the city and all the controls. Try a bigger window, or rotating your device.</p></div></div>
+        <noscript>
+          <div id="noscript" class="card centred">
+            <h1 class="logo">KawaCity</h1>
+            <p>Hey, thanks for your interest in KawaCity!</p>
+            <p>Unfortunately, KawaCity needs <em>Javascript</em>, which appears to be disabled on your system. Consult your browser's documentation on how to enable Javascript!</p>
           </div>
+        </noscript>
+
+        <div id="zoomControls" class="initialHidden" role="group" aria-label="Zoom">
+          <button id="zoomInRequest" class="mapButton" title="Zoom in (+)" aria-label="Zoom in">+</button>
+          <button id="zoomOutRequest" class="mapButton" title="Zoom out (-)" aria-label="Zoom out">&minus;</button>
         </div>
-        <div id="miscButtons" class="alignCenter leftedge open controlShadow width140 padding10 mintcream z1 initialHidden">
-          <div class="inner">
-            <div>
-              <button id="budgetRequest" class="miscButton">Budget</button>
-            </div>
-            <div>
-              <button id="evalRequest" class="miscButton">Evaluation</button>
-            </div>
-            <div>
-              <button id="disasterRequest" class="miscButton">Disasters</button>
-            </div>
-            <div>
-              <button id="saveRequest" class="miscButton loadSave" disabled>Save</button>
-            </div>
-            <div>
-              <button id="settingsRequest" class="miscButton">Settings</button>
-            </div>
-            <div>
-              <button id="screenshotRequest" class="miscButton">Take Picture</button>
-            </div>
-            <div>
-              <button id="pauseRequest" class="miscButton">Pause</button>
-            </div>
-          </div>
-        </div>
-        <div id="RCIContainer" class="controlShadow leftedge width140 padding10 mintcream z1 initialHidden"></div>
-        <div id="controls" class="controlShadow mintcream z1 initialHidden rightedge open">
-          <div id="toolInfo" class="alignCenter"><span id="toolOutput">Tools</span></div>
-          <div id="buttons">
-            <button id="residentialButton" data-size="3" data-tool="residential" data-colour="lime" class="toolButton unselected">Residential $100</button>
-            <button id="nuclearButton" data-size="4" data-tool="nuclear" data-colour="mistyrose" class="toolButton unselected">Nuclear $5000</button>
-            <button id="commercialButton" data-size="3" data-tool="commercial" data-colour="blue" class="toolButton unselected">Commercial $100</button>
-            <button id="coalButton" data-size="4" data-tool="coal" data-colour="gray" class="toolButton unselected">Coal $3000</button>
-            <button id="industrialButton" data-size="3" data-tool="industrial" data-colour="yellow" class="toolButton unselected">Industrial $100</button>
-            <button id="policeButton" data-size="3" data-tool="police" data-colour="darkblue" class="toolButton unselected">Police $500</button>
-            <button id="roadButton" data-size="1" data-tool="road" data-colour="black" class="toolButton unselected">Road $10</button>
-            <button id="fireButton" data-size="3" data-tool="fire" data-colour="red" class="toolButton unselected">Fire $500</button>
-            <button id="railButton" data-size="1" data-tool="rail" data-colour="brown" class="toolButton unselected">Rail $20</button>
-            <button id="portButton" data-size="4" data-tool="port" data-colour="dodgerblue" class="toolButton unselected">Port $3000</button>
-            <button id="wireButton" data-size="1" data-tool="wire" data-colour="khaki" class="toolButton unselected">Wire $5</button>
-            <button id="stadiumButton" data-size="4" data-tool="stadium" data-colour="indigo" class="toolButton unselected">Stadium $5000</button>
-            <button id="bulldozerButton" data-size="1" data-tool="bulldozer" data-colour="salmon" class="toolButton unselected">Bulldozer $1</button>
-            <button id="airportButton" data-size="6" data-tool="airport" data-colour="violet" class="toolButton unselected">Airport $10000</button>
-            <button id="queryButton" data-size="1" data-tool="query" data-colour="cyan" class="toolButton unselected">Query</button>
-            <button id="parkButton" data-size="1" data-tool="park" data-colour="darkgreen" class="toolButton unselected">Park $10</button>
-          </div>
-        </div>
-        <div id="tw" class="z1 rightedge initialHidden">
-          <a class="twitter-share-button" href="https://twitter.com/share?count=none" data-text="I'm city-building like it's 1989! Playing KawaCity, a HTML5 retro city-builder">Tweet</a><script type="text/javascript">window.twttr=(function(d,s,id){var t,js,fjs=d.getElementsByTagName(s)[0];if(d.getElementById(id)){return}js=d.createElement(s);js.id=id;js.src="https://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);return window.twttr||(t={_e:[],ready:function(f){t._e.push(f)}})}(document,"script","twitter-wjs"));</script>
-        </div>
-        <div id="monstertv" class="alignCenter z1 hidden rightedge padding10 controlShadow open">
+
+        <div id="monstertv" class="hidden panel">
           <div id="monsterTVContainer">
+            <div class="panelTitle">Live</div>
             <div id="tvContainer">
             </div>
             <form id="monsterTVForm">
-              <input type="submit" value="Close" class="width140 cancel">
+              <input type="submit" value="Close" class="button small cancel">
             </form>
           </div>
         </div>
-        <div id="debug" class="alignCenter z1 rightedge padding10 mintcream controlShadow open">
+
+        <div id="debug" class="panel">
           <div id="fps">
             <span id="fpsValue">0</span> FPS
           </div>
           <div>
-            <button id="debugRequest">Debug</button>
+            <button id="debugRequest" class="button small">Debug</button>
           </div>
         </div>
-        <div id="notifications" class="initialHidden neutral z1 rightedge alignCenter elided padding10 controlShadow"></div>
-        <div id="tooSmall" data-hasscript="false" class="mintcream open"><div id="tooSmallInner" class="alignCenter padding10"><h2 class="chunk">Uh-oh!</h2><p>This screen is too small&mdash;I won't be able to fit in all the controls, buttons and gizmos! Sorry!</p></div></div>
-        <noscript>
-          <div id="noscript" class="open mintcream centred padding10">
-            <h1 class="chunk alignCenter">KawaCity</h1>
-            <p class="padding10">Hey, thanks for your interest in KawaCity!</p>
-            <p class="padding10">Unfortunately, KawaCity needs <em>Javascript</em>, which appears to be disabled on your system. Consult your browser's documentation on how to enable Javascript!</p>
-          </div>
-        </noscript>
       </main>
-      <footer id="footer" class="alignCenter chunk white padding10">
-        Enjoyed KawaCity? Graeme McCutcheon, the author of micropolisJS, suggests a donation to <a href="https://www.refuweegee.co.uk/your-donations">Refuweegee</a>, a charity assisting refugees in Scotland.
-        <div id="author" class="open">KawaCity by <a rel="author" href="https://github.com/kawakode" target="_blank">kawakode</a>, based on <a href="https://github.com/graememcc/micropolisJS" target="_blank">micropolisJS</a> by <a rel="author" href="http://www.graememcc.co.uk" target="_blank">Graeme McCutcheon</a><i><a rel="author" href="https://twitter.com/graememcc" target="_blank">(@graememcc)</a></i> and <a rel="author" href="https://github.com/graememcc/micropolisJS/graphs/contributors" target="_blank">contributors</a>
-          <div id="build">Build: <%= htmlWebpackPlugin.options.gitHash %></div>
+
+      <aside id="controls" class="panel initialHidden" aria-label="Tools">
+        <div id="buttons">
+          <div class="toolGroup" id="basicButtons">
+            <button id="queryButton" data-size="1" data-tool="query" data-colour="#38bdf8" data-label="Query" data-key="Q" class="toolButton unselected">Query</button>
+          </div>
+          <div class="toolGroup">
+            <button id="residentialButton" data-size="3" data-tool="residential" data-colour="#4ade80" data-label="Residential zone" data-cost="100" data-key="1" class="toolButton unselected">Residential</button>
+            <button id="commercialButton" data-size="3" data-tool="commercial" data-colour="#60a5fa" data-label="Commercial zone" data-cost="100" data-key="2" class="toolButton unselected">Commercial</button>
+            <button id="industrialButton" data-size="3" data-tool="industrial" data-colour="#facc15" data-label="Industrial zone" data-cost="100" data-key="3" class="toolButton unselected">Industrial</button>
+          </div>
+          <div class="toolGroup" id="categoryButtons"></div>
         </div>
-        <div class="nameLicense">
-          Micropolis is a registered trademark of <a href="https://www.micropolis.com">Micropolis Corporation (Micropolis GmbH)</a> and is licensed here as a courtesy of the owner under the <a href="name_license.html">Micropolis Public Name License</a>.
+        <div id="toolInfo"><span id="toolOutput">Tools</span></div>
+      </aside>
+      <div id="toolFlyout" class="panel toolFlyout"></div>
+
+      <aside id="sidePanel" class="initialHidden" aria-label="City overview">
+        <div id="minimapPanel" class="panel">
+          <div id="minimapContainer"></div>
+          <label class="srOnly" for="overlaySelect">Map overlay</label>
+          <select id="overlaySelect" title="Map overlay">
+            <option value="none">Map</option>
+            <option value="power">Power grid</option>
+            <option value="population">Population density</option>
+            <option value="traffic">Traffic</option>
+            <option value="pollution">Pollution</option>
+            <option value="crime">Crime</option>
+            <option value="landValue">Land value</option>
+            <option value="police">Police coverage</option>
+            <option value="fire">Fire coverage</option>
+            <option value="growth">Rate of growth</option>
+          </select>
         </div>
-      </footer>
-      <div class="hidden modal shadow" id="budget">
-        <header id="budgetHeader" class="budgetHeader padding10 chunk alignCenter">
-           Budget
-        </header>
-        <div id="budgetFormContainer" class="padding10 open">
+        <div id="RCIContainer" class="panel" title="Demand for residential, commercial and industrial zones"></div>
+        <div id="scenarioPanel" class="panel hidden" aria-live="polite">
+          <div class="panelTitle" id="scenarioPanelName"></div>
+          <p id="scenarioPanelGoal"></p>
+          <div class="scenarioBar"><div id="scenarioPanelBar"></div></div>
+          <div class="scenarioFigures"><span id="scenarioPanelValue"></span><span id="scenarioPanelTime"></span></div>
+        </div>
+      </aside>
+
+      <div class="hidden modal" id="budget" role="dialog" aria-labelledby="budgetHeader">
+        <header id="budgetHeader" class="modalHeader">Budget</header>
+        <div id="budgetFormContainer" class="modalBody">
           <form id="budgetForm">
-            <div id="taxInfo" class="elided budgetData">Tax Collected: <span id="taxesCollected"></span></div>
-            <div id="cashInfo" class="elided budgetRight budgetData">Cashflow: <span id="cashFlow"></span></div>
-            <div id="previousInfo" class="elided budgetData">Previous funds: <span id="previousFunds"></span></div>
-            <div id="currentInfo" class="elided budgetRight budgetData">Current funds: <span id="currentFunds"></span></div>
-            <fieldset>
-              <legend>Roads</legend>
-              <input type="range" id="roadRate" min="0" max="100" step="1" data-source="roadMaintenanceBudget">
-              <div>
-                <label for="roadRate" class="elided budgetData" id="roadRateLabel">100% of $100 = $100</label>
-              </div>
-            </fieldset>
-            <fieldset class="budgetRight">
-              <legend>Fire</legend>
-              <input type="range" id="fireRate" min="0" max="100" step="1" data-source="fireMaintenanceBudget">
-              <div>
-                <label for="fireRate" class="elided budgetData" id="fireRateLabel">100% of $100 = $100</label>
-              </div>
-            </fieldset>
-            <fieldset>
-              <legend>Police</legend>
-              <input type="range" id="policeRate" min="0" max="100" step="1" data-source="policeMaintenanceBudget">
-              <div>
-                <label for="policeRate" class="elided budgetData" id="policeRateLabel">100% of $100 = $100</label>
-              </div>
-            </fieldset>
-            <fieldset class="budgetRight">
-              <legend>Tax</legend>
-              <input type="range" id="taxRate" min="0" max="20" step="1">
-              <div>
-                <label for="taxRate" class="elided budgetData" id="taxRateLabel">100% of $100 = $100</label>
-              </div>
-            </fieldset>
-            <div id="budgetButtons" class="alignCenter">
-              <button id="budgetReset">Reset</button>
-              <button id="budgetCancel" class="width140 cancel">Cancel</button>
-              <input type="submit" id="budgetOK" class="width140 dialogOK" value="OK">
+            <div class="budgetSummary">
+              <div id="taxInfo" class="budgetData">Tax collected <span id="taxesCollected"></span></div>
+              <div id="cashInfo" class="budgetData">Cash flow <span id="cashFlow"></span></div>
+              <div id="previousInfo" class="budgetData">Previous funds <span id="previousFunds"></span></div>
+              <div id="currentInfo" class="budgetData">Current funds <span id="currentFunds"></span></div>
+            </div>
+            <div class="budgetSliders">
+              <fieldset>
+                <legend>Roads</legend>
+                <input type="range" id="roadRate" min="0" max="100" step="1" data-source="roadMaintenanceBudget">
+                <label for="roadRate" class="budgetData" id="roadRateLabel">100% of $100 = $100</label>
+              </fieldset>
+              <fieldset>
+                <legend>Fire</legend>
+                <input type="range" id="fireRate" min="0" max="100" step="1" data-source="fireMaintenanceBudget">
+                <label for="fireRate" class="budgetData" id="fireRateLabel">100% of $100 = $100</label>
+              </fieldset>
+              <fieldset>
+                <legend>Police</legend>
+                <input type="range" id="policeRate" min="0" max="100" step="1" data-source="policeMaintenanceBudget">
+                <label for="policeRate" class="budgetData" id="policeRateLabel">100% of $100 = $100</label>
+              </fieldset>
+              <fieldset>
+                <legend>Tax</legend>
+                <input type="range" id="taxRate" min="0" max="20" step="1">
+                <label for="taxRate" class="budgetData" id="taxRateLabel">100% of $100 = $100</label>
+              </fieldset>
+            </div>
+            <div id="budgetButtons" class="modalButtons">
+              <button id="budgetReset" class="button">Reset</button>
+              <button id="budgetCancel" class="button cancel">Cancel</button>
+              <input type="submit" id="budgetOK" class="button primary dialogOK" value="OK">
             </div>
           </form>
         </div>
       </div>
-      <div class="hidden modal shadow" id="evalWindow">
-        <header id="evalHeader" class="evalHeader padding10 chunk alignCenter">
-           Evaluation
-        </header>
-        <div id="evalContainer" class="padding10 open">
-          <section id="opinion">
-            <h2 class="alignCenter">Public opinion</h2>
-            <dl class="opinionList alignCenter">
-              <dt class="evalItem opinionItem">Is the mayor doing a good job?</dt>
-              <dd class="evalItem opinionItem opinionRight">Yes: <span id="evalYes"></span>% No: <span id="evalNo"></span>%</dd>
-              <dt>What are the worst problems?</dt>
-              <dd class="evalItem opinionItem opinionRight"><ol id="problemList">
-                <li id="evalProb1"></li> <li id="evalProb2"></li>
-                <li id="evalProb3"></li> <li id="evalProb4"></li>
-              </ol></dd>
-            </dl>
-          </section>
-          <section id="statistics">
-            <h2 class="alignCenter">Statistics</h2>
-            <dl id="statisticsList">
-              <dt class="evalItem statisticsItem">Population:</dt><dd class="elided statisticsRight evalItem evalRight" id="evalPopulation"></dd>
-              <dt class="evalItem statisticsItem">Net Migration:</dt><dd class="elided statisticsRight evalItem evalRight" id="evalMigration"></dd>
-              <dt class="evalItem statisticsItem">Assessed Value:</dt><dd class="elided statisticsRight evalItem evalRight" id="evalValue"></dd>
-              <dt class="evalItem statisticsItem">Category:</dt><dd class="elided statisticsRight evalItem evalRight" id="evalClass"></dd>
-              <dt class="evalItem statisticsItem">Game Level:</dt><dd class="elided statisticsRight evalItem evalRight" id="evalLevel"></dd>
-              <dt class="evalItem statisticsItem">Score:</dt><dd class="elided statisticsRight evalItem evalRight" id="evalScore"></dd>
-              <dt class="evalItem statisticsItem">Annual change:</dt><dd class=" elided statisticsRight evalItem evalRight" id="evalScoreDelta"></dd>
-	    </dl>
-	  </section>
-          <form id="evalButtons" class="alignCenter margin10">
-            <input type="submit" id="evalOK" class="width140 dialogOK" value="OK">
+
+      <div class="hidden modal wide" id="evalWindow" role="dialog" aria-labelledby="evalHeader">
+        <header id="evalHeader" class="modalHeader">Evaluation</header>
+        <div id="evalContainer" class="modalBody">
+          <div class="evalColumns">
+            <section id="opinion">
+              <h2>Public opinion</h2>
+              <dl class="opinionList">
+                <dt>Is the mayor doing a good job?</dt>
+                <dd>Yes: <span id="evalYes"></span>% &nbsp; No: <span id="evalNo"></span>%</dd>
+                <dt>What are the worst problems?</dt>
+                <dd><ol id="problemList">
+                  <li id="evalProb1"></li> <li id="evalProb2"></li>
+                  <li id="evalProb3"></li> <li id="evalProb4"></li>
+                </ol></dd>
+              </dl>
+            </section>
+            <section id="statistics">
+              <h2>Statistics</h2>
+              <dl id="statisticsList" class="keyValueList">
+                <dt>Population</dt><dd id="evalPopulation"></dd>
+                <dt>Net migration</dt><dd id="evalMigration"></dd>
+                <dt>Assessed value</dt><dd id="evalValue"></dd>
+                <dt>Category</dt><dd id="evalClass"></dd>
+                <dt>Game level</dt><dd id="evalLevel"></dd>
+                <dt>Score</dt><dd id="evalScore"></dd>
+                <dt>Annual change</dt><dd id="evalScoreDelta"></dd>
+              </dl>
+            </section>
+          </div>
+          <form id="evalButtons" class="modalButtons">
+            <input type="submit" id="evalOK" class="button primary dialogOK" value="OK">
           </form>
         </div>
       </div>
-      <div class="hidden modal shadow" id="disasterWindow">
-        <header id="disasterHeader" class="disasterHeader padding10 chunk alignCenter">
-           Disasters
-        </header>
-        <div id="disasterContainer" class="padding10 open">
+
+      <div class="hidden modal wide" id="graphsWindow" role="dialog" aria-labelledby="graphsHeader">
+        <header id="graphsHeader" class="modalHeader">Graphs</header>
+        <div id="graphsContainer" class="modalBody">
+          <form id="graphsForm">
+            <fieldset class="choice" id="graphsRangeSelect">
+              <legend class="visuallyHidden">Period</legend>
+              <input type="radio" class="graphsRange" name="graphsRange" id="graphsRange10" value="10" checked="checked"><label for="graphsRange10">10 years</label>
+              <input type="radio" class="graphsRange" name="graphsRange" id="graphsRange120" value="120"><label for="graphsRange120">120 years</label>
+            </fieldset>
+            <canvas id="graphsCanvas" width="520" height="240"></canvas>
+            <fieldset class="choice graphsLegend" id="graphsSeriesSelect">
+              <legend class="visuallyHidden">Show</legend>
+              <input type="checkbox" class="graphsSeries" id="graphsRes" value="res" checked="checked"><label for="graphsRes"><span class="swatch" style="background: #4cc464"></span>Residential</label>
+              <input type="checkbox" class="graphsSeries" id="graphsCom" value="com" checked="checked"><label for="graphsCom"><span class="swatch" style="background: #5c9cff"></span>Commercial</label>
+              <input type="checkbox" class="graphsSeries" id="graphsInd" value="ind" checked="checked"><label for="graphsInd"><span class="swatch" style="background: #f8c838"></span>Industrial</label>
+              <input type="checkbox" class="graphsSeries" id="graphsMoney" value="money" checked="checked"><label for="graphsMoney"><span class="swatch" style="background: #6ee0d0"></span>Cash flow</label>
+              <input type="checkbox" class="graphsSeries" id="graphsCrime" value="crime" checked="checked"><label for="graphsCrime"><span class="swatch" style="background: #e04836"></span>Crime</label>
+              <input type="checkbox" class="graphsSeries" id="graphsPollution" value="pollution" checked="checked"><label for="graphsPollution"><span class="swatch" style="background: #b08850"></span>Pollution</label>
+            </fieldset>
+            <div class="modalButtons">
+              <input type="submit" id="graphsOK" class="button primary dialogOK" value="OK">
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="hidden modal" id="scenarioWindow" role="dialog" aria-labelledby="scenarioHeader">
+        <header id="scenarioHeader" class="modalHeader">Scenario</header>
+        <div class="modalBody">
+          <p id="scenarioPlace" class="scenarioPlace"></p>
+          <div id="scenarioText" class="scenarioText"></div>
+          <p id="scenarioGoal" class="scenarioGoal"></p>
+          <form id="scenarioForm" class="modalButtons">
+            <button id="scenarioTitle" class="button cancel" type="button">Title screen</button>
+            <button id="scenarioRetry" class="button primary" type="button">Try again</button>
+            <input type="submit" id="scenarioOK" class="button primary dialogOK" value="Take office">
+          </form>
+        </div>
+      </div>
+
+      <div class="hidden modal" id="disasterWindow" role="dialog" aria-labelledby="disasterHeader">
+        <header id="disasterHeader" class="modalHeader">Disasters</header>
+        <div id="disasterContainer" class="modalBody">
           <form id="disasterForm">
-            <div id="disasterSelectContainer" class="alignCenter">
+            <div id="disasterSelectContainer">
               <label id="disasterLabel" for="disasterSelect">What disaster do you want to befall this unsuspecting world?</label>
               <select id="disasterSelect">
                 <option id="disasterNone" value="None">None</option>
                 <option id="disasterMonster" value="Monster">Monster</option>
-                <option id="disasterFire" value="None">Fire</option>
+                <option id="disasterFire" value="Fire">Fire</option>
                 <option id="disasterFlood" value="Flood">Flood</option>
                 <option id="disasterCrash" value="Crash">Crash</option>
                 <option id="disasterMeltdown" value="Meltdown">Meltdown</option>
                 <option id="disasterTornado" value="Tornado">Tornado</option>
+                <option id="disasterEarthquake" value="Earthquake">Earthquake</option>
               </select>
             </div>
-            <div id="disasterButtons" class="alignCenter margin10">
-              <button id="disasterCancel" class="cancel">Cancel</button>
-              <input type="submit" id="disasterOK" class="dialogOK" value="OK">
+            <div id="disasterButtons" class="modalButtons">
+              <button id="disasterCancel" class="button cancel">Cancel</button>
+              <input type="submit" id="disasterOK" class="button danger dialogOK" value="Unleash">
             </div>
           </form>
         </div>
       </div>
-      <div class="hidden modal shadow" id="queryWindow">
-        <header id="queryHeader" class="queryHeader padding10 chunk alignCenter">
-           Query
-        </header>
-        <div id="queryContainer" class="padding10 open">
+
+      <div class="hidden modal" id="queryWindow" role="dialog" aria-labelledby="queryHeader">
+        <header id="queryHeader" class="modalHeader">Query</header>
+        <div id="queryContainer" class="modalBody">
           <div class="queryList">
-            <dl>
-              <dt class="queryItem">Zone</dt><dd class="queryItem queryRight" id="queryZoneType"></dd>
-              <dt class="queryItem">Density</dt><dd class="queryItem queryRight" id="queryDensity"></dd>
-              <dt class="queryItem">Value</dt><dd class="queryItem queryRight" id="queryLandValue"></dd>
-              <dt class="queryItem">Crime</dt><dd class="queryItem queryRight" id="queryCrime"></dd>
-              <dt class="queryItem">Pollution</dt><dd class="queryItem queryRight" id="queryPollution"></dd>
-              <dt class="queryItem">Growth</dt><dd class="queryItem queryRight" id="queryRate"></dd>
+            <dl class="keyValueList">
+              <dt>Zone</dt><dd id="queryZoneType"></dd>
+              <dt>Density</dt><dd id="queryDensity"></dd>
+              <dt>Value</dt><dd id="queryLandValue"></dd>
+              <dt>Crime</dt><dd id="queryCrime"></dd>
+              <dt>Pollution</dt><dd id="queryPollution"></dd>
+              <dt>Growth</dt><dd id="queryRate"></dd>
             </dl>
             <div id="queryDebugList" class="queryDebug hidden">
-              <dl>
-                <dt class="queryItem">Tile</dt><dd class="queryItem queryRight" id="queryTile"></dd>
-                <dt class="queryItem">TileValue</dt><dd class="queryItem queryRight" id="queryTileValue"></dd>
-                <dt class="queryItem">FireStation</dt><dd class="queryItem queryRight" id="queryFireStationRaw"></dd>
-                <dt class="queryItem">FireStationEffect</dt><dd class="queryItem queryRight" id="queryFireStationEffectRaw"></dd>
-                <dt class="queryItem">TerrainDensity</dt><dd class="queryItem queryRight" id="queryTerrainDensityRaw"></dd>
-                <dt class="queryItem">PoliceStation</dt><dd class="queryItem queryRight" id="queryPoliceStationRaw"></dd>
-                <dt class="queryItem">PoliceStationEffect</dt><dd class="queryItem queryRight" id="queryPoliceStationEffectRaw"></dd>
-                <dt class="queryItem">ComRate</dt><dd class="queryItem queryRight" id="queryComRateRaw"></dd>
-                <dt class="queryItem">RateOfGrowth</dt><dd class="queryItem queryRight" id="queryRateRaw"></dd>
-                <dt class="queryItem">Pollution</dt><dd class="queryItem queryRight" id="queryPollutionRaw"></dd>
-                <dt class="queryItem">Crime</dt><dd class="queryItem queryRight" id="queryCrimeRaw"></dd>
-                <dt class="queryItem">LandValue</dt><dd class="queryItem queryRight" id="queryLandValueRaw"></dd>
-                <dt class="queryItem">Traffic Density</dt><dd class="queryItem queryRight" id="queryTrafficDensityRaw"></dd>
-                <dt class="queryItem">Density</dt><dd class="queryItem queryRight" id="queryDensityRaw"></dd>
+              <dl class="keyValueList">
+                <dt>Tile</dt><dd id="queryTile"></dd>
+                <dt>TileValue</dt><dd id="queryTileValue"></dd>
+                <dt>FireStation</dt><dd id="queryFireStationRaw"></dd>
+                <dt>FireStationEffect</dt><dd id="queryFireStationEffectRaw"></dd>
+                <dt>TerrainDensity</dt><dd id="queryTerrainDensityRaw"></dd>
+                <dt>PoliceStation</dt><dd id="queryPoliceStationRaw"></dd>
+                <dt>PoliceStationEffect</dt><dd id="queryPoliceStationEffectRaw"></dd>
+                <dt>ComRate</dt><dd id="queryComRateRaw"></dd>
+                <dt>RateOfGrowth</dt><dd id="queryRateRaw"></dd>
+                <dt>Pollution</dt><dd id="queryPollutionRaw"></dd>
+                <dt>Crime</dt><dd id="queryCrimeRaw"></dd>
+                <dt>LandValue</dt><dd id="queryLandValueRaw"></dd>
+                <dt>Traffic Density</dt><dd id="queryTrafficDensityRaw"></dd>
+                <dt>Density</dt><dd id="queryDensityRaw"></dd>
               </dl>
             </div>
           </div>
-          <div id="queryDebugTable" class="margin10 queryDebug hidden">
+          <div id="queryDebugTable" class="queryDebug hidden">
             <table id="flagsTable">
               <thead>
                 <tr>
@@ -328,153 +426,144 @@
                 </tr>
               </thead>
               <tbody>
-	        <tr>
+                <tr>
                   <td id="queryTileBurnable"></td>
                   <td id="queryTileBulldozable"></td>
                   <td id="queryTileCond"></td>
                   <td id="queryTileAnim"></td>
                   <td id="queryTilePowered"></td>
-		  <td id="queryTileZone"></td>
-	        </tr>
+                  <td id="queryTileZone"></td>
+                </tr>
               </tbody>
             </table>
           </div>
-          <form id="queryForm" class="alignCenter margin10">
-            <input type="submit" id="queryOK" class="dialogOK" value="OK">
+          <form id="queryForm" class="modalButtons">
+            <input type="submit" id="queryOK" class="button primary dialogOK" value="OK">
           </form>
         </div>
       </div>
-      <div class="hidden modal shadow" id="congratsWindow">
-        <header id="congratsHeader" class="congratsHeader padding10 chunk alignCenter">
-           Congratulations!
-        </header>
-        <div id="congratsContainer" class="padding10 open">
+
+      <div class="hidden modal" id="congratsWindow" role="dialog" aria-labelledby="congratsHeader">
+        <header id="congratsHeader" class="modalHeader">Congratulations!</header>
+        <div id="congratsContainer" class="modalBody">
           <div id="congratsMessage" class="alignCenter">Congratulations!</div>
-          <form id="congratsForm" class="alignCenter margin10">
-            <input type="submit" id="congratsOK" class="dialogOK" value="OK">
+          <form id="congratsForm" class="modalButtons">
+            <input type="submit" id="congratsOK" class="button primary dialogOK" value="OK">
           </form>
         </div>
       </div>
-      <div class="hidden modal shadow" id="nagWindow">
-        <header id="nagHeader" class="nagHeader padding10 chunk white alignCenter">
-           KawaCity
-        </header>
-        <div id="nagContainer" class="padding10 open">
-          <div id="nagMessage" class="alignCenter">
--            Whoa! You've been playing this thing for half an hour?!? If you're enjoying it, Graeme McCutcheon, the author of micropolisJS on which KawaCity is based, would be glad to see your money reach <a class="nag" href="https://www.refuweegee.co.uk/your-donations" target="_blank">Refuweegee</a>, a charity assisting refugees in Scotland.
+
+      <div class="hidden modal" id="nagWindow" role="dialog" aria-labelledby="nagHeader">
+        <header id="nagHeader" class="modalHeader">KawaCity</header>
+        <div id="nagContainer" class="modalBody">
+          <div id="nagMessage">
+            Whoa! You've been playing this thing for half an hour?!? If you're enjoying it, Graeme McCutcheon, the author of micropolisJS on which KawaCity is based, would be glad to see your money reach <a class="nag" href="https://www.refuweegee.co.uk/your-donations" target="_blank" rel="noopener">Refuweegee</a>, a charity assisting refugees in Scotland.
           </div>
-          <form id="nagForm" class="alignCenter margin10">
-            <input type="submit" id="nagOK" class="dialogOK" value="OK">
+          <form id="nagForm" class="modalButtons">
+            <input type="submit" id="nagOK" class="button primary dialogOK" value="OK">
           </form>
         </div>
       </div>
-      <div class="hidden modal shadow" id="saveWindow">
-        <header id="saveHeader" class="saveHeader padding10 chunk alignCenter">
-          Save
-        </header>
-        <div id="saveContainer" class="alignCenter padding10 open">
-          Game Saved!
-          <form id="saveForm" class="alignCenter margin10">
-            <input type="submit" id="saveOK" class="dialogOK" value="OK">
+
+      <div class="hidden modal" id="saveWindow" role="dialog" aria-labelledby="saveHeader">
+        <header id="saveHeader" class="modalHeader">Save</header>
+        <div id="saveContainer" class="modalBody">
+          <div id="saveMessage" class="alignCenter">Game saved!</div>
+          <p class="alignCenter saveFile">Or <a id="saveDownload" href="#" download="city.kawacity">keep a copy as a file</a>, to open it from the title screen.</p>
+          <form id="saveForm" class="modalButtons">
+            <input type="submit" id="saveOK" class="button primary dialogOK" value="OK">
           </form>
         </div>
       </div>
-      <div class="hidden modal shadow" id="screenshotLinkWindow">
-        <header id="screenshotLinkHeader" class="screenshotHeader padding10 chunk alignCenter">
-           Take Picture
-        </header>
-        <div id="screenshotLinkContainer" class="padding10 open">
+
+      <div class="hidden modal" id="screenshotLinkWindow" role="dialog" aria-labelledby="screenshotLinkHeader">
+        <header id="screenshotLinkHeader" class="modalHeader">Take picture</header>
+        <div id="screenshotLinkContainer" class="modalBody">
           <div id="screenshotLinkMessage" class="alignCenter">
-            Click <a id="screenshotLink" target="_blank">here</a> to view your picture (right-click to save)
+            Your picture is ready: <a id="screenshotLink" target="_blank" rel="noopener" download="kawacity.png">download it</a>.
           </div>
-          <form id="screenshotLinkForm" class="alignCenter margin10">
-            <input type="submit" id="screenshotLinkOK" class="dialogOK" value="OK">
+          <form id="screenshotLinkForm" class="modalButtons">
+            <input type="submit" id="screenshotLinkOK" class="button primary dialogOK" value="OK">
           </form>
         </div>
       </div>
-      <div class="hidden modal shadow" id="screenshotWindow">
-        <header id="screenshotHeader" class="screenshotHeader white padding10 chunk alignCenter">
-           Take Picture
-        </header>
-        <div id="screenshotContainer" class="padding10 open">
-          <form id="screenshotForm" class="alignCenter margin10">
-            <div id="screenshotContainerDiv">
-              Area to take picture of:
-              <input type="radio" class="screenshotType" name="screenshotType" id="screenshotVisible" value="visible" checked="checked"><label for="screenshotVisible">Visible Map</label>
+
+      <div class="hidden modal" id="screenshotWindow" role="dialog" aria-labelledby="screenshotHeader">
+        <header id="screenshotHeader" class="modalHeader">Take picture</header>
+        <div id="screenshotContainer" class="modalBody">
+          <form id="screenshotForm">
+            <fieldset id="screenshotContainerDiv" class="choice">
+              <legend class="fieldLabel">Area to take a picture of</legend>
+              <input type="radio" class="screenshotType" name="screenshotType" id="screenshotVisible" value="visible" checked="checked"><label for="screenshotVisible">Visible map</label>
               <input type="radio" class="screenshotType" name="screenshotType" id="screenshotAll" value="all"><label for="screenshotAll">Full map</label>
+            </fieldset>
+            <div class="modalButtons">
+              <button id="screenshotCancel" class="button cancel">Cancel</button>
+              <input type="submit" id="screenshotOK" class="button primary dialogOK" value="OK">
             </div>
-            <button id="screenshotCancel" class="cancel">Cancel</button>
-            <input type="submit" id="screenshotOK" class="dialogOK" value="OK">
           </form>
         </div>
       </div>
-      <div class="hidden modal shadow" id="settingsWindow">
-        <header id="settingsHeader" class="settingsHeader white padding10 chunk alignCenter">
-           Settings
-        </header>
-        <div id="settingsContainer" class="padding10 open">
-          <form id="settingsForm" class="alignCenter margin10">
+
+      <div class="hidden modal" id="settingsWindow" role="dialog" aria-labelledby="settingsHeader">
+        <header id="settingsHeader" class="modalHeader">Settings</header>
+        <div id="settingsContainer" class="modalBody">
+          <form id="settingsForm">
             <div id="settingsFormContainer">
-              <div id="autoBudgetSelect" class="padding10">
-                Autobudget:
-                <input type="radio" class="autoBudgetSetting" name="autoBudgetSetting" id="autoBudgetYes" value="true" checked="checked"><label for="autoBudgetYes">Yes</label>
-                <input type="radio" class="autoBudgetSetting" name="autoBudgetSetting" id="autoBudgetNo" value="false"><label for="autoBudgetNo">No</label>
-              </div>
-              <div id="autoBulldozeSelect" class="padding10">
-                Autobulldoze:
-                <input type="radio" class="autoBulldozeSetting" name="autoBulldozeSetting" id="autoBulldozeYes" value="true" checked="checked"><label for="autoBulldozeYes">Yes</label>
-                <input type="radio" class="autoBulldozeSetting" name="autoBulldozeSetting" id="autoBulldozeNo" value="false"><label for="autoBulldozeNo">No</label>
-              </div>
-              <div id="speedSelect" class="padding10">
-                Speed:
+              <fieldset id="autoBudgetSelect" class="choice">
+                <legend class="fieldLabel">Automatic budget</legend>
+                <input type="radio" class="autoBudgetSetting" name="autoBudgetSetting" id="autoBudgetYes" value="true" checked="checked"><label for="autoBudgetYes">On</label>
+                <input type="radio" class="autoBudgetSetting" name="autoBudgetSetting" id="autoBudgetNo" value="false"><label for="autoBudgetNo">Off</label>
+              </fieldset>
+              <fieldset id="autoBulldozeSelect" class="choice">
+                <legend class="fieldLabel">Automatic bulldozing</legend>
+                <input type="radio" class="autoBulldozeSetting" name="autoBulldozeSetting" id="autoBulldozeYes" value="true" checked="checked"><label for="autoBulldozeYes">On</label>
+                <input type="radio" class="autoBulldozeSetting" name="autoBulldozeSetting" id="autoBulldozeNo" value="false"><label for="autoBulldozeNo">Off</label>
+              </fieldset>
+              <fieldset id="speedSelect" class="choice">
+                <legend class="fieldLabel">Speed</legend>
                 <input type="radio" class="speedSetting" name="speedSetting" id="speedSlow" value="1" checked="checked"><label for="speedSlow">Slow</label>
-                <input type="radio" class="speedSetting" name="speedSetting" id="speedMed" value="2"><label for="speedMed">Medium</label>
+                <input type="radio" class="speedSetting" name="speedSetting" id="speedMed" value="2"><label for="speedMed">Normal</label>
                 <input type="radio" class="speedSetting" name="speedSetting" id="speedFast" value="3"><label for="speedFast">Fast</label>
-              </div>
-              <div id="disastersSelect" class="padding10">
-                Disasters:
-                <input type="radio" class="enableDisastersSetting" name="disastersSetting" id="disastersYes" value="true" checked="checked"><label for="disastersYes">Yes</label>
-                <input type="radio" class="enableDisastersSetting" name="disastersSetting" id="disastersNo" value="false"><label for="disastersNo">No</label>
-              </div>
+              </fieldset>
+              <fieldset id="levelSelect" class="choice">
+                <legend class="fieldLabel">Difficulty</legend>
+                <input type="radio" class="levelSetting" name="levelSetting" id="levelEasy" value="0" checked="checked"><label for="levelEasy">Easy</label>
+                <input type="radio" class="levelSetting" name="levelSetting" id="levelMed" value="1"><label for="levelMed">Medium</label>
+                <input type="radio" class="levelSetting" name="levelSetting" id="levelHard" value="2"><label for="levelHard">Hard</label>
+              </fieldset>
+              <fieldset id="disastersSelect" class="choice">
+                <legend class="fieldLabel">Random disasters</legend>
+                <input type="radio" class="enableDisastersSetting" name="disastersSetting" id="disastersYes" value="true" checked="checked"><label for="disastersYes">On</label>
+                <input type="radio" class="enableDisastersSetting" name="disastersSetting" id="disastersNo" value="false"><label for="disastersNo">Off</label>
+              </fieldset>
+              <fieldset id="dayNightSelect" class="choice">
+                <legend class="fieldLabel">Day and night</legend>
+                <input type="radio" class="dayNightSetting" name="dayNightSetting" id="dayNightYes" value="true" checked="checked"><label for="dayNightYes">On</label>
+                <input type="radio" class="dayNightSetting" name="dayNightSetting" id="dayNightNo" value="false"><label for="dayNightNo">Off</label>
+              </fieldset>
             </div>
-            <button id="settingsCancel" class="cancel">Cancel</button>
-            <input type="submit" id="settingsOK" class="dialogOK" value="OK">
+            <div class="modalButtons">
+              <button id="settingsCancel" class="button cancel">Cancel</button>
+              <input type="submit" id="settingsOK" class="button primary dialogOK" value="OK">
+            </div>
           </form>
         </div>
       </div>
-      <div class="hidden modal shadow" id="debugWindow">
-        <header id="debugHeader" class="debugHeader white padding10 chunk alignCenter">
-           Debug
-        </header>
-        <div id="debugContainer" class="padding10 open">
-          <form id="debugForm" class="alignCenter margin10">
-            <div id="debugFundContainer">
-              Add funds:
+
+      <div class="hidden modal" id="debugWindow" role="dialog" aria-labelledby="debugHeader">
+        <header id="debugHeader" class="modalHeader">Debug</header>
+        <div id="debugContainer" class="modalBody">
+          <form id="debugForm">
+            <fieldset id="debugFundContainer" class="choice">
+              <legend class="fieldLabel">Add funds</legend>
               <input type="radio" class="debugAdd" name="debugAdd" id="fundsYes" value="true" checked="checked"><label for="fundsYes">Yes</label>
               <input type="radio" class="debugAdd" name="debugAdd" id="fundsNo" value="false"><label for="fundsNo">No</label>
+            </fieldset>
+            <div class="modalButtons">
+              <button id="debugCancel" class="button cancel">Cancel</button>
+              <input type="submit" id="debugOK" class="button primary dialogOK" value="OK">
             </div>
-            <button id="debugCancel" class="cancel">Cancel</button>
-            <input type="submit" id="debugOK" class="dialogOK" value="OK">
-          </form>
-        </div>
-      </div>
-      <div class="hidden modal shadow" id="touchWarnWindow">
-        <header id="touchHeader" class="touchHeader white padding10 chunk alignCenter">
-           Hello, touchscreen user!
-        </header>
-        <div id="touchContainer" class="padding10 open">
-          <h2 class="alignCenter">Hi!</h2>
-          <p class="padding10">
-             It seems you're using a touchscreen device!
-          </p>
-          <p class="padding10">
-            Just to warn you, KawaCity isn't really geared towards touch devices, so you might be in for a bad time.
-          </p>
-          <p class="padding10">
-            However, if you're wanting to give it a shot, I won't stop you!
-          </p>
-          <form id="touchForm" class="alignCenter margin10">
-            <input type="submit" id="touchOK" class="dialogOK" value="OK">
           </form>
         </div>
       </div>

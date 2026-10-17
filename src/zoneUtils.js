@@ -14,6 +14,7 @@
 import { MiscUtils } from './miscUtils.js';
 import { BULLBIT, POWERBIT } from "./tileFlags.ts";
 import * as TileValues from "./tileValues.ts";
+import { KawaBuildings } from './kawaBuildings.js';
 
 var checkBigZone = function(tileValue) {
   var result;
@@ -141,6 +142,50 @@ var checkZoneSize = function(tileValue) {
 };
 
 
+// As checkZoneSize, but also recognises the 6x6 airport
+var getZoneSize = function(tileValue) {
+  if (tileValue >= TileValues.KAWABASE)
+    return KawaBuildings.getZoneSize(tileValue);
+
+  if (tileValue >= TileValues.AIRPORTBASE && tileValue < TileValues.COALBASE)
+    return 6;
+
+  return checkZoneSize(tileValue);
+};
+
+
+// Finds the zone (if any) whose footprint covers the given tile. Zone centres are always 1 tile in from the
+// top-left corner of the zone. Returns an object with the centre's coordinates and the zone size, or null.
+var findCoveringZone = function(map, x, y) {
+  for (var cy = y - 4; cy <= y + 1; cy++) {
+    for (var cx = x - 4; cx <= x + 1; cx++) {
+      if (!map.testBounds(cx, cy))
+        continue;
+
+      var tile = map.getTile(cx, cy);
+      if (!tile.isZone())
+        continue;
+
+      var size = getZoneSize(tile.getValue());
+      if (size === 0)
+        continue;
+
+      // A building of a single tile is its own centre
+      if (size === 1) {
+        if (cx === x && cy === y)
+          return {x: cx, y: cy, zoneSize: 1};
+        continue;
+      }
+
+      if (x >= cx - 1 && x < cx - 1 + size && y >= cy - 1 && y < cy - 1 + size)
+        return {x: cx, y: cy, zoneSize: size};
+    }
+  }
+
+  return null;
+};
+
+
 var fireZone = function(map, x, y, blockMaps) {
   var tileValue = map.getTileValue(x, y);
   var zoneSize = 2;
@@ -150,7 +195,9 @@ var fireZone = function(map, x, y, blockMaps) {
   value = MiscUtils.clamp(value - 20, -200, 200);
   blockMaps.rateOfGrowthMap.worldSet(x, y, value);
 
-  if (tileValue === TileValues.AIRPORT)
+  if (tileValue >= TileValues.KAWABASE)
+    zoneSize = KawaBuildings.getZoneSize(tileValue) - 1;
+  else if (tileValue === TileValues.AIRPORT)
     zoneSize = 5;
   else if (tileValue >= TileValues.PORTBASE)
     zoneSize = 3;
@@ -166,7 +213,7 @@ var fireZone = function(map, x, y, blockMaps) {
       if (!map.testBounds(xTem, yTem))
         continue;
 
-      if (map.getTileValue(xTem, yTem >= TileValues.ROADBASE))
+      if (map.getTileValue(xTem, yTem) >= TileValues.ROADBASE)
         map.addTileFlags(xTem, yTem, BULLBIT);
     }
   }
@@ -216,7 +263,9 @@ var putZone = function(map, x, y, centreTile, isPowered) {
 var ZoneUtils = {
   checkBigZone: checkBigZone,
   checkZoneSize: checkZoneSize,
+  findCoveringZone: findCoveringZone,
   fireZone: fireZone,
+  getZoneSize: getZoneSize,
   getLandPollutionValue: getLandPollutionValue,
   incRateOfGrowth: incRateOfGrowth,
   putZone: putZone

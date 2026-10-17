@@ -62,7 +62,7 @@ var resetItems = function(e) {
     $(MiscUtils.normaliseDOMid(spendKeys[i]))[0].value = original;
     setSpendRangeText(spendKeys[i], original, this[dataKeys[i]]);
   }
-  $('#taxRate')[0].value = this.originaltaxRate;
+  $('#taxRate')[0].value = this.originalTaxRate;
   onTaxUpdate();
 
   e.preventDefault();
@@ -116,7 +116,8 @@ BudgetWindow.prototype.open = function(budgetData) {
     this['original' + elem] = budgetData[elem];
     setSpendRangeText(elem, budgetData[spendKeys[i]], this[dataKeys[i]]);
     elem = $(MiscUtils.normaliseDOMid(elem));
-    elem.on('change', onFundingUpdate.bind(this, spendKeys[i]));
+    // Replace the listeners of the last time the window was open
+    elem.off('.budget').on('input.budget change.budget', onFundingUpdate.bind(this, spendKeys[i]));
     elem = elem[0];
     elem.value = budgetData[spendKeys[i]];
   }
@@ -126,7 +127,7 @@ BudgetWindow.prototype.open = function(budgetData) {
 
   this.originalTaxRate = budgetData.taxRate;
   elem = $('#taxRate');
-  elem.on('change', onTaxUpdate);
+  elem.off('.budget').on('input.budget change.budget', onTaxUpdate);
   elem = elem[0];
   elem.value = budgetData.taxRate;
   onTaxUpdate();
@@ -142,10 +143,13 @@ BudgetWindow.prototype.open = function(budgetData) {
 
   var cashFlow = taxesCollected - this.roadMaintenanceBudget - this.fireMaintenanceBudget - this.policeMaintenanceBudget;
   var currentFunds = previousFunds + cashFlow;
-  $('#taxesCollected').text('$' + taxesCollected);
-  $('#cashFlow').text((cashFlow < 0 ? '-$' : '$') + cashFlow);
-  $('#previousFunds').text((previousFunds < 0 ? '-$' : '$') + previousFunds);
-  $('#currentFunds').text('$' + currentFunds);
+  var money = function(value) {
+    return (value < 0 ? '-$' : '$') + Math.abs(value);
+  };
+  $('#taxesCollected').text(money(taxesCollected));
+  $('#cashFlow').text(money(cashFlow));
+  $('#previousFunds').text(money(previousFunds));
+  $('#currentFunds').text(money(currentFunds));
 
   this._toggleDisplay();
 };

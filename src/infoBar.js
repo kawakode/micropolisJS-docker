@@ -19,6 +19,11 @@ import { Text } from './text.js';
 
 // TODO L20N
 
+var formatNumber = function(value) {
+  return Math.round(value).toLocaleString('en-US');
+};
+
+
 var InfoBar = function(classification, population, score, funds, date, name) {
   var classificationSelector = MiscUtils.normaliseDOMid(classification);
   var populationSelector = MiscUtils.normaliseDOMid(population);
@@ -29,9 +34,9 @@ var InfoBar = function(classification, population, score, funds, date, name) {
 
   return function(dataSource, initialValues) {
     $(classificationSelector).text(initialValues.classification);
-    $(populationSelector).text(initialValues.population);
+    $(populationSelector).text(formatNumber(initialValues.population));
     $(scoreSelector).text(initialValues.score);
-    $(fundsSelector).text(initialValues.funds);
+    $(fundsSelector).text(formatNumber(initialValues.funds));
     $(dateSelector).text([Text.months[initialValues.date.month], initialValues.date.year].join(' '));
     $(nameSelector).text(initialValues.name);
 
@@ -41,7 +46,7 @@ var InfoBar = function(classification, population, score, funds, date, name) {
     });
 
     dataSource.addEventListener(Messages.POPULATION_UPDATED, function(population) {
-      $(populationSelector).text(population);
+      $(populationSelector).text(formatNumber(population));
     });
 
     dataSource.addEventListener(Messages.SCORE_UPDATED, function(score) {
@@ -49,7 +54,7 @@ var InfoBar = function(classification, population, score, funds, date, name) {
     });
 
     dataSource.addEventListener(Messages.FUNDS_CHANGED, function(funds) {
-      $(fundsSelector).text(funds);
+      $(fundsSelector).text(formatNumber(funds));
     });
 
     dataSource.addEventListener(Messages.DATE_UPDATED, function(date) {

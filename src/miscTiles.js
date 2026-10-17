@@ -13,7 +13,7 @@
 
 import { Random } from './random.ts';
 import { TileUtils } from './tileUtils.js';
-import { DIRT, IZB, RADTILE } from "./tileValues.ts";
+import { DIRT, GASPLANT, IZB, KAWABASE, RADTILE } from "./tileValues.ts";
 import { ZoneUtils } from './zoneUtils.js';
 
 var xDelta = [-1,  0,  1,  0 ];
@@ -22,43 +22,47 @@ var yDelta = [ 0, -1,  0,  1 ];
 var fireFound = function(map, x, y, simData) {
   simData.census.firePop += 1;
 
+  // As in the original game, a fire only does anything one scan in four: spread, then maybe burn out
   if ((Random.getRandom16() & 3) !== 0)
     return;
 
   // Try to set neighbouring tiles on fire as well
   for (var i = 0; i < 4; i++) {
-    if (Random.getChance(7)) {
-      var xTem = x + xDelta[i];
-      var yTem = y + yDelta[i];
+    if (!Random.getChance(7))
+      continue;
 
-      if (map.testBounds(xTem, yTem)) {
-        var tile = map.getTile(x, y);
-        if (!tile.isCombustible())
-            continue;
+    var xTem = x + xDelta[i];
+    var yTem = y + yDelta[i];
 
-        if (tile.isZone()) {
-          // Neighbour is a ione and burnable
-          ZoneUtils.fireZone(map, x, y, simData.blockMaps);
+    if (!map.testBounds(xTem, yTem))
+      continue;
 
-          // Industrial zones etc really go boom
-          if (tile.getValue() > IZB)
-            simData.spriteManager.makeExplosionAt(x, y);
-        }
+    var tile = map.getTile(xTem, yTem);
+    if (!tile.isCombustible())
+      continue;
 
-        map.setTo(tileUtils.randomFire());
-      }
+    if (tile.isZone()) {
+      // Neighbour is a zone and burnable
+      ZoneUtils.fireZone(map, xTem, yTem, simData.blockMaps);
+
+      // Industrial zones etc really go boom (of KawaCity's buildings, only the gas plant)
+      var burning = tile.getValue();
+      if ((burning > IZB && burning < KAWABASE) || burning === GASPLANT)
+        simData.spriteManager.makeExplosion(xTem, yTem);
     }
+
+    map.setTo(xTem, yTem, TileUtils.randomFire());
   }
 
   // Compute likelyhood of fire running out of fuel
   var rate = 10; // Likelyhood of extinguishing (bigger means less chance)
-  i = simData.blockMaps.fireStationEffectMap.worldGet(x, y);
+  var fireCover = simData.blockMaps.fireStationEffectMap.worldGet(x, y);
 
-  if (i > 100)
+  if (fireCover > 100)
     rate = 1;
-  else if (i > 20)
+  else if (fireCover > 20)
     rate = 2;
-  else if (i > 0)
+  else if (fireCover > 0)
     rate = 3;
 
   // Decide whether to put out the fire.
@@ -73,6 +77,14 @@ var radiationFound = function(map, x, y, simData) {
 };
 
 
+// An explosion leaves rubble. The renderer turns it to rubble at the end of its animation; off screen, the map scan
+// does it after a few scans
+var explosionFound = function(map, x, y, simData) {
+  if (Random.getChance(3))
+    map.setTo(x, y, TileUtils.randomRubble());
+};
+
+
 var floodFound = function(map, x, y, simData) {
   simData.disasterManager.doFlood(x, y, simData.blockMaps);
 };
@@ -83,6 +95,7 @@ var MiscTiles = {
     mapScanner.addAction(TileUtils.isFire, fireFound, true);
     mapScanner.addAction(RADTILE, radiationFound, true);
     mapScanner.addAction(TileUtils.isFlood, floodFound, true);
+    mapScanner.addAction(TileUtils.isManualExplosion, explosionFound, true);
   }
 };
 

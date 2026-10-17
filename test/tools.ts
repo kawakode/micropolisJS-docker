@@ -1,0 +1,152 @@
+import { BaseTool } from "../src/baseTool.js";
+import { GameTools } from "../src/gameTools.js";
+import { GameMap } from "../src/gameMap.js";
+import { BLBNBIT, BULLBIT } from "../src/tileFlags";
+import { DIRT, RUBBLE, SCHOOL, TINYEXP, LASTTINYEXP, WOODS } from "../src/tileValues";
+
+// Placing tools on a small, bare map, as the game does (see Game.handleTool)
+const makeMap = (): any => new (GameMap as any)(20, 20, DIRT);
+const makeTools = (map: any): any => new (GameTools as any)(map);
+
+const apply = (map: any, tool: any, x: number, y: number) => {
+    const budget = {totalFunds: 100000, spend: function(amount: number) { this.totalFunds -= amount; }};
+    tool.doTool(x, y, null);
+    const result = tool.result;
+    const before = budget.totalFunds;
+    tool.modifyIfEnoughFunding(budget);
+    return {result: result, cost: before - budget.totalFunds, value: map.getTileValue(x, y)};
+};
+
+const OK = 0;
+const FAILED = 1;
+const NEEDS_BULLDOZE = 3;
+
+describe("Automatic bulldozing", () => {
+
+    afterEach(() => {
+        BaseTool.setAutoBulldoze(true);
+    });
+
+    // Each tool, and its own cost
+    const cases: Array<[string, number]> = [
+        ["road", 10], ["dirtroad", 4], ["avenue", 25], ["rail", 20], ["wire", 5],
+        ["park", 10], ["garden", 25], ["plaza", 40], ["water", 100],
+    ];
+
+    cases.forEach(([toolName, cost]) => {
+        it(`lets the ${toolName} tool clear trees for $1`, () => {
+            const map = makeMap();
+            map.setTile(5, 5, WOODS, BLBNBIT);
+            const tools = makeTools(map);
+
+            const outcome = apply(map, tools[toolName], 5, 5);
+
+            expect(outcome.result).toBe(OK);
+            expect(outcome.cost).toBe(cost + 1);
+            expect(outcome.value).not.toBe(WOODS);
+        });
+
+        it(`makes the ${toolName} tool ask for the bulldozer when it is off`, () => {
+            BaseTool.setAutoBulldoze(false);
+            const map = makeMap();
+            map.setTile(5, 5, WOODS, BLBNBIT);
+            const tools = makeTools(map);
+
+            const outcome = apply(map, tools[toolName], 5, 5);
+
+            expect(outcome.result).toBe(NEEDS_BULLDOZE);
+            expect(outcome.cost).toBe(0);
+            expect(outcome.value).toBe(WOODS);
+        });
+    });
+
+    it("clears rubble to plant trees", () => {
+        const map = makeMap();
+        map.setTile(5, 5, RUBBLE, BULLBIT);
+        const tools = makeTools(map);
+
+        expect(apply(map, tools.trees, 5, 5)).toEqual({result: OK, cost: 6, value: WOODS});
+    });
+
+    it("clears the site of a building", () => {
+        const map = makeMap();
+        map.setTile(4, 4, WOODS, BLBNBIT);
+        map.setTile(6, 6, RUBBLE, BULLBIT);
+        const tools = makeTools(map);
+
+        const outcome = apply(map, tools.school, 5, 5);
+
+        expect(outcome.result).toBe(OK);
+        expect(outcome.cost).toBe(1000 + 2);
+        expect(outcome.value).toBe(SCHOOL);
+    });
+
+    it("leaves the site of a building alone when it is off", () => {
+        BaseTool.setAutoBulldoze(false);
+        const map = makeMap();
+        map.setTile(4, 4, WOODS, BLBNBIT);
+        const tools = makeTools(map);
+
+        expect(apply(map, tools.school, 5, 5).result).toBe(NEEDS_BULLDOZE);
+        expect(map.getTileValue(4, 4)).toBe(WOODS);
+    });
+
+    it("is kept in saved games", () => {
+        BaseTool.setAutoBulldoze(false);
+        const saveData: any = {};
+        BaseTool.save(saveData);
+        BaseTool.setAutoBulldoze(true);
+        BaseTool.load(saveData);
+
+        expect(BaseTool.getAutoBulldoze()).toBe(false);
+    });
+});
+
+describe("The bulldozer", () => {
+
+    it("does nothing on bare land", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+
+        expect(apply(map, tools.bulldozer, 5, 5).result).toBe(FAILED);
+    });
+
+    it("has a tool for each size, all the same bulldozer", () => {
+        const tools = makeTools(makeMap());
+
+        expect(tools.bulldozer3).toBe(tools.bulldozer);
+        expect(tools.bulldozer5).toBe(tools.bulldozer);
+        expect(tools.bulldozer7).toBe(tools.bulldozer);
+    });
+
+    it("demolishes a building from any of its tiles, once in a batch", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+        apply(map, tools.school, 5, 5);
+        const bulldozer = tools.bulldozer;
+
+        // Sweep the whole building, as a wide bulldozer does
+        bulldozer.startBatch();
+        let cost = 0;
+        for (let y = 4; y <= 6; y++) {
+            for (let x = 4; x <= 6; x++) {
+                const outcome = apply(map, bulldozer, x, y);
+                expect(outcome.result).toBe(OK);
+                cost += outcome.cost;
+            }
+        }
+        const demolished = bulldozer.getDemolished();
+        bulldozer.endBatch();
+
+        // Demolished once, and its explosions are left to play out
+        expect(cost).toBe(1);
+        expect(demolished.length).toBe(9);
+        for (let y = 4; y <= 6; y++) {
+            for (let x = 4; x <= 6; x++) {
+                const value = map.getTileValue(x, y);
+                expect(value >= TINYEXP && value <= LASTTINYEXP).toBe(true);
+            }
+        }
+    });
+});
+

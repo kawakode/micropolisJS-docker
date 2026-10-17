@@ -16,25 +16,24 @@ function TileHistory() {
 }
 
 
+// Map coordinates are bounded well below 65536, so this key is unique
 var toKey = function(x, y) {
-  return [x, y].join(',');
+  return y * 65536 + x;
 };
 
 
 TileHistory.prototype.clear = function() {
-  this.data = {};
+  this.data = new Map();
 };
 
 
 TileHistory.prototype.getTile = function(x, y) {
-  var key = toKey(x, y);
-  return this.data[key];
+  return this.data.get(toKey(x, y));
 };
 
 
 TileHistory.prototype.setTile = function(x, y, value) {
-  var key = toKey(x, y);
-  this.data[key] = value;
+  this.data.set(toKey(x, y), value);
 };
 
 

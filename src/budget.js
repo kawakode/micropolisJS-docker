@@ -32,7 +32,10 @@ var Budget = EventEmitter(function() {
   Object.defineProperties(this,
    {MAX_ROAD_EFFECT: MiscUtils.makeConstantDescriptor(32),
     MAX_POLICESTATION_EFFECT: MiscUtils.makeConstantDescriptor(1000),
-    MAX_FIRESTATION_EFFECT:  MiscUtils.makeConstantDescriptor(1000)});
+    MAX_FIRESTATION_EFFECT:  MiscUtils.makeConstantDescriptor(1000),
+    // The same constants, under the names used by the simulation and the evaluation
+    MAX_POLICE_STATION_EFFECT: MiscUtils.makeConstantDescriptor(1000),
+    MAX_FIRE_STATION_EFFECT:  MiscUtils.makeConstantDescriptor(1000)});
 
   this.roadEffect = this.MAX_ROAD_EFFECT;
   this.policeEffect = this.MAX_POLICESTATION_EFFECT;
@@ -109,7 +112,7 @@ Budget.prototype._calculateBestPercentages = function() {
     this.roadPercent = 1;
     this.firePercent = 1;
     this.policePercent = 1;
-    return {road: 1, fire: 1, police: 1};
+    return {road: 0, fire: 0, police: 0};
   }
 
   // How much are we actually going to spend?
@@ -236,7 +239,7 @@ Budget.prototype.collectTax = function(gameLevel, census) {
   this.policeMaintenanceBudget = census.policeStationPop * policeMaintenanceCost;
   this.fireMaintenanceBudget = census.fireStationPop * fireMaintenanceCost;
 
-  var roadCost = census.roadTotal * roadMaintenanceCost;
+  var roadCost = Math.max(0, census.roadTotal + (census.roadUpkeep || 0)) * roadMaintenanceCost;
   var railCost = census.railTotal * railMaintenanceCost;
   this.roadMaintenanceBudget = Math.floor((roadCost + railCost) * RLevels[gameLevel]);
 

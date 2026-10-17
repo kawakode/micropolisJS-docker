@@ -101,7 +101,7 @@ MonsterSprite.prototype.move = function(spriteCycle, disasterManager, blockMaps)
     dir = SpriteUtils.getDir(this.x, this.y, this.destX, this.destY);
     dir = Math.floor((dir - 1) / 2);
 
-    if (dir !== currentDir && Random.getChance(10)) {
+    if (dir !== currentDir && Random.getRandom(10) === 0) {
       if (Random.getRandom16() & 1)
         frame = cardinals1[currentDir];
       else

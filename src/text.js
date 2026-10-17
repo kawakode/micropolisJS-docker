@@ -28,7 +28,8 @@ var zoneTypes = ['Clear', 'Water', 'Trees', 'Rubble', 'Flood', 'Radioactive Wast
                  'Industrial', 'Seaport', 'Airport', 'Coal Power', 'Fire Department',
                  'Police Department', 'Stadium', 'Nuclear Power', 'Draw Bridge',
                  'Radar Dish', 'Fountain', 'Industrial', 'Steelers 38  Bears 3',
-                 'Draw Bridge', 'Ur 238'];
+                 'Draw Bridge', 'Ur 238', 'Church', 'Clear', 'Wind Power', 'Gas Power', 'Solar Power',
+                 'School', 'University', 'Park', 'Garden', 'Plaza', 'Clear'];
 
 // Evaluation window
 var gameLevel = {};
@@ -60,7 +61,8 @@ var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
 // Tool strings
 var toolMessages = {
   noMoney: 'Insufficient funds to build that',
-  needsDoze: 'Area must be bulldozed first'
+  needsDoze: 'Area must be bulldozed first',
+  needsDozeManual: 'Bulldoze first (automatic bulldozing is off)'
 };
 
 // Message strings
@@ -85,6 +87,7 @@ var badMessages = {};
 badMessages[Messages.BLACKOUTS_REPORTED] = true;
 badMessages[Messages.EARTHQUAKE] = true;
 badMessages[Messages.EXPLOSION_REPORTED] = true;
+badMessages[Messages.FIREBOMBING] = true;
 badMessages[Messages.FLOODING_REPORTED] = true;
 badMessages[Messages.FIRE_REPORTED] = true;
 badMessages[Messages.HEAVY_TRAFFIC] = true;
@@ -128,6 +131,7 @@ messageText[Messages.WELCOME] = 'Welcome to KawaCity';
 messageText[Messages.BLACKOUTS_REPORTED] = 'Brownouts, build another Power Plant';
 messageText[Messages.EARTHQUAKE] = 'Major earthquake reported !!';
 messageText[Messages.EXPLOSION_REPORTED] = 'Explosion detected ';
+messageText[Messages.FIREBOMBING] = 'Firebombing reported!';
 messageText[Messages.FLOODING_REPORTED] = 'Flooding reported !';
 messageText[Messages.FIRE_REPORTED] = 'Fire reported ';
 messageText[Messages.HEAVY_TRAFFIC] = 'Heavy Traffic reported';

@@ -13,7 +13,7 @@
 
 import { MiscUtils } from './miscUtils.js';
 import { TileUtils } from './tileUtils.js';
-import { DIRT, HBRIDGE, LASTTINYEXP, TINYEXP } from "./tileValues.ts";
+import { DIRT, HBRIDGE, LASTRUBBLE, LASTTINYEXP, RUBBLE, TINYEXP, WOODS_HIGH, WOODS_LOW } from "./tileValues.ts";
 import { WorldEffects } from './worldEffects.js';
 
 var init = function(cost, map, shouldAutoBulldoze, isDraggable) {
@@ -39,16 +39,50 @@ var addCost = function(cost) {
 };
 
 
+// Roads, rails and power lines clear trees, rubble and shores in their way (but not bridges). Returns true when the
+// tile is in the way but automatic bulldozing is off: the tile must then be bulldozed first.
 var doAutoBulldoze = function(x, y) {
   var tile = this._worldEffects.getTile(x, y);
-  if (tile.isBulldozable()) {
-    tile = TileUtils.normalizeRoad(tile.getValue());
-    if ((tile >= TINYEXP && tile <= LASTTINYEXP) ||
-        (tile < HBRIDGE && tile !== DIRT)) {
-      this.addCost(1);
-      this._worldEffects.setTile(x, y, DIRT);
-    }
-  }
+  if (!tile.isBulldozable())
+    return false;
+
+  tile = TileUtils.normalizeRoad(tile.getValue());
+  if (!((tile >= TINYEXP && tile <= LASTTINYEXP) || (tile < HBRIDGE && tile !== DIRT)))
+    return false;
+
+  if (!this.autoBulldoze)
+    return true;
+
+  this.addCost(this.bulldozerCost);
+  this._worldEffects.setTile(x, y, DIRT);
+  return false;
+};
+
+
+// Whether a tile only holds trees, rubble or the debris of an explosion
+var isClutter = function(tile) {
+  if (!tile.isBulldozable())
+    return false;
+
+  var value = tile.getValue();
+  return (value >= WOODS_LOW && value <= WOODS_HIGH) || (value >= RUBBLE && value <= LASTRUBBLE) ||
+         (value >= TINYEXP && value <= LASTTINYEXP);
+};
+
+
+// Prepares a tile for the tools that need bare land (parks, gardens, trees...): with automatic bulldozing on, trees
+// and rubble are cleared for $1. Returns TOOLRESULT_OK when the tile is bare land, else TOOLRESULT_NEEDS_BULLDOZE.
+var clearTile = function(x, y) {
+  var tile = this._worldEffects.getTile(x, y);
+  if (tile.getValue() === DIRT)
+    return TOOLRESULT_OK;
+
+  if (!this.autoBulldoze || !isClutter(tile))
+    return TOOLRESULT_NEEDS_BULLDOZE;
+
+  this.addCost(this.bulldozerCost);
+  this._worldEffects.setTile(x, y, DIRT, 0);
+  return TOOLRESULT_OK;
 };
 
 
@@ -87,6 +121,7 @@ var BaseToolConstructor = {
   autoBulldoze: true,
   bulldozerCost: 1,
   clear: clear,
+  clearTile: clearTile,
   doAutoBulldoze: doAutoBulldoze,
   init: init,
   modifyIfEnoughFunding: modifyIfEnoughFunding,
@@ -103,7 +138,8 @@ var save = function(saveData) {
 
 
 var load = function(saveData) {
-  BaseTool.autoBulldoze = saveData.autoBulldoze;
+  if (typeof(saveData.autoBulldoze) === 'boolean')
+    BaseToolConstructor.autoBulldoze = saveData.autoBulldoze;
 };
 
 

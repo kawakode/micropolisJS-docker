@@ -14,6 +14,7 @@
 import { BlockMap } from './blockMap.ts';
 import { Commercial } from './commercial.js';
 import { Industrial } from './industrial.js';
+import { KawaBuildings } from './kawaBuildings.js';
 import { MiscUtils } from './miscUtils.js';
 import { Random } from './random.ts';
 import { Residential } from './residential.js';
@@ -113,6 +114,10 @@ var neutraliseTrafficMap = function(blockMaps) {
 
 // Given a tileValue, score it on the pollution it generates, in the range 0-255
 var getPollutionValue = function(tileValue) {
+  // KawaCity's buildings: only the gas power plant pollutes, and less than coal
+  if (tileValue >= TileValues.KAWABASE)
+    return (tileValue >= TileValues.GASBASE && tileValue <= TileValues.GASBASE + 8) ? 40 : 0;
+
   if (tileValue < TileValues.POWERBASE) {
     // Roads, fires and radiation lie below POWERBASE
 
@@ -221,6 +226,12 @@ var pollutionTerrainLandValueScan = function(map, census, blockMaps) {
           if (tileValue === TileValues.DIRT)
             continue;
 
+          // Parks, gardens and plazas are green space: better still than wild land
+          if (KawaBuildings.isGreenSpace(tileValue)) {
+            tempMap3.worldSet(mapX, mapY, tempMap3.worldGet(mapX, mapY) + 20);
+            continue;
+          }
+
           if (tileValue < TileValues.RUBBLE) {
             // Undeveloped land: record in tempMap3. Each undeveloped piece of land scores 15.
             // tempMap3 has a chunk size of 4, so each square in tempMap3 will ultimately contain a
@@ -255,6 +266,9 @@ var pollutionTerrainLandValueScan = function(map, census, blockMaps) {
         // ... getting mugged won't help either
         if (crimeRateMap.get(x, y) > 190)
           landValue -= 20;
+
+        // ... while good schools nearby are a selling point
+        landValue += Math.min(40, Math.floor(blockMaps.educationEffectMap.worldGet(worldX, worldY) / 6));
 
         // Clamp in range 1-250 (0 represents undeveloped land)
         landValue = MiscUtils.clamp(landValue, 1, 250);
@@ -329,12 +343,19 @@ var crimeScan = function(census, blockMaps) {
   smoothMap(policeStationEffectMap, policeStationMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
   smoothMap(policeStationMap, policeStationEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
 
+  // Schools and universities spread their influence in the same way
+  var educationMap = blockMaps.educationMap;
+  var educationEffectMap = blockMaps.educationEffectMap;
+  smoothMap(educationMap, educationEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  smoothMap(educationEffectMap, educationMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  smoothMap(educationMap, educationEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+
   var totalCrime = 0;
   var crimeZoneCount = 0;
 
   // Scan the map, looking for developed land, as it can attract crime.
-  for (var x = 0, width = crimeRateMap.mapWidth, blockSize = crimeRateMap.blockSize; x < width; x += blockSize) {
-    for (var y = 0, height = crimeRateMap.mapHeight, b; y < height; y += blockSize) {
+  for (var x = 0, width = crimeRateMap.gameMapWidth, blockSize = crimeRateMap.blockSize; x < width; x += blockSize) {
+    for (var y = 0, height = crimeRateMap.gameMapHeight; y < height; y += blockSize) {
       // Remember: landValueMap values are in the range 0-250
       var value = landValueMap.worldGet(x, y);
 
@@ -351,8 +372,12 @@ var crimeScan = function(census, blockMaps) {
         // Clamp in range -260 to 300
         value = Math.min(value, 300);
 
-        // If the police are nearby, there's no point committing the crime of the century
-        value -= policeStationMap.worldGet(x, y);
+        // If the police are nearby, there's no point committing the crime of the century (the effect map holds the
+        // police coverage, smoothed three times)
+        value -= policeStationEffectMap.worldGet(x, y);
+
+        // Educated neighbourhoods are a little safer too
+        value -= Math.floor(educationEffectMap.worldGet(x, y) / 4);
 
         // Force in to range 0-250
         value = MiscUtils.clamp(value, 0, 250);

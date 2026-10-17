@@ -126,9 +126,9 @@ Valves.prototype.setValves = function(gameLevel, census, budget) {
   comRatio = (comRatio - 1) * taxTableScale + taxTable[z];
   indRatio = (indRatio - 1) * taxTableScale + taxTable[z];
 
-  this.resValve = MiscUtils.clamp(this.resValve + Math.round(resRatio), -RES_VALVE_RANGE, RES_VALVE_RANGE);
-  this.comValve = MiscUtils.clamp(this.comValve + Math.round(comRatio), -COM_VALVE_RANGE, COM_VALVE_RANGE);
-  this.indValve = MiscUtils.clamp(this.indValve + Math.round(indRatio), -IND_VALVE_RANGE, IND_VALVE_RANGE);
+  this.resValve = MiscUtils.clamp(this.resValve + Math.trunc(resRatio), -RES_VALVE_RANGE, RES_VALVE_RANGE);
+  this.comValve = MiscUtils.clamp(this.comValve + Math.trunc(comRatio), -COM_VALVE_RANGE, COM_VALVE_RANGE);
+  this.indValve = MiscUtils.clamp(this.indValve + Math.trunc(indRatio), -IND_VALVE_RANGE, IND_VALVE_RANGE);
 
   if (this.resCap && this.resValve > 0)
     this.resValve = 0;

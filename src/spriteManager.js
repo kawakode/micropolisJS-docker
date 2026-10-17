@@ -30,6 +30,13 @@ var SpriteManager = EventEmitter(function(map) {
   this.spriteList = [];
   this.map = map;
   this.spriteCycle = 0;
+
+  // Sprites of the same kind share their table of listeners, so each message is passed on by a single function:
+  // adding it again for every new sprite is then harmless
+  this._reflectors = {};
+  var messages = Messages.CRASHES.concat([Messages.HEAVY_TRAFFIC, Messages.EXPLOSION_REPORTED]);
+  for (var i = 0; i < messages.length; i++)
+    this._reflectors[messages[i]] = MiscUtils.reflectEvent.bind(this, messages[i]);
 });
 
 
@@ -99,10 +106,13 @@ SpriteManager.prototype.makeSprite = function(type, x, y) {
 
   // Listen for crashes
   for (var i = 0, l = Messages.CRASHES.length; i < l; i++)
-    newSprite.addEventListener(Messages.CRASHES[i], MiscUtils.reflectEvent.bind(this, Messages.CRASHES[i]));
+    newSprite.addEventListener(Messages.CRASHES[i], this._reflectors[Messages.CRASHES[i]]);
 
   if (type == SpriteConstants.SPRITE_HELICOPTER)
-    newSprite.addEventListener(Messages.HEAVY_TRAFFIC, MiscUtils.reflectEvent.bind(this, Messages.HEAVY_TRAFFIC));
+    newSprite.addEventListener(Messages.HEAVY_TRAFFIC, this._reflectors[Messages.HEAVY_TRAFFIC]);
+
+  if (type == SpriteConstants.SPRITE_EXPLOSION)
+    newSprite.addEventListener(Messages.EXPLOSION_REPORTED, this._reflectors[Messages.EXPLOSION_REPORTED]);
 
   this.spriteList.push(newSprite);
   return newSprite;
@@ -147,7 +157,7 @@ SpriteManager.prototype.generatePlane = function(x, y) {
 
 
 SpriteManager.prototype.generateTrain = function(census, x, y) {
-  if (census.totalPop > 10 &&
+  if (census.totalPop > 20 &&
       this.getSprite(SpriteConstants.SPRITE_TRAIN) === null &&
       Random.getRandom(25) === 0)
     this.makeSprite(SpriteConstants.SPRITE_TRAIN,
@@ -249,6 +259,9 @@ SpriteManager.prototype.makeMonster = function() {
     sprite.count = 1000;
     sprite.destX = SpriteUtils.worldToPix(this.map.pollutionMaxX);
     sprite.destY = SpriteUtils.worldToPix(this.map.pollutionMaxY);
+    sprite.flag = 0;
+    this._emitEvent(Messages.MONSTER_SIGHTED, {trackable: true, x: sprite.worldX, y: sprite.worldY, sprite: sprite});
+    return;
   }
 
   var done = 0;

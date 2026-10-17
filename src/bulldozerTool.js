@@ -22,7 +22,32 @@ import { ZoneUtils } from './zoneUtils.js';
 
 var BulldozerTool = EventEmitter(ConnectingTool(function(map) {
   this.init(10, map, true);
+  this._demolished = null;
 }));
+
+
+// Bulldozing an area (by dragging, or with a wide bulldozer) is done in a batch: a building demolished in the batch
+// is not bulldozed again as its other tiles come up, which would clear its explosion away (and charge for it).
+BulldozerTool.prototype.startBatch = function() {
+  this._demolished = new Set();
+};
+
+
+BulldozerTool.prototype.endBatch = function() {
+  this._demolished = null;
+};
+
+
+// The tiles of the buildings demolished so far in the batch, as {x, y}
+BulldozerTool.prototype.getDemolished = function() {
+  if (this._demolished === null)
+    return [];
+
+  return Array.from(this._demolished, function(key) {
+    var coords = key.split(',');
+    return {x: coords[0] - 0, y: coords[1] - 0};
+  });
+};
 
 
 BulldozerTool.prototype.putRubble = function(x, y, size) {
@@ -30,8 +55,11 @@ BulldozerTool.prototype.putRubble = function(x, y, size) {
     for (var yy = y; yy < y + size; yy++)  {
       if (this._map.testBounds(xx, yy)) {
         var tile = this._worldEffects.getTileValue(xx, yy);
-        if (tile != TileValues.RADTILE && tile != TileValues.DIRT)
+        if (tile != TileValues.RADTILE && tile != TileValues.DIRT) {
           this._worldEffects.setTile(xx, yy, TileValues.TINYEXP + Random.getRandom(2), ANIMBIT | BULLBIT);
+          if (this._demolished !== null)
+            this._demolished.add(xx + ',' + yy);
+        }
       }
     }
   }
@@ -79,25 +107,47 @@ BulldozerTool.prototype.layDoze = function(x, y) {
 
 
 BulldozerTool.prototype.doTool = function(x, y, blockMaps) {
-  if (!this._map.testBounds(x, y))
+  if (!this._map.testBounds(x, y)) {
     this.result = this.TOOLRESULT_FAILED;
+    return;
+  }
+
+  // Part of a building already demolished in this batch: nothing more to do
+  if (this._demolished !== null && this._demolished.has(x + ',' + y)) {
+    this.result = this.TOOLRESULT_OK;
+    return;
+  }
 
   var tile = this._worldEffects.getTile(x, y);
   var tileValue = tile.getValue();
 
   var zoneSize = 0;
-  var deltaX;
-  var deltaY;
+  var deltaX = 0;
+  var deltaY = 0;
 
   if (tile.isZone()) {
-    zoneSize = ZoneUtils.checkZoneSize(tileValue);
-    deltaX = 0;
-    deltaY = 0;
+    zoneSize = ZoneUtils.getZoneSize(tileValue);
   } else {
     var result = ZoneUtils.checkBigZone(tileValue);
     zoneSize = result.zoneSize;
     deltaX = result.deltaX;
     deltaY = result.deltaY;
+
+    // Allow buildings to be demolished by clicking on any of their tiles, not just the centre
+    if (zoneSize === 0 && !tile.isBulldozable()) {
+      var zone = ZoneUtils.findCoveringZone(this._worldEffects, x, y);
+      if (zone !== null) {
+        zoneSize = zone.zoneSize;
+        deltaX = zone.x - x;
+        deltaY = zone.y - y;
+      } else if (tileValue >= TileValues.RESBASE) {
+        // A fragment of a building whose centre has been destroyed: clear it on its own
+        this.addCost(this.bulldozerCost);
+        this.putRubble(x, y, 1);
+        this.result = this.TOOLRESULT_OK;
+        return;
+      }
+    }
   }
 
   if (zoneSize > 0) {
@@ -109,6 +159,10 @@ BulldozerTool.prototype.doTool = function(x, y, blockMaps) {
     var centerY = y + deltaY;
 
     switch (zoneSize) {
+      case 1:
+        this.putRubble(centerX, centerY, 1);
+        break;
+
       case 3:
         this._emitEvent(SOUND_EXPLOSIONHIGH);
         this.putRubble(centerX - 1, centerY - 1, 3);

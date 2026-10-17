@@ -9,21 +9,55 @@
  * (Micropolis Corporation, the "licensor") and is licensed here to the authors/publishers of the "Micropolis"
  * city simulation game and its source code (the project or "licensee(s)") as a courtesy of the owner.
  *
+ * KawaCity: rewritten in 2026 to support zooming, smooth (per-pixel) scrolling, high density displays and
+ * tool previews. The whole view is repainted each frame.
+ *
  */
 
 import $ from "jquery";
 
 import { AnimationManager } from './animationManager.js';
-import { GameMap } from './gameMap.js';
 import { MiscUtils } from './miscUtils.js';
-import { MouseBox } from './mouseBox.js';
 import { Position } from './position.ts';
-import { TileSet } from './tileSet.js';
-import { TILE_INVALID } from "./tileValues.ts";
+import { TILE_COUNT, TILE_INVALID } from "./tileValues.ts";
+import { LIGHT_TILES } from './lightTiles.js';
+import { ROAD_STYLE_TILES } from './roadStyles.js';
+import { WATER_FRAME_COUNT, WATER_TILES } from './waterTiles.js';
+
+// World coordinates are expressed in "world pixels": each tile is TILE_SIZE world pixels square
+var TILE_SIZE = 16;
+
+// Sprites are laid out in a sheet of 48px cells
+var SPRITE_CELL = 48;
+
+var ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4];
+
+var BACKGROUND_COLOUR = '#16232a';
+
+// Water is animated: each tile containing water has a row of frames in the tile set's water image
+var WATER_FRAME_MS = 160;
+var waterRows = new Int16Array(TILE_COUNT).fill(-1);
+WATER_TILES.forEach(function(tile, row) {
+  waterRows[tile] = row;
+});
+
+// Dirt roads, avenues and highways are painted over the street tiles: the row of each tile in the overlays
+var roadStyleRows = new Int16Array(TILE_COUNT).fill(-1);
+ROAD_STYLE_TILES.forEach(function(tile, row) {
+  roadStyleRows[tile] = row;
+});
+
+// At night, some tiles have lights: windows, street lamps, flames. They are laid out like the tile set, in the tile
+// set's lights image.
+var hasLights = new Uint8Array(TILE_COUNT);
+LIGHT_TILES.forEach(function(tile) {
+  hasLights[tile] = 1;
+});
+
 
 function GameCanvas(id, parentNode) {
   if (!(this instanceof GameCanvas))
-    return new GameCanvas(id, parentNode, width, height);
+    return new GameCanvas(id, parentNode);
 
   if (arguments.length < 1)
     throw new Error('Attempt to construct a GameCanvas with no parameters');
@@ -45,13 +79,11 @@ function GameCanvas(id, parentNode) {
 
   this._canvas = document.createElement('canvas');
   this._canvas.id = id;
-
-  // The canvas is assumed to fill its container on-screen
-  var rect = parentNode.getBoundingClientRect();
-  this._canvas.width = rect.width;
-  this._canvas.height = rect.height;
   this._canvas.style.margin = '0';
   this._canvas.style.padding = '0';
+  this._canvas.style.display = 'block';
+  this._canvas.style.width = '100%';
+  this._canvas.style.height = '100%';
 
   this._pendingTileSet = null;
 
@@ -70,8 +102,6 @@ function GameCanvas(id, parentNode) {
 
 
 GameCanvas.prototype.init = function(map, tileSet, spriteSheet, animationManager) {
-  animationManager = animationManager || new AnimationManager(map);
-
   if (arguments.length < 3)
     throw new Error('GameCanvas constructor called with too few arguments ' + [].toString.apply(arguments));
 
@@ -80,42 +110,24 @@ GameCanvas.prototype.init = function(map, tileSet, spriteSheet, animationManager
 
   this._spriteSheet = spriteSheet;
   this._tileSet = tileSet;
-  var w = this._tileSet.tileWidth;
   this._map = map;
-  this.animationManager = new AnimationManager(map);
-
-  if (this._canvas.width < w || this._canvas.height < w)
-    throw new Error('Canvas too small!');
+  this.animationManager = animationManager || new AnimationManager(map);
 
   // Whether to allow off-map scrolling
   this._allowScrolling = true;
 
-  // An array indexed by tile offset containing the tileValue last painted there
-  this._lastPaintedTiles = null;
-  this._currentPaintedTiles = []; // for future use
+  // The world pixel coordinate at the top left of the canvas, and the number of CSS pixels per world pixel
+  this._viewX = 0;
+  this._viewY = 0;
+  this._zoom = 1;
 
-  // Last time we painted, the canvas was this many tiles wide and tall
-  this._lastPaintedWidth = -1;
-  this._lastPaintedHeight = -1;
+  // Reused between paints to avoid allocations
+  this._tileValues = [];
 
-  // Last time we painted, the canvas was this wide and tall in pixels (determines whether we
-  // can safely call putImageData)
-  this._lastCanvasWidth = -1;
-  this._lastCanvasHeight = -1;
-
-  // After painting tiles, we store the image data here before painting sprites and mousebox
-  this._lastCanvasData = null;
-
+  this.cssWidth = 0;
+  this.cssHeight = 0;
+  this._dpr = 1;
   this._calculateDimensions();
-
-  // Have the dimensions changed since the last paint?
-  this._pendingDimensionChange = false;
-  var onResize = function(e) {
-    this._pendingDimensionChange = true;
-  }.bind(this);
-
-  // Recompute canvas dimensions on resize
-  window.addEventListener('resize', onResize, false);
 
   // Order is important here. ready must be set before the call to centreOn below
   this.ready = true;
@@ -125,103 +137,118 @@ GameCanvas.prototype.init = function(map, tileSet, spriteSheet, animationManager
 };
 
 
-GameCanvas.prototype._calculateDimensions = function(force) {
-  force = force || false;
+// Synchronise the canvas' backing store with its on-screen size. Returns true if anything changed.
+GameCanvas.prototype._calculateDimensions = function() {
+  var parent = this._canvas.parentNode;
+  var cssWidth = parent.clientWidth;
+  var cssHeight = parent.clientHeight;
+  var dpr = window.devicePixelRatio || 1;
 
-  // The canvas is assumed to fill its container on-screen
-  var canvasWidth = this.canvasWidth = this._canvas.parentNode.clientWidth;
-  var canvasHeight = this.canvasHeight = this._canvas.parentNode.clientHeight;
+  if (cssWidth === this.cssWidth && cssHeight === this.cssHeight && dpr === this._dpr)
+    return false;
 
-  if (canvasHeight === this._lastCanvasHeight && canvasWidth === this._lastCanvasWidth && !force)
-    return;
+  this.cssWidth = cssWidth;
+  this.cssHeight = cssHeight;
+  this._dpr = dpr;
+  this._canvas.width = Math.max(1, Math.round(cssWidth * dpr));
+  this._canvas.height = Math.max(1, Math.round(cssHeight * dpr));
 
-  this._canvas.width = canvasWidth;
-  this._canvas.height = canvasHeight;
+  // Retained for compatibility: the size of the canvas in CSS pixels
+  this.canvasWidth = cssWidth;
+  this.canvasHeight = cssHeight;
 
-  var w = this._tileSet.tileWidth;
+  if (this.ready)
+    this._clampView();
 
-  // How many tiles fit?
-  this._wholeTilesInViewX = Math.floor(canvasWidth / w);
-  this._wholeTilesInViewY = Math.floor(canvasHeight / w);
-  this._totalTilesInViewX = Math.ceil(canvasWidth / w);
-  this._totalTilesInViewY = Math.ceil(canvasHeight / w);
-
-  if (this._allowScrolling) {
-    // The min/max properties denote how far we will let the canvas' origin move: the map
-    // should be visible in at least half the canvas
-    this.minX = 0 - Math.ceil(Math.floor(canvasWidth/w) / 2);
-    this.maxX = (this._map.width - 1) - Math.ceil(Math.floor(canvasWidth/w) / 2);
-    this.minY = 0 - Math.ceil(Math.floor(canvasHeight/w) / 2);
-    this.maxY = (this._map.height - 1) - Math.ceil(Math.floor(canvasHeight/w) / 2);
-    this._totalTilesInViewY = Math.ceil(canvasHeight / w);
-  } else {
-    this.minX = 0;
-    this.minY = 0;
-    this.maxX = this._map.width - this._totalTilesInViewX;
-    this.maxY = this._map.height - this._totalTilesInViewY;
-  }
-
-  this._pendingDimensionChange = true;
+  return true;
 };
 
 
 // NOTE: Canvas must be visible when this is called
 GameCanvas.prototype.disallowOffMap = function() {
   this._allowScrolling = false;
-  this._lastPaintedTiles = null;
-  this._calculateDimensions(true);
+  this._calculateDimensions();
+  this._clampView();
+};
+
+
+GameCanvas.prototype._visibleWorldWidth = function() {
+  return this.cssWidth / this._zoom;
+};
+
+
+GameCanvas.prototype._visibleWorldHeight = function() {
+  return this.cssHeight / this._zoom;
+};
+
+
+var clampAxis = function(value, visible, mapSize, allowOffMap) {
+  if (allowOffMap) {
+    // The map should always fill at least half of the view
+    var min = -visible / 2;
+    var max = mapSize - visible / 2;
+    return MiscUtils.clamp(value, min, max);
+  }
+
+  if (visible >= mapSize)
+    return (mapSize - visible) / 2;
+
+  return MiscUtils.clamp(value, 0, mapSize - visible);
+};
+
+
+GameCanvas.prototype._clampView = function() {
+  this._viewX = clampAxis(this._viewX, this._visibleWorldWidth(), this._map.width * TILE_SIZE, this._allowScrolling);
+  this._viewY = clampAxis(this._viewY, this._visibleWorldHeight(), this._map.height * TILE_SIZE, this._allowScrolling);
+};
+
+
+GameCanvas.prototype._checkReady = function() {
+  if (!this.ready)
+    throw new Error('Not ready!');
+};
+
+
+// Scroll the view by the given number of CSS pixels
+GameCanvas.prototype.panBy = function(dx, dy) {
+  this._checkReady();
+
+  this._viewX += dx / this._zoom;
+  this._viewY += dy / this._zoom;
+  this._clampView();
 };
 
 
 GameCanvas.prototype.moveNorth = function() {
-  if (!this.ready)
-    throw new Error('Not ready!');
-
-  if (this._originY > this.minY)
-    this._originY--;
+  this.panBy(0, -TILE_SIZE * this._zoom);
 };
 
 
 GameCanvas.prototype.moveEast = function() {
-  if (!this.ready)
-    throw new Error('Not ready!');
-
-  if (this._originX < this.maxX)
-    this._originX++;
+  this.panBy(TILE_SIZE * this._zoom, 0);
 };
 
 
 GameCanvas.prototype.moveSouth = function() {
-  if (!this.ready)
-    throw new Error('Not ready!');
-
-  if (this._originY < this.maxY)
-    this._originY++;
+  this.panBy(0, TILE_SIZE * this._zoom);
 };
 
 
 GameCanvas.prototype.moveWest = function() {
-  if (!this.ready)
-    throw new Error('Not ready!');
-
-  if (this._originX > this.minX)
-    this._originX--;
+  this.panBy(-TILE_SIZE * this._zoom, 0);
 };
 
 
+// Positions the given tile at the top-left of the view
 GameCanvas.prototype.moveTo = function(x, y) {
   if (arguments.length < 1)
     throw new Error('GameCanvas moveTo called with no arguments');
 
-  if (!this.ready)
-    throw new Error('Not ready!');
+  this._checkReady();
 
-  if (x < this.minX || x > this.maxX ||
-      y < this.minY || y > this.maxY)
-    throw new Error('Coordinates out of bounds');
-
-  this._originX = x;
-  this._originY = y;
+  this._viewX = x * TILE_SIZE;
+  this._viewY = y * TILE_SIZE;
+  this._clampView();
 };
 
 
@@ -229,77 +256,108 @@ GameCanvas.prototype.centreOn = function(x, y) {
   if (arguments.length < 1)
     throw new Error('GameCanvas centreOn called with no arguments');
 
-  if (!this.ready)
-    throw new Error('Not ready!');
+  this._checkReady();
 
   if (y === undefined) {
     y = x.y;
     x = x.x;
   }
 
-  // XXX Need to fix so that centres on best point if bounds fall outside
-  // XXX min/max
-  var originX = Math.floor(x) - Math.ceil(this._wholeTilesInViewX / 2);
-  var originY = Math.floor(y) - Math.ceil(this._wholeTilesInViewY / 2);
+  this._viewX = (Math.floor(x) + 0.5) * TILE_SIZE - this._visibleWorldWidth() / 2;
+  this._viewY = (Math.floor(y) + 0.5) * TILE_SIZE - this._visibleWorldHeight() / 2;
+  this._clampView();
+};
 
-  if (originX > this.maxX)
-    originX = this.maxX;
-  if (originX < this.minX)
-    originX = this.minX;
-  if (originY > this.maxY)
-    originY = this.maxY;
-  if (originY < this.minY)
-    originY = this.minY;
 
-  this._originX = originX;
-  this._originY = originY;
+GameCanvas.prototype.getZoom = function() {
+  return this._zoom;
+};
+
+
+// Change the zoom level, keeping the world point under the given canvas coordinate (in CSS pixels) fixed. If no
+// anchor is given, the centre of the view is kept fixed.
+GameCanvas.prototype.setZoom = function(zoom, anchorX, anchorY) {
+  this._checkReady();
+
+  zoom = MiscUtils.clamp(zoom, ZOOM_LEVELS[0], ZOOM_LEVELS[ZOOM_LEVELS.length - 1]);
+
+  if (anchorX === undefined) {
+    anchorX = this.cssWidth / 2;
+    anchorY = this.cssHeight / 2;
+  }
+
+  var worldX = this._viewX + anchorX / this._zoom;
+  var worldY = this._viewY + anchorY / this._zoom;
+
+  this._zoom = zoom;
+  this._viewX = worldX - anchorX / zoom;
+  this._viewY = worldY - anchorY / zoom;
+  this._clampView();
+};
+
+
+GameCanvas.prototype.zoomIn = function(anchorX, anchorY) {
+  for (var i = 0; i < ZOOM_LEVELS.length; i++) {
+    if (ZOOM_LEVELS[i] > this._zoom + 1e-6) {
+      this.setZoom(ZOOM_LEVELS[i], anchorX, anchorY);
+      return;
+    }
+  }
+};
+
+
+GameCanvas.prototype.zoomOut = function(anchorX, anchorY) {
+  for (var i = ZOOM_LEVELS.length - 1; i >= 0; i--) {
+    if (ZOOM_LEVELS[i] < this._zoom - 1e-6) {
+      this.setZoom(ZOOM_LEVELS[i], anchorX, anchorY);
+      return;
+    }
+  }
 };
 
 
 GameCanvas.prototype.getTileOrigin = function() {
-  var e = new Error('Not ready!');
+  this._checkReady();
 
-  if (!this.ready)
-    throw e;
-
-  return {x: this._originX, y: this._originY};
+  return {x: Math.floor(this._viewX / TILE_SIZE), y: Math.floor(this._viewY / TILE_SIZE)};
 };
 
 
 GameCanvas.prototype.getMaxTile = function() {
-  var e = new Error('Not ready!');
+  this._checkReady();
 
-  if (!this.ready)
-    throw e;
-
-  return {x: this._originX + this._totalTilesInViewX - 1, y: this._originY + this._totalTilesInViewY - 1};
+  return {x: Math.floor((this._viewX + this._visibleWorldWidth() - 1) / TILE_SIZE),
+          y: Math.floor((this._viewY + this._visibleWorldHeight() - 1) / TILE_SIZE)};
 };
 
 
-GameCanvas.prototype.canvasCoordinateToTileOffset = function(x, y) {
-  if (arguments.length < 2)
-    throw new Error('GameCanvas canvasCoordinateToTileOffset called with too few arguments ' + [].toString.apply(arguments));
+// The visible area, in world pixels
+GameCanvas.prototype.getVisibleWorldRect = function() {
+  this._checkReady();
 
-  if (!this.ready)
-    throw new Error('Not ready!');
-
-  return {x: Math.floor(x / this._tileSet.tileWidth),
-          y: Math.floor(y / this._tileSet.tileWidth)};
+  return {x: this._viewX, y: this._viewY, width: this._visibleWorldWidth(), height: this._visibleWorldHeight()};
 };
 
 
+// The centre of the view, in tile coordinates
+GameCanvas.prototype.getViewCentre = function() {
+  return {x: (this._viewX + this._visibleWorldWidth() / 2) / TILE_SIZE,
+          y: (this._viewY + this._visibleWorldHeight() / 2) / TILE_SIZE};
+};
+
+
+// Converts a coordinate relative to the canvas (in CSS pixels) to tile coordinates. The tile may be off the map.
 GameCanvas.prototype.canvasCoordinateToTileCoordinate = function(x, y) {
   if (arguments.length < 2)
     throw new Error('GameCanvas canvasCoordinateToTileCoordinate called with too few arguments ' + [].toString.apply(arguments));
 
-  if (!this.ready)
-    throw new Error('Not ready!');
+  this._checkReady();
 
-  if (x >= this.canvasWidth || y >= this.canvasHeight)
+  if (x < 0 || y < 0 || x >= this.cssWidth || y >= this.cssHeight)
     return null;
 
-  return {x: this._originX + Math.floor(x/this._tileSet.tileWidth),
-          y: this._originY + Math.floor(y/this._tileSet.tileWidth)};
+  return {x: Math.floor((this._viewX + x / this._zoom) / TILE_SIZE),
+          y: Math.floor((this._viewY + y / this._zoom) / TILE_SIZE)};
 };
 
 
@@ -307,22 +365,12 @@ GameCanvas.prototype.canvasCoordinateToPosition = function(x, y) {
   if (arguments.length < 2)
     throw new Error('GameCanvas canvasCoordinateToPosition called with too few arguments ' + [].toString.apply(arguments));
 
-  if (!this.ready)
-    throw new Error('Not ready!');
-
-  if (x >= this.canvasWidth || y >= this.canvasHeight)
+  var tile = this.canvasCoordinateToTileCoordinate(x, y);
+  if (tile === null || !this._map.testBounds(tile.x, tile.y))
     return null;
 
-  x = this._originX + Math.floor(x / this._tileSet.tileWidth);
-  y = this._originY + Math.floor(y / this._tileSet.tileWidth);
-
-
-  if (x < 0 || x >= this._map.width || y < 0 || y >= this._map.height)
-    return null;
-
-  return new Position(x, y);
+  return new Position(tile.x, tile.y);
 };
-
 
 
 GameCanvas.prototype.positionToCanvasCoordinate = function(p) {
@@ -333,37 +381,31 @@ GameCanvas.prototype.positionToCanvasCoordinate = function(p) {
 };
 
 
-
+// Returns the canvas coordinate (in CSS pixels) of the top-left of the given tile, or null if it is not visible
 GameCanvas.prototype.tileToCanvasCoordinate = function(x, y) {
   if (arguments.length < 1)
     throw new Error('GameCanvas tileToCanvasCoordinate  called with too few arguments ' + [].toString.apply(arguments));
 
-  if (!this.ready)
-    throw new Error('Not ready!');
+  this._checkReady();
 
   if (y === undefined) {
     y = x.y;
     x = x.x;
   }
 
-  if (x === undefined || y === undefined || x < this.minX || y < this.minY ||
-      x > (this.maxX + this._totalTilesInViewX - 1) ||
-      y > (this.maxY + this._totalTilesInViewY - 1))
-    throw e;
+  var canvasX = (x * TILE_SIZE - this._viewX) * this._zoom;
+  var canvasY = (y * TILE_SIZE - this._viewY) * this._zoom;
+  var size = TILE_SIZE * this._zoom;
 
-  if (x < this._originX || x >= this._originX + this._totalTilesInViewX ||
-      y < this._originY || y >= this._originY + this._totalTilesInViewY)
+  if (canvasX + size <= 0 || canvasY + size <= 0 || canvasX >= this.cssWidth || canvasY >= this.cssHeight)
     return null;
 
-  return {x: (x - this._originX) * this._tileSet.tileWidth,
-          y: (y - this._originY) * this._tileSet.tileWidth};
+  return {x: canvasX, y: canvasY};
 };
 
 
-
 GameCanvas.prototype.changeTileSet = function(tileSet) {
-  if (!this.ready)
-    throw new Error('Not ready!');
+  this._checkReady();
 
   if (!tileSet.isValid)
     throw new Error('new tileset not loaded');
@@ -372,21 +414,44 @@ GameCanvas.prototype.changeTileSet = function(tileSet) {
 };
 
 
+GameCanvas.prototype._drawTile = function(ctx, tileVal, dx, dy, dw, dh) {
+  if (tileVal === TILE_INVALID || tileVal < 0) {
+    ctx.fillStyle = BACKGROUND_COLOUR;
+    ctx.fillRect(dx, dy, dw, dh);
+    return;
+  }
+
+  var tileSet = this._tileSet;
+
+  var waterRow = waterRows[tileVal];
+  if (waterRow >= 0 && tileSet.waterImage) {
+    ctx.drawImage(tileSet.waterImage, this._waterFrame * TILE_SIZE, waterRow * TILE_SIZE, TILE_SIZE, TILE_SIZE,
+                  dx, dy, dw, dh);
+    return;
+  }
+
+  var perRow = tileSet.tilesPerRow;
+  var sx = (tileVal % perRow) * TILE_SIZE;
+  var sy = Math.floor(tileVal / perRow) * TILE_SIZE;
+  ctx.drawImage(tileSet.image, sx, sy, TILE_SIZE, TILE_SIZE, dx, dy, dw, dh);
+};
+
 
 GameCanvas.prototype._screenshot = function(onlyVisible) {
   if (onlyVisible)
     return this._canvas.toDataURL();
 
   var tempCanvas = document.createElement('canvas');
-  tempCanvas.width = this._map.width * this._tileSet.tileWidth;
-  tempCanvas.height = this._map.height * this._tileSet.tileWidth;
+  tempCanvas.width = this._map.width * TILE_SIZE;
+  tempCanvas.height = this._map.height * TILE_SIZE;
   var ctx = tempCanvas.getContext('2d');
+  this._waterFrame = 0;
 
   for (var x = 0; x < this._map.width; x++) {
-    for (var y = 0; y < this._map.height; y++) {
-      this._paintOne(ctx, this._map.getTileValue(x, y), x, y);
-    }
+    for (var y = 0; y < this._map.height; y++)
+      this._drawTile(ctx, this._map.getTileValue(x, y), x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
   }
+
   return tempCanvas.toDataURL();
 };
 
@@ -401,264 +466,481 @@ GameCanvas.prototype.screenshotVisible = function() {
 };
 
 
-GameCanvas.prototype.shoogle = function() {
-  // TODO Earthquakes
+// Shakes the view, for an earthquake: strength is in world pixels, duration in milliseconds
+GameCanvas.prototype.shoogle = function(strength, duration) {
+  this._shakeStrength = strength || 4;
+  this._shakeUntil = performance.now() + (duration || 3000);
 };
 
 
-GameCanvas.prototype._processSprites = function(ctx, spriteList) {
-  var spriteDamage = [];
-  var tileWidth = this._tileSet.tileWidth;
+// Converts a world pixel coordinate to a device pixel coordinate on the canvas. Rounding ensures adjacent tiles
+// share edges exactly, so no seams appear at fractional scales.
+GameCanvas.prototype._toDeviceX = function(worldX) {
+  return Math.round((worldX - this._viewX) * this._scale);
+};
 
+
+GameCanvas.prototype._toDeviceY = function(worldY) {
+  return Math.round((worldY - this._viewY) * this._scale);
+};
+
+
+GameCanvas.prototype._paintTiles = function(ctx, isPaused) {
+  var firstX = Math.floor(this._viewX / TILE_SIZE);
+  var firstY = Math.floor(this._viewY / TILE_SIZE);
+  var lastX = Math.floor((this._viewX + this._visibleWorldWidth()) / TILE_SIZE);
+  var lastY = Math.floor((this._viewY + this._visibleWorldHeight()) / TILE_SIZE);
+  var width = lastX - firstX + 1;
+  var height = lastY - firstY + 1;
+
+  var tileValues = this._map.getTileValuesForPainting(firstX, firstY, width, height, this._tileValues);
+  this._tileValues = tileValues;
+  this._paintedArea = {x: firstX, y: firstY, width: width, height: height};
+
+  // Adjust for animations
+  this.animationManager.getTiles(tileValues, firstX, firstY, width, height, isPaused);
+
+  var map = this._map;
+  var roadsImage = this._tileSet.roadsImage;
+
+  for (var y = 0; y < height; y++) {
+    var mapY = firstY + y;
+    var dy = this._toDeviceY(mapY * TILE_SIZE);
+    var dh = this._toDeviceY((mapY + 1) * TILE_SIZE) - dy;
+
+    for (var x = 0; x < width; x++) {
+      var mapX = firstX + x;
+      var dx = this._toDeviceX(mapX * TILE_SIZE);
+      var dw = this._toDeviceX((mapX + 1) * TILE_SIZE) - dx;
+
+      var tileVal = tileValues[y * width + x];
+      this._drawTile(ctx, tileVal, dx, dy, dw, dh);
+
+      // The kind of road, if it isn't a street
+      if (tileVal >= 0 && roadStyleRows[tileVal] >= 0 && roadsImage) {
+        var roadClass = map.getRoadClass(mapX, mapY);
+        if (roadClass > 0)
+          ctx.drawImage(roadsImage, (roadClass - 1) * TILE_SIZE, roadStyleRows[tileVal] * TILE_SIZE, TILE_SIZE, TILE_SIZE,
+                        dx, dy, dw, dh);
+      }
+    }
+  }
+};
+
+
+GameCanvas.prototype._paintSprites = function(ctx, spriteList) {
   for (var i = 0, l = spriteList.length; i < l; i++) {
     var sprite = spriteList[i];
+    var worldX = sprite.x + sprite.xOffset;
+    var worldY = sprite.y + sprite.yOffset;
+    var dx = this._toDeviceX(worldX);
+    var dy = this._toDeviceY(worldY);
+    var size = this._toDeviceX(worldX + sprite.width) - dx;
+
     try {
       ctx.drawImage(this._spriteSheet,
-                    (sprite.frame - 1) * 48,
-                    (sprite.type - 1) * 48,
+                    (sprite.frame - 1) * SPRITE_CELL,
+                    (sprite.type - 1) * SPRITE_CELL,
                     sprite.width,
                     sprite.width,
-                    sprite.x + sprite.xOffset - this._originX * 16,
-                    sprite.y + sprite.yOffset - this._originY * 16,
-                    sprite.width,
-                    sprite.width);
+                    dx, dy, size, size);
     } catch (e) {
       throw new Error('Failed to draw sprite ' + sprite.type + ' frame ' + sprite.frame + ' at ' + sprite.x +  ', ' + sprite.y);
     }
-
-    // sprite values are in pixels
-    spriteDamage.push({x: Math.floor((sprite.x + sprite.xOffset - this._originX * 16) / tileWidth),
-                       xBound: Math.ceil((sprite.x + sprite.xOffset + sprite.width - this._originX * 16) / tileWidth),
-                       y: Math.floor((sprite.y + sprite.yOffset - this._originY * 16) / tileWidth),
-                       yBound: Math.ceil((sprite.y + sprite.yOffset + sprite.height - this._originY * 16) / tileWidth)});
   }
-
-  return spriteDamage;
 };
 
 
-// Draws a mouse outline around the selected tiles. The mouse object is assumed to contain x and y properties which
-// express the coordinate of the top-left of the box in terms of the number of tiles from the top left. It should
-// also contain a width and height that are again expressed in terms of the number of tiles. The colour property
-// naturally defines the colour of the painted box.
-GameCanvas.prototype._processMouse = (function() {
-  var damage = {x: 0, xBound: 0, y: 0, yBound: 0};
+// Paints the tool preview. The overlay is an object with:
+//   - rects: an array of {x, y, width, height, colour, valid} in tile units, outlining where the tool will act (a
+//     rect with outline set is only outlined, dashed: the reach of a brush)
+//   - label: optionally, {x, y, text, valid} with tile coordinates: a caption painted next to that tile
+GameCanvas.prototype._paintOverlay = function(ctx, overlay) {
+  var dpr = this._dpr;
+  var rects = overlay.rects || [];
 
-  return function(mouse) {
-    if (mouse.width === 0 || mouse.height === 0)
-      return;
+  for (var i = 0, l = rects.length; i < l; i++) {
+    var r = rects[i];
+    var x = this._toDeviceX(r.x * TILE_SIZE);
+    var y = this._toDeviceY(r.y * TILE_SIZE);
+    var w = this._toDeviceX((r.x + r.width) * TILE_SIZE) - x;
+    var h = this._toDeviceY((r.y + r.height) * TILE_SIZE) - y;
 
-    // For outlines bigger than 2x2 (in either dimension) assume the mouse is offset by
-    // one tile
-    var mouseX = mouse.x;
-    var mouseY = mouse.y;
-    var mouseWidth = mouse.width;
-    var mouseHeight = mouse.height;
-    var options = {colour: mouse.colour, outline: true};
-
-    if (mouseWidth > 2)
-      mouseX -= 1;
-    if (mouseHeight > 2)
-      mouseY -= 1;
-
-    var offMap = (this._originX + mouseX < 0 && this._originX + mouseX + mouseWidth <= 0) ||
-                 (this._originY + mouseY < 0 && this._originY + mouseY + mouseHeight <= 0) ||
-                 this._originX + mouseX >= this._map.width || this._originY + mouseY >= this._map.height;
-
-    if (offMap) {
-      damage.x = damage.xBound = mouseX;
-      damage.y = damage.yBound = mouseY;
-      return damage;
+    if (r.outline) {
+      ctx.lineWidth = Math.max(1, Math.round(2 * dpr));
+      var half = ctx.lineWidth / 2;
+      ctx.setLineDash([4 * ctx.lineWidth, 2 * ctx.lineWidth]);
+      ctx.strokeStyle = '#070a1f';
+      ctx.strokeRect(x + half + ctx.lineWidth, y + half + ctx.lineWidth, w - ctx.lineWidth * 2, h - ctx.lineWidth * 2);
+      ctx.strokeStyle = r.colour || '#f8f8ff';
+      ctx.strokeRect(x + half, y + half, w - ctx.lineWidth, h - ctx.lineWidth);
+      ctx.setLineDash([]);
+      continue;
     }
 
-    var pos = {x: mouseX * this._tileSet.tileWidth, y: mouseY * this._tileSet.tileWidth};
-    var width = mouseWidth * this._tileSet.tileWidth;
-    var height = mouseHeight * this._tileSet.tileWidth;
-    MouseBox.draw(this._canvas, pos, width, height, options);
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = r.valid === false ? '#ff3b30' : (r.colour || '#ffd60a');
+    ctx.fillRect(x, y, w, h);
 
-    // Return an object representing tiles that were damaged that will need redrawn
-    // Note that we must take an extra tile either side to account for the outline
-    damage.x = mouseX - 1;
-    damage.xBound = mouseX + mouseWidth + 2;
-    damage.y = mouseY - 1;
-    damage.yBound = mouseY + mouseWidth + 2;
-    return damage;
-  };
-})();
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = Math.max(1, Math.round(2 * dpr));
+    ctx.strokeStyle = r.valid === false ? '#ff4a36' : '#f8f8ff';
+    var inset = ctx.lineWidth / 2;
+    ctx.strokeRect(x + inset, y + inset, w - ctx.lineWidth, h - ctx.lineWidth);
+  }
 
+  var label = overlay.label;
+  if (label && label.text) {
+    // A small message box, in the style of the interface
+    var px = Math.max(1, Math.round(dpr));
+    var fontSize = Math.round(16 * dpr);
+    ctx.font = fontSize + 'px "DotGothic16", system-ui, sans-serif';
+    var textWidth = Math.ceil(ctx.measureText(label.text).width);
+    var padX = 7 * px;
+    var boxW = textWidth + 2 * padX;
+    var boxH = fontSize + 8 * px;
+    var lx = this._toDeviceX((label.x + 1) * TILE_SIZE) + 6 * px;
+    var ly = this._toDeviceY(label.y * TILE_SIZE) - boxH - 6 * px;
 
-GameCanvas.prototype._paintVoid = function(ctx, x, y) {
-  var w = this._tileSet.tileWidth;
-  ctx.fillStyle = 'black';
-  ctx.fillRect(x * w, y * w, w, w);
+    // Keep the label on screen
+    lx = Math.round(MiscUtils.clamp(lx, 4 * px, Math.max(4 * px, this._canvas.width - boxW - 4 * px)));
+    ly = Math.round(MiscUtils.clamp(ly, 4 * px, Math.max(4 * px, this._canvas.height - boxH - 4 * px)));
+
+    // Hard shadow, dark outline, light border, then the fill
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.fillRect(lx + 3 * px, ly + 3 * px, boxW, boxH);
+    ctx.fillStyle = '#070a1f';
+    ctx.fillRect(lx - 2 * px, ly - 2 * px, boxW + 4 * px, boxH + 4 * px);
+    ctx.fillStyle = '#e8ecff';
+    ctx.fillRect(lx, ly, boxW, boxH);
+    ctx.fillStyle = label.valid === false ? '#a42416' : '#1d2a74';
+    ctx.fillRect(lx + 2 * px, ly + 2 * px, boxW - 4 * px, boxH - 4 * px);
+
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#070a1f';
+    ctx.fillText(label.text, lx + padX + px, ly + boxH / 2 + px);
+    ctx.fillStyle = label.valid === false ? '#ffffff' : '#f8c838';
+    ctx.fillText(label.text, lx + padX, ly + boxH / 2);
+  }
 };
 
 
-GameCanvas.prototype._paintOne = function(ctx, tileVal, x, y) {
-  if (tileVal === TILE_INVALID) {
-    this._paintVoid(ctx, x, y);
+// Fills a rectangle given in world pixels
+GameCanvas.prototype._worldRect = function(ctx, x, y, w, h, colour) {
+  var dx = this._toDeviceX(x);
+  var dy = this._toDeviceY(y);
+  ctx.fillStyle = colour;
+  ctx.fillRect(dx, dy, this._toDeviceX(x + w) - dx, this._toDeviceY(y + h) - dy);
+};
+
+
+var OUTLINE = '#1a1424';
+var GLASS = '#a8c4e0';
+
+
+// Paints the decorative cars and boats (see AmbientLife), which sit on the ground
+GameCanvas.prototype._paintGroundLife = function(ctx, life) {
+  var view = this.getVisibleWorldRect();
+  var i;
+
+  for (i = 0; i < life.boats.length; i++) {
+    var boat = life.boats[i];
+    var bx = Math.round(boat.x);
+    var by = Math.round(boat.y);
+    if (bx < view.x - 16 || by < view.y - 16 || bx > view.x + view.width + 16 || by > view.y + view.height + 16)
+      continue;
+
+    // Wake, hull, mast and a triangular sail billowing towards the bow
+    var ahead = boat.vx >= 0 ? 1 : -1;
+    this._worldRect(ctx, bx - ahead * 6 - 1, by + 1, 3, 1, 'rgba(220, 238, 255, 0.7)');
+    this._worldRect(ctx, bx - ahead * 9 - 1, by + 1, 2, 1, 'rgba(220, 238, 255, 0.4)');
+    this._worldRect(ctx, bx - 4, by, 9, 3, OUTLINE);
+    this._worldRect(ctx, bx - 3, by, 7, 2, '#9a6234');
+    this._worldRect(ctx, bx, by - 8, 1, 8, OUTLINE);
+    for (var row = 0; row < 6; row++) {
+      var width = Math.min(4, 1 + Math.floor(row * 0.7));
+      this._worldRect(ctx, ahead > 0 ? bx + 1 : bx - width, by - 7 + row, width, 1, row === 5 ? '#d8d4c8' : '#f6f4ea');
+    }
+  }
+
+  for (i = 0; i < life.pedestrians.length; i++) {
+    var p = life.pedestrians[i];
+    var px = Math.round(p.x);
+    var py = Math.round(p.y);
+    if (px < view.x - 4 || py < view.y - 4 || px > view.x + view.width + 4 || py > view.y + view.height + 4)
+      continue;
+
+    // A shadow, a head, a body, and legs that move as they walk
+    var stride = Math.floor(p.step) % 2 === 0;
+    this._worldRect(ctx, px + 1, py - 1, 1, 2, 'rgba(26,20,36,0.45)');
+    this._worldRect(ctx, px, py - 3, 1, 1, p.skin);
+    this._worldRect(ctx, px, py - 2, 1, 2, p.clothes);
+    this._worldRect(ctx, stride ? px : px - 1, py, 1, 1, '#2a2430');
+    if (stride)
+      this._worldRect(ctx, px - 1, py - 1, 1, 1, p.skin);
+  }
+
+  for (i = 0; i < life.cars.length; i++) {
+    var car = life.cars[i];
+    var cx = Math.round(car.x);
+    var cy = Math.round(car.y);
+    if (cx < view.x - 8 || cy < view.y - 8 || cx > view.x + view.width + 8 || cy > view.y + view.height + 8)
+      continue;
+
+    if (car.dir === 1 || car.dir === 3) {
+      // Heading east or west
+      this._worldRect(ctx, cx - 4, cy - 2, 9, 5, OUTLINE);
+      this._worldRect(ctx, cx - 3, cy - 1, 7, 3, car.colour);
+      this._worldRect(ctx, car.dir === 1 ? cx + 1 : cx - 2, cy - 1, 2, 3, GLASS);
+    } else {
+      // Heading north or south
+      this._worldRect(ctx, cx - 2, cy - 4, 5, 9, OUTLINE);
+      this._worldRect(ctx, cx - 1, cy - 3, 3, 7, car.colour);
+      this._worldRect(ctx, cx - 1, car.dir === 0 ? cy - 2 : cy + 1, 3, 2, GLASS);
+    }
+  }
+};
+
+
+// Paints smoke, steam and dust (glow is false), or fireworks (glow is true)
+GameCanvas.prototype._paintParticles = function(ctx, life, glow) {
+  var particles = life.particles;
+  // Sparks add up their light
+  if (glow)
+    ctx.globalCompositeOperation = 'lighter';
+
+  for (var i = 0; i < particles.length; i++) {
+    var p = particles[i];
+    if (!!p.glow !== glow)
+      continue;
+
+    var t = p.age / p.life;
+    var size = Math.max(1, Math.round(p.size0 + (p.size1 - p.size0) * t));
+    // Smoke and sparks hold on, then fade out quickly
+    var alpha = p.a0 + (p.a1 - p.a0) * (p.fade ? t * t : t);
+    if (p.twinkle && t > 0.4 && Math.random() < 0.35)
+      alpha *= 0.2;
+
+    var r = Math.round(p.c0[0] + (p.c1[0] - p.c0[0]) * t);
+    var g = Math.round(p.c0[1] + (p.c1[1] - p.c0[1]) * t);
+    var b = Math.round(p.c0[2] + (p.c1[2] - p.c0[2]) * t);
+    var colour = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha.toFixed(3) + ')';
+    var x = Math.round(p.x - size / 2);
+    var y = Math.round(p.y - size / 2);
+
+    if (size < 4) {
+      this._worldRect(ctx, x, y, size, size, colour);
+    } else {
+      // Bigger puffs are rounded off: a cross of three rectangles that don't overlap
+      this._worldRect(ctx, x + 1, y, size - 2, size, colour);
+      this._worldRect(ctx, x, y + 1, 1, size - 2, colour);
+      this._worldRect(ctx, x + size - 1, y + 1, 1, size - 2, colour);
+    }
+  }
+
+  ctx.globalCompositeOperation = 'source-over';
+};
+
+
+// Paints the night: the sky's colour multiplied over the map, then the lights in the windows, the street lamps and
+// the cars' headlights
+GameCanvas.prototype._paintNight = function(ctx, life, sky) {
+  if (sky.tint !== null) {
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgb(' + Math.round(sky.tint[0]) + ',' + Math.round(sky.tint[1]) + ',' + Math.round(sky.tint[2]) + ')';
+    ctx.fillRect(0, 0, this._canvas.width, this._canvas.height);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  if (sky.lights < 0.02)
     return;
-  }
 
-  var src = this._tileSet[tileVal];
-  try {
-    ctx.drawImage(src, x * this._tileSet.tileWidth, y * this._tileSet.tileWidth);
-  } catch (e) {
-    var mapX = this._originX + x;
-    var mapY = this._originY + y;
-    throw new Error('Failed to draw tile ' + tileVal + ' at ' + x + ', ' + y + ' (map ' + mapX + ', ' + mapY + ' tile ' + (this._map.testBounds(mapX, mapY) ? this._map.getTileValue(mapX, mapY) : '?? (Out of bounds)') + ')');
-  }
-};
+  ctx.globalAlpha = sky.lights;
 
+  var lightsImage = this._tileSet.lightsImage;
+  var area = this._paintedArea;
+  if (lightsImage && area) {
+    var tileValues = this._tileValues;
+    var perRow = this._tileSet.tilesPerRow;
 
-GameCanvas.prototype._paintTiles = function(ctx, paintData) {
-  var x, y, row, index;
-  var lastPaintedTiles = this._lastPaintedTiles;
+    for (var y = 0; y < area.height; y++) {
+      var mapY = area.y + y;
+      var dy = this._toDeviceY(mapY * TILE_SIZE);
+      var dh = this._toDeviceY((mapY + 1) * TILE_SIZE) - dy;
 
-  var width = this._totalTilesInViewX;
-  var height = this._totalTilesInViewY;
-
-  if (lastPaintedTiles !== null) {
-    // We have painted the canvas before. There are 3 possibilities:
-    //  - The canvas is exactly the same size as last time we painted
-    //  - The canvas has grown
-    //  - The canvas has shrunk
-    //
-    // In any case, we want to find the minimal area that was onscreen last paint
-    // and this paint, and iterate over those tiles, repainting where necessary
-    var xBound = Math.min(this._lastPaintedWidth, width);
-    var yBound = Math.min(this._lastPaintedHeight, height);
-
-    // Loop over the common area that we painted last time. Compare the current value against what was there last time
-    for (y = 0; y < yBound; y++) {
-      for (x = 0; x < xBound; x++) {
-        index  = y * xBound + x;
-        if (lastPaintedTiles[index] === paintData[index])
+      for (var x = 0; x < area.width; x++) {
+        var tileVal = tileValues[y * area.width + x];
+        if (tileVal < 0 || !hasLights[tileVal])
           continue;
 
-        // Tile is different: repaint
-        this._paintOne(ctx, paintData[index], x, y);
-      }
-    }
-
-    // Do we have more tiles than before? Paint the extra width and/or the extra height
-    if (width > this._lastPaintedWidth) {
-      for (y = 0; y < height; y++) {
-        for (x = this._lastPaintedWidth; x < width; x++) {
-          index  = y * width + x;
-          this._paintOne(ctx, paintData[index], x, y);
-        }
-      }
-    }
-
-    if (height > this._lastPaintedHeight) {
-      for (y = this._lastPaintedHeight; y < height; y++) {
-        for (x = 0; x < width; x++) {
-          index  = y * width + x;
-          this._paintOne(ctx, paintData[index], x, y);
-        }
-      }
-    }
-  } else {
-    // Full paint
-    for (y = 0; y < height; y++) {
-      for (x = 0; x < width; x++) {
-        index = y * width + x;
-        this._paintOne(ctx, paintData[index], x, y);
+        var mapX = area.x + x;
+        var dx = this._toDeviceX(mapX * TILE_SIZE);
+        var dw = this._toDeviceX((mapX + 1) * TILE_SIZE) - dx;
+        ctx.drawImage(lightsImage, (tileVal % perRow) * TILE_SIZE, Math.floor(tileVal / perRow) * TILE_SIZE,
+                      TILE_SIZE, TILE_SIZE, dx, dy, dw, dh);
       }
     }
   }
 
-  // Stash data
-  this._lastPaintedWidth = width;
-  this._lastPaintedHeight = height;
+  // Headlights, and a soft beam ahead of each car
+  for (var i = 0; i < life.cars.length; i++) {
+    var car = life.cars[i];
+    var cx = Math.round(car.x);
+    var cy = Math.round(car.y);
+    switch (car.dir) {
+      case 0:
+        this._worldRect(ctx, cx - 1, cy - 9, 3, 4, 'rgba(255, 236, 170, 0.22)');
+        this._worldRect(ctx, cx - 1, cy - 5, 1, 1, '#fff3c0');
+        this._worldRect(ctx, cx + 1, cy - 5, 1, 1, '#fff3c0');
+        break;
+      case 1:
+        this._worldRect(ctx, cx + 6, cy - 1, 4, 3, 'rgba(255, 236, 170, 0.22)');
+        this._worldRect(ctx, cx + 5, cy - 1, 1, 1, '#fff3c0');
+        this._worldRect(ctx, cx + 5, cy + 1, 1, 1, '#fff3c0');
+        break;
+      case 2:
+        this._worldRect(ctx, cx - 1, cy + 6, 3, 4, 'rgba(255, 236, 170, 0.22)');
+        this._worldRect(ctx, cx - 1, cy + 5, 1, 1, '#fff3c0');
+        this._worldRect(ctx, cx + 1, cy + 5, 1, 1, '#fff3c0');
+        break;
+      default:
+        this._worldRect(ctx, cx - 9, cy - 1, 4, 3, 'rgba(255, 236, 170, 0.22)');
+        this._worldRect(ctx, cx - 5, cy - 1, 1, 1, '#fff3c0');
+        this._worldRect(ctx, cx - 5, cy + 1, 1, 1, '#fff3c0');
+    }
+  }
 
-  // Rotate tile data
-  var temp = this._lastPaintedTiles;
-  this._lastPaintedTiles = paintData;
-  this._currentPaintedTiles = temp;
+  // A lantern on each boat
+  for (i = 0; i < life.boats.length; i++)
+    this._worldRect(ctx, Math.round(life.boats[i].x), Math.round(life.boats[i].y) - 1, 1, 1, '#ffe08a');
+
+  ctx.globalAlpha = 1;
 };
 
 
-GameCanvas.prototype.paint = function(mouse, sprites, isPaused) {
-  var i, l, x, y, row, damaged, xBound, yBound, index;
+// Paints the shadows of the clouds drifting over the map. Each cloud's shape is a small bitmap (one pixel per 4
+// world pixels), drawn translucent and unsmoothed, so the shadows have pixelated edges.
+GameCanvas.prototype._paintCloudShadows = function(ctx, life, sky) {
+  // Clouds cast no visible shadow at night
+  var alpha = 0.11 * (1 - sky.lights);
+  if (alpha < 0.005)
+    return;
 
-  if (!this.ready)
-    throw new Error('Not ready!');
+  ctx.globalAlpha = alpha;
+  for (var i = 0; i < life.clouds.length; i++) {
+    var cloud = life.clouds[i];
+    var dx = this._toDeviceX(cloud.x);
+    var dy = this._toDeviceY(cloud.y);
+    var dw = this._toDeviceX(cloud.x + cloud.shape.width * 4) - dx;
+    var dh = this._toDeviceY(cloud.y + cloud.shape.height * 4) - dy;
+    ctx.drawImage(cloud.shape, dx, dy, dw, dh);
+  }
+  ctx.globalAlpha = 1;
+};
 
-  var ctx = this._canvas.getContext('2d');
-  var lastPaintedTiles = this._lastPaintedTiles;
 
-  // Recompute our dimensions if there has been a resize since last paint
-  if (this._pendingDimensionChange || this._pendingTileSet) {
-    this._calculateDimensions();
-    this._pendingDimensionChange = false;
+// Paints the birds, which fly above everything, with their shadows on the ground
+GameCanvas.prototype._paintSkyLife = function(ctx, life) {
+  for (var i = 0; i < life.birds.length; i++) {
+    var bird = life.birds[i];
+    var x = Math.round(bird.x);
+    var y = Math.round(bird.y);
 
-    // Change tileSet if necessary
-    if (this._pendingTileSet !== null)
-      this._tileSet = this._pendingTileSet;
+    this._worldRect(ctx, x + 6, y + 14, 5, 1, 'rgba(0, 0, 0, 0.18)');
 
-    // If the dimensions or tileset has changed, set each entry in lastPaintedTiles to a bogus value to force a
-    // repaint. Note: we use -2 as our bogus value; -1 would paint the black void
-    if (this._pendingTileSet || this.canvasWidth !== this._lastCanvasWidth || this.canvasHeight !== this._lastCanvasHeight) {
-      ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
-
-      for (y = 0, l = (lastPaintedTiles !== null ? lastPaintedTiles.length : 0); y < l; y++)
-        lastPaintedTiles[y] = -2;
+    if (bird.flap) {
+      // Wings up
+      this._worldRect(ctx, x, y, 1, 1, '#24202c');
+      this._worldRect(ctx, x + 1, y + 1, 1, 1, '#24202c');
+      this._worldRect(ctx, x + 2, y + 2, 1, 1, '#24202c');
+      this._worldRect(ctx, x + 3, y + 1, 1, 1, '#24202c');
+      this._worldRect(ctx, x + 4, y, 1, 1, '#24202c');
+    } else {
+      // Wings level
+      this._worldRect(ctx, x, y + 1, 5, 1, '#24202c');
+      this._worldRect(ctx, x + 2, y + 2, 1, 1, '#24202c');
     }
+  }
+};
 
+
+// Paints a data overlay: a canvas with one pixel per map tile
+GameCanvas.prototype._paintDataOverlay = function(ctx, dataOverlay) {
+  var left = this._toDeviceX(0);
+  var top = this._toDeviceY(0);
+  var width = this._toDeviceX(this._map.width * TILE_SIZE) - left;
+  var height = this._toDeviceY(this._map.height * TILE_SIZE) - top;
+
+  ctx.drawImage(dataOverlay, 0, 0, dataOverlay.width, dataOverlay.height, left, top, width, height);
+};
+
+
+GameCanvas.prototype.paint = function(overlay, sprites, isPaused, dataOverlay, life) {
+  this._checkReady();
+
+  this._calculateDimensions();
+
+  if (this._pendingTileSet !== null) {
+    this._tileSet = this._pendingTileSet;
     this._pendingTileSet = null;
   }
 
-  var paintWidth = this._totalTilesInViewX;
-  var paintHeight = this._totalTilesInViewY;
+  this._scale = this._zoom * this._dpr;
 
-  // Fill an array with the values we need to paint
-  var tileValues = this._map.getTileValuesForPainting(this._originX, this._originY, paintWidth, paintHeight, this._currentPaintedTiles);
-
-  // Adjust for animations
-  this.animationManager.getTiles(tileValues, this._originX, this._originY, paintWidth, paintHeight, isPaused);
-
-  this._paintTiles(ctx, tileValues);
-  // The _paintTiles call updates this._lastPaintedTiles. Update our cached copy
-  lastPaintedTiles = this._lastPaintedTiles;
-
-  // Stash various values for next paint
-  this._lastCanvasWidth = this.canvasWidth;
-  this._lastCanvasHeight = this.canvasHeight;
-
-  if (!mouse && !sprites) {
-    return;
+  // An earthquake shakes the view, less and less as it ends
+  var shakeX = 0, shakeY = 0;
+  var now = performance.now();
+  if (this._shakeUntil && now < this._shakeUntil) {
+    var amplitude = this._shakeStrength * Math.min(1, (this._shakeUntil - now) / 1000);
+    shakeX = Math.round((Math.random() * 2 - 1) * amplitude);
+    shakeY = Math.round((Math.random() * 2 - 1) * amplitude * 0.5);
+    this._viewX += shakeX;
+    this._viewY += shakeY;
   }
 
-  if (mouse) {
-    damaged = this._processMouse(mouse);
+  // Nature keeps moving even when the simulation is paused
+  this._waterFrame = Math.floor(performance.now() / WATER_FRAME_MS) % WATER_FRAME_COUNT;
 
-    for (y = Math.max(0, damaged.y), yBound = Math.min(paintHeight, damaged.yBound); y < yBound; y++) {
-      for (x = Math.max(0, damaged.x), xBound = Math.min(paintWidth, damaged.xBound); x < xBound; x++) {
-        index = [y * paintWidth + x];
-        // Note: we can't use TILE_INVALID (-1) as that in some sense is a valid tile for the void!
-        lastPaintedTiles[index] = -2;
-      }
-    }
+  var ctx = this._canvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+
+  this._paintTiles(ctx, isPaused);
+
+  var sky = life ? life.getSky() : null;
+
+  if (life) {
+    this._paintGroundLife(ctx, life);
+    this._paintParticles(ctx, life, false);
   }
 
-  if (sprites) {
-    damaged = this._processSprites(ctx, sprites);
-    for (i = 0, l = damaged.length; i < l; i++) {
-      var damagedArea = damaged[i];
-      for (y = Math.max(0, damagedArea.y), yBound = Math.min(damagedArea.yBound, paintHeight); y < yBound; y++) {
-        for (x = Math.max(0, damagedArea.x), xBound = Math.min(damagedArea.xBound, paintWidth); x < xBound; x++) {
-          index = [y * paintWidth + x];
-          this._lastPaintedTiles[index] = -2;
-        }
-      }
-    }
+  if (sprites)
+    this._paintSprites(ctx, sprites);
+
+  if (life)
+    this._paintNight(ctx, life, sky);
+
+  // Data overlays stay readable, day or night
+  if (dataOverlay)
+    this._paintDataOverlay(ctx, dataOverlay);
+
+  if (life) {
+    this._paintCloudShadows(ctx, life, sky);
+    this._paintSkyLife(ctx, life);
+    this._paintParticles(ctx, life, true);
   }
+
+  if (overlay)
+    this._paintOverlay(ctx, overlay);
+
+  this._viewX -= shakeX;
+  this._viewY -= shakeY;
 };
 
 
 GameCanvas.DEFAULT_ID = 'MicropolisCanvas';
+GameCanvas.TILE_SIZE = TILE_SIZE;
+GameCanvas.ZOOM_LEVELS = ZOOM_LEVELS;
 
 
 export { GameCanvas };

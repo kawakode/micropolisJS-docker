@@ -1,0 +1,108 @@
+/* KawaCity, a modified version of micropolisJS. Adapted by Graeme McCutcheon from Micropolis.
+ *
+ * This code is released under the GNU GPL v3, with some additional terms.
+ * Please see the files LICENSE and COPYING for details.
+ *
+ */
+
+import { TileUtils } from './tileUtils.js';
+import * as TileValues from "./tileValues.ts";
+
+// The buildings that KawaCity adds to those of the original game (their power plants are handled by
+// PowerManager).
+//
+// Schools and universities educate the neighbourhood: they add to the education map, which, once smoothed (see
+// BlockMapUtils.crimeScan), raises land values and lowers crime around them. Like police stations, they work at
+// half strength without power or without a road. Parks, gardens and plazas count as green space for land values
+// (see BlockMapUtils.pollutionTerrainLandValueScan).
+
+var SCHOOL_STRENGTH = 800;
+var UNIVERSITY_STRENGTH = 1600;
+
+
+// Whether there is a road or rail along the edge of a building of the given size, whose centre is at (x, y)
+var hasRoadAlongside = function(map, x, y, size) {
+  var left = x - 1;
+  var top = y - 1;
+
+  for (var i = -1; i <= size; i++) {
+    var edges = [[left + i, top - 1], [left + i, top + size], [left - 1, top + i], [left + size, top + i]];
+    for (var j = 0; j < edges.length; j++) {
+      var ex = edges[j][0];
+      var ey = edges[j][1];
+      if (map.testBounds(ex, ey) && TileUtils.isDriveable(map.getTileValue(ex, ey)))
+        return true;
+    }
+  }
+
+  return false;
+};
+
+
+var makeEducationHandler = function(counter, strength, size) {
+  return function(map, x, y, simData) {
+    simData.census[counter] += 1;
+
+    var effect = strength;
+    if (!map.getTile(x, y).isPowered())
+      effect = Math.floor(effect / 2);
+
+    if (!hasRoadAlongside(map, x, y, size))
+      effect = Math.floor(effect / 2);
+
+    var educationMap = simData.blockMaps.educationMap;
+    educationMap.worldSet(x, y, educationMap.worldGet(x, y) + effect);
+  };
+};
+
+
+var parkFound = function(map, x, y, simData) {
+  simData.census.parkPop += 1;
+};
+
+
+// Whether a tile is part of a park, garden or plaza
+var isGreenSpace = function(tileValue) {
+  return (tileValue >= TileValues.BIGPARKBASE && tileValue <= TileValues.PLAZA);
+};
+
+
+// The size of KawaCity's buildings, from their centre tile (0 for other tiles)
+var getZoneSize = function(tileValue) {
+  switch (tileValue) {
+    case TileValues.WINDTURBINE:
+      return 1;
+
+    case TileValues.GASPLANT:
+    case TileValues.SOLARPLANT:
+    case TileValues.SCHOOL:
+    case TileValues.BIGPARK:
+      return 3;
+
+    case TileValues.UNIVERSITY:
+      return 4;
+
+    default:
+      return 0;
+  }
+};
+
+
+var KawaBuildings = {
+  getZoneSize: getZoneSize,
+  hasRoadAlongside: hasRoadAlongside,
+  isGreenSpace: isGreenSpace,
+
+  registerHandlers: function(mapScanner, repairManager) {
+    mapScanner.addAction(TileValues.SCHOOL, makeEducationHandler('schoolPop', SCHOOL_STRENGTH, 3));
+    mapScanner.addAction(TileValues.UNIVERSITY, makeEducationHandler('universityPop', UNIVERSITY_STRENGTH, 4));
+    mapScanner.addAction(TileValues.BIGPARK, parkFound);
+
+    repairManager.addAction(TileValues.SCHOOL, 15, 3);
+    repairManager.addAction(TileValues.UNIVERSITY, 15, 4);
+    repairManager.addAction(TileValues.BIGPARK, 15, 3);
+  }
+};
+
+
+export { KawaBuildings };

@@ -20,6 +20,9 @@ import { CongratsWindow } from './congratsWindow.js';
 import { DebugWindow } from './debugWindow.js';
 import { DisasterWindow } from './disasterWindow.js';
 import { EvaluationWindow } from './evaluationWindow.js';
+import { GraphsWindow } from './graphsWindow.js';
+import { Scenarios } from './scenarios.js';
+import { ScenarioWindow } from './scenarioWindow.js';
 import { GameCanvas } from './gameCanvas.js';
 import { GameMap } from './gameMap.js';
 import { InfoBar } from './infoBar.js';
@@ -38,9 +41,15 @@ import { SettingsWindow } from './settingsWindow.js';
 import { Simulation } from './simulation.js';
 import { Storage } from './storage.js';
 import { Text } from './text.js';
-import { TouchWarnWindow } from './touchWarnWindow.js';
+import { AmbientLife } from './ambientLife.js';
+import { Minimap } from './minimap.js';
+import { ToolIcons } from './toolIcons.js';
+import { Toolbar } from './toolbar.js';
 
 var disasterTimeout = 20 * 1000;
+
+// How often sprites move, in milliseconds
+var SPRITE_STEP = 1000 / 60;
 
 
 function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
@@ -63,23 +72,51 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.name = name || 'MyTown';
   this.everClicked = false;
 
+  // Track when various milestones are first reached
+  this._reachedTown = this._reachedCity = this._reachedCapital = this._reachedMetropolis = this._reachedMegalopolis = false;
+
   if (savedGame)
     this.load(savedGame);
+
+  // A game saved while paused should not resume paused: the controls always start in the running state
+  if (this.simulation.isPaused())
+    this.simulation.setSpeed(this.defaultSpeed);
+  else
+    this.defaultSpeed = this.simulation._speed;
 
   this.rci = new RCI('RCIContainer', this.simulation);
 
   // Note: must init canvas before inputStatus
   this.gameCanvas = new GameCanvas('canvasContainer');
   this.gameCanvas.init(this.gameMap, this.tileSet, spriteSheet);
-  this.inputStatus = new InputStatus(this.gameMap, tileSet.tileWidth);
+
+  // Modern screens are large: start zoomed in when there is room
+  if (this.gameCanvas.cssWidth >= 1000 && this.gameCanvas.cssHeight >= 600)
+    this.gameCanvas.setZoom(2);
+  this.gameCanvas.centreOn(Math.floor(this.gameMap.width / 2), Math.floor(this.gameMap.height / 2));
+
+  // The tool bar: categories, and their palettes of tools
+  Toolbar.build();
+  ToolIcons.decorateToolButtons(tileSet);
+  this.inputStatus = new InputStatus(this.gameMap, this.gameCanvas);
+  Toolbar.bind(this.inputStatus.selectTool.bind(this.inputStatus));
+  Toolbar.refresh(null);
+  this.inputStatus.addEventListener(Messages.TOOL_CHANGED, function(toolName) {
+    Toolbar.refresh(toolName);
+  });
 
   this.dialogOpen = false;
   this._openWindow = null;
-  this.mouse = null;
-  this.lastCoord = null;
+  this.overlay = null;
+  this._preview = null;
   this.simNeededBudget = false;
   this.isPaused = false;
   this.lastBadMessageTime = null;
+
+  // Map input is ignored while a dialog is open
+  this.inputStatus.isBlocked = function() {
+    return this.dialogOpen;
+  }.bind(this);
 
   var self = this;
   if (!this.everClicked) {
@@ -103,7 +140,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   }
 
   // Initialise monsterTV
-  this.monsterTV = new MonsterTV(this.gameMap, tileSet, spriteSheet, this.gameCanvas.animationManager);
+  this.monsterTV = new MonsterTV(this.gameMap, tileSet, spriteSheet, null);
 
   var opacityLayerID = 'opaque';
 
@@ -117,6 +154,16 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.evalWindow = new EvaluationWindow(opacityLayerID, 'evalWindow');
   this.evalWindow.addEventListener(Messages.EVAL_WINDOW_CLOSED, this.genericDialogClosure);
   this.inputStatus.addEventListener(Messages.EVAL_REQUESTED, this.handleEvalRequest.bind(this));
+
+  // ... the graphs window
+  this.handleGraphsRequest = makeWindowOpenHandler('graphs', function() {
+    return [{census: this.simulation.getCensus(), cityTime: this.simulation.getCityTime(),
+             startingYear: this.simulation.getStartingYear()}];
+  }.bind(this));
+
+  this.graphsWindow = new GraphsWindow(opacityLayerID, 'graphsWindow');
+  this.graphsWindow.addEventListener(Messages.GRAPHS_WINDOW_CLOSED, this.genericDialogClosure);
+  this.inputStatus.addEventListener(Messages.GRAPHS_REQUESTED, this.handleGraphsRequest.bind(this));
 
   // ... and similarly for the budget window
   this.handleBudgetRequest = makeWindowOpenHandler('budget', function() {
@@ -152,7 +199,8 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   // ... the settings window
   this.handleSettingsRequest = makeWindowOpenHandler('settings', function() {
     return [{autoBudget: this.simulation.budget.autoBudget, autoBulldoze: BaseTool.getAutoBulldoze(),
-             speed: this.defaultSpeed, disasters: this.simulation.disasterManager.disastersEnabled}];
+             speed: this.defaultSpeed, disasters: this.simulation.disasterManager.disastersEnabled,
+             dayNight: this.ambientLife.dayNight, level: this.simulation.getLevel()}];
   }.bind(this));
   this.settingsWindow = new SettingsWindow(opacityLayerID, 'settingsWindow');
   this.settingsWindow.addEventListener(Messages.SETTINGS_WINDOW_CLOSED, this.handleSettingsWindowClosure.bind(this));
@@ -175,9 +223,10 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.nagWindow = new NagWindow(opacityLayerID, 'nagWindow');
   this.nagWindow.addEventListener(Messages.NAG_WINDOW_CLOSED, this.genericDialogClosure);
 
-  // ... the touch warn window
-  this.touchWindow = new TouchWarnWindow(opacityLayerID, 'touchWarnWindow');
-  this.touchWindow.addEventListener(Messages.TOUCH_WINDOW_CLOSED, this.genericDialogClosure);
+  // ... the scenario window: the briefing, and the outcome
+  this.scenarioWindow = new ScenarioWindow(opacityLayerID, 'scenarioWindow');
+  this.scenarioWindow.addEventListener(Messages.SCENARIO_WINDOW_CLOSED, this.handleScenarioWindowClosure.bind(this));
+  this.simulation.addEventListener(Messages.SCENARIO_ENDED, this.handleScenarioEnded.bind(this));
 
   // ... and finally the query window
   this.queryWindow = new QueryWindow(opacityLayerID, 'queryWindow');
@@ -193,11 +242,15 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   // Listen for budget messages
   this.simulation.addEventListener(Messages.BUDGET_NEEDED, this.handleMandatoryBudget.bind(this));
 
-  // Listen for tool clicks
-  this.inputStatus.addEventListener(Messages.TOOL_CLICKED, this.handleTool.bind(this));
+  // Listen for tools being applied
+  this.inputStatus.addEventListener(Messages.TOOL_APPLY, this.handleTool.bind(this));
+  this.inputStatus.addEventListener(Messages.TOOL_CHANGED, function() { this._preview = null; }.bind(this));
 
   // And pauses
   this.inputStatus.addEventListener(Messages.SPEED_CHANGE, this.handlePause.bind(this));
+
+  // Escape closes dialogs, or deselects the current tool
+  this.inputStatus.addEventListener(Messages.ESCAPE_PRESSED, this.handleEscape.bind(this));
 
   // And date changes
   // XXX Not yet activated
@@ -216,17 +269,41 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
 
   this._notificationBar = new Notification('#notifications', this.gameCanvas, Text.messageText[Messages.WELCOME]);
 
-  // Track when various milestones are first reached
-  this._reachedTown = this._reachedCity = this._reachedCapital = this._reachedMetropolis = this._reacedMegalopolis = false;
   this.congratsWindow = new CongratsWindow(opacityLayerID, 'congratsWindow');
-  this.congratsWindow.addEventListener(Messages.CONGRATS_WINDOW_CLOSED, this.genericDialogClosure);
+  this.congratsWindow.addEventListener(Messages.CONGRATS_WINDOW_CLOSED, function() {
+    this.genericDialogClosure();
 
-  // Listen for touches, so we can warn tablet users
-  this.touchListener = touchListener.bind(this);
-  window.addEventListener('touchstart', this.touchListener, false);
+    // Celebrate each milestone with fireworks
+    this.ambientLife.celebrate(this.gameCanvas.getVisibleWorldRect());
+  }.bind(this));
 
   // Unhide controls
   this.revealControls();
+
+  // The minimap needs its container to be on screen
+  this.minimap = new Minimap('minimapContainer', this.gameMap, this.simulation, this.gameCanvas, tileSet);
+
+  // Decorative cars, people, boats, birds, smoke, clouds, and the cycle of day and night
+  this.ambientLife = new AmbientLife(this.gameMap, this.simulation);
+  if (savedGame) {
+    if (typeof(savedGame.disastersEnabled) === 'boolean')
+      this.simulation.disasterManager.disastersEnabled = savedGame.disastersEnabled;
+    if (typeof(savedGame.dayNight) === 'boolean')
+      this.ambientLife.setDayNight(savedGame.dayNight);
+    this.ambientLife.setTimeOfDay(savedGame.timeOfDay);
+  }
+  this._clockText = '';
+
+  // Speed controls in the heads-up display
+  var self = this;
+  $('.speedButton').click(function(e) {
+    e.preventDefault();
+    self.setSpeed($(this).attr('data-speed') - 0);
+  });
+  this._updateSpeedButtons();
+
+  // Keep the demand indicator crisp when the window changes size
+  $(window).on('resize', function() { self.rci.update(); });
 
   // Run the sim
   this.tick = tick.bind(this);
@@ -243,24 +320,153 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
 
   this.commonAnimate = commonAnimate.bind(this);
   this.animate = (debug ? debugAnimate : this.commonAnimate).bind(this);
-  this.animate();
+  this._lastFrameTime = null;
+  nextFrame(this.animate);
+
+  // Expose the game in debug mode, to help diagnose problems from the browser console
+  if (Config.debug)
+    window.kawaCity = this;
+
+  // A scenario starts with its briefing
+  this._scenarioPanelText = null;
+  var scenario = this.simulation.getScenario();
+  if (scenario && savedGame && savedGame.scenarioBriefing && Scenarios.get(scenario.id)) {
+    this.dialogOpen = true;
+    this._openWindow = 'scenarioWindow';
+    this.scenarioWindow.open(ScenarioWindow.INTRO, Scenarios.get(scenario.id));
+  }
 }
 
 
-Game.prototype.save = function() {
-  var saveData = {name: this.name, everClicked: this.everClicked};
-  BaseTool.save(saveData);
-  this.simulation.save(saveData);
+// The time is up for the scenario: the city has won, or the mayor is impeached
+Game.prototype.handleScenarioEnded = function(data) {
+  var scenario = Scenarios.get(data.id);
+  if (!scenario)
+    return;
 
-  Storage.saveGame(saveData);
+  if (this.dialogOpen && this._openWindow && this[this._openWindow])
+    this[this._openWindow].close();
+
+  this.dialogOpen = true;
+  this._openWindow = 'scenarioWindow';
+  this.scenarioWindow.open(data.won ? ScenarioWindow.WON : ScenarioWindow.LOST, scenario);
+
+  if (data.won)
+    this.ambientLife.celebrate(this.gameCanvas.getVisibleWorldRect());
 };
 
 
+Game.prototype.handleScenarioWindowClosure = function(data) {
+  this.genericDialogClosure();
+
+  switch (data.action) {
+    case ScenarioWindow.CONTINUE:
+      // Free play from now on
+      this.simulation.endScenario();
+      break;
+
+    case ScenarioWindow.RETRY:
+      // Start again from the title screen, which launches the scenario
+      window.location.hash = 'scenario=' + data.scenario.id;
+      window.location.reload();
+      break;
+
+    case ScenarioWindow.TITLE:
+      window.location.hash = '';
+      window.location.reload();
+      break;
+  }
+};
+
+
+// Keeps the scenario panel up to date: the goal, how the city is doing, and the time left
+Game.prototype.updateScenarioPanel = function() {
+  var scenarioState = this.simulation.getScenario();
+  var scenario = scenarioState ? Scenarios.get(scenarioState.id) : null;
+  if (!scenario || scenarioState.ended) {
+    if (this._scenarioPanelText !== '') {
+      this._scenarioPanelText = '';
+      $('#scenarioPanel').addClass('hidden');
+    }
+    return;
+  }
+
+  var progress = this.simulation.getScenarioProgress();
+  var wait = scenarioState.scoreWait;
+  var years = Math.floor(wait / 48);
+  var months = Math.floor((wait % 48) / 4);
+  var timeLeft = (years > 0 ? years + 'y ' : '') + months + 'm left';
+
+  var label, fraction;
+  switch (scenarioState.goal) {
+    case Scenarios.GOAL_METROPOLIS:
+      label = 'Population ' + progress.value.toLocaleString('en-US');
+      fraction = progress.value / progress.target;
+      break;
+
+    case Scenarios.GOAL_TRAFFIC:
+      label = 'Traffic ' + Math.round(progress.value);
+      fraction = progress.met ? 1 : progress.target / Math.max(progress.value, 1);
+      break;
+
+    case Scenarios.GOAL_CRIME:
+      label = 'Crime ' + Math.round(progress.value);
+      fraction = progress.met ? 1 : progress.target / Math.max(progress.value, 1);
+      break;
+
+    default:
+      label = 'Score ' + progress.value;
+      fraction = progress.value / progress.target;
+  }
+
+  var text = [scenario.name, label, timeLeft, progress.met].join('|');
+  if (text === this._scenarioPanelText)
+    return;
+
+  this._scenarioPanelText = text;
+  $('#scenarioPanel').removeClass('hidden').toggleClass('met', progress.met);
+  $('#scenarioPanelName').text(scenario.name);
+  $('#scenarioPanelGoal').text(Scenarios.GOAL_TEXT[scenarioState.goal]);
+  $('#scenarioPanelValue').text(label);
+  $('#scenarioPanelTime').text(timeLeft);
+  $('#scenarioPanelBar').css('width', Math.round(Math.min(1, Math.max(0, fraction)) * 100) + '%');
+};
+
+
+var milestones = ['_reachedTown', '_reachedCity', '_reachedCapital', '_reachedMetropolis', '_reachedMegalopolis'];
+
+
+// Everything needed to restore the game
+Game.prototype.getSaveData = function() {
+  var saveData = {name: this.name, everClicked: this.everClicked};
+  for (var i = 0; i < milestones.length; i++)
+    saveData[milestones[i]] = this[milestones[i]];
+
+  saveData.dayNight = this.ambientLife.dayNight;
+  saveData.disastersEnabled = this.simulation.disasterManager.disastersEnabled;
+  saveData.timeOfDay = this.ambientLife.getTimeOfDay();
+
+  BaseTool.save(saveData);
+  this.simulation.save(saveData);
+
+  return saveData;
+};
+
+
+// Saves the game in the browser. Returns whether it worked
+Game.prototype.save = function() {
+  return Storage.saveGame(this.getSaveData());
+};
+
+
+// Note: the simulation loads its own state when it is constructed with the saved game
 Game.prototype.load = function(saveData) {
-  this.name = saveData.name;
-  this.everClicked = saveData.everClicked;
+  this.name = saveData.name || this.name;
+  this.everClicked = !!saveData.everClicked;
+  for (var i = 0; i < milestones.length; i++)
+    this[milestones[i]] = !!saveData[milestones[i]];
+
   BaseTool.load(saveData);
-  this.simulation.load(saveData);
 };
 
 
@@ -323,6 +529,11 @@ Game.prototype.handleDisasterWindowClosure = function(request) {
 
     case DisasterWindow.DISASTER_TORNADO:
       this.simulation.spriteManager.makeTornado();
+      break;
+
+    case DisasterWindow.DISASTER_EARTHQUAKE:
+      this.simulation.disasterManager.makeEarthquake();
+      break;
   }
 };
 
@@ -343,12 +554,19 @@ Game.prototype.handleSettingsWindowClosure = function(actions) {
         break;
 
       case SettingsWindow.SPEED:
-        this.defaultSpeed = a.data;
-        this.simulation.setSpeed(this.defaultSpeed);
+        this.setSpeed(a.data - 0);
         break;
 
       case SettingsWindow.DISASTERS_CHANGED:
         this.simulation.disasterManager.disastersEnabled = a.data;
+        break;
+
+      case SettingsWindow.DAY_NIGHT:
+        this.ambientLife.setDayNight(a.data);
+        break;
+
+      case SettingsWindow.LEVEL:
+        this.simulation.changeLevel(a.data);
         break;
 
       default:
@@ -402,12 +620,15 @@ Game.prototype.handleBudgetWindowClosure = function(data) {
     this.simulation.budget.firePercent = data.firePercent / 100;
     this.simulation.budget.policePercent = data.policePercent / 100;
     this.simulation.budget.setTax(data.taxPercent - 0);
-    if (this.simNeededBudget) {
-      this.simulation.budget.doBudgetWindow();
-      this.simNeededBudget = false;
-    } else {
-      this.simulation.budget.updateFundEffects();
-    }
+  }
+
+  // The simulation waits for the yearly budget to be confirmed: it must be completed even if the player cancels
+  // the window, keeping the existing values, or the simulation would stay frozen
+  if (this.simNeededBudget) {
+    this.simulation.budget.doBudgetWindow();
+    this.simNeededBudget = false;
+  } else if (!data.cancelled) {
+    this.simulation.budget.updateFundEffects();
   }
 };
 
@@ -446,93 +667,248 @@ Game.prototype.handleMandatoryBudget = function() {
 };
 
 
+// The warning for a tool that can't act until the land is bulldozed: hint at the setting when it is off
+var needsDozeText = function() {
+  return BaseTool.getAutoBulldoze() ? Text.toolMessages.needsDoze : Text.toolMessages.needsDozeManual;
+};
+
+
+// Applies the current tool at each of the given placements in turn, stopping if we run out of money
 Game.prototype.handleTool = function(data) {
-  var x = data.x;
-  var y = data.y;
-
-  // Were was the tool clicked?
-  var tileCoords = this.gameCanvas.canvasCoordinateToTileCoordinate(x, y);
-
-  if (tileCoords === null)
+  var tool = this.inputStatus.gameTools[data.toolName];
+  if (tool === undefined || this.dialogOpen)
     return;
 
-  var tool = this.inputStatus.currentTool;
-
   var budget = this.simulation.budget;
-  var evaluation = this.simulation.evaluation;
+  var blockMaps = this.simulation.blockMaps;
+  var placements = data.placements;
+  var succeeded = 0;
+  var failure = null;
 
-  // do it!
-  tool.doTool(tileCoords.x, tileCoords.y, this.simulation.blockMaps);
+  if (tool.startBatch)
+    tool.startBatch();
 
-  tool.modifyIfEnoughFunding(budget);
-  switch (tool.result) {
-    case tool.TOOLRESULT_NEEDS_BULLDOZE:
-      $('#toolOutput').text(Text.toolMessages.needsDoze);
+  for (var i = 0, l = placements.length; i < l; i++) {
+    var p = placements[i];
+    tool.doTool(p.x, p.y, blockMaps);
+
+    if (tool.modifyIfEnoughFunding(budget)) {
+      succeeded++;
+      continue;
+    }
+
+    if (tool.result === tool.TOOLRESULT_NO_MONEY) {
+      failure = tool.result;
       break;
+    }
 
-    case tool.TOOLRESULT_NO_MONEY:
-      $('#toolOutput').text(Text.toolMessages.noMoney);
-      break;
-
-    default:
-      $('#toolOutput').html('Tools');
+    if (failure === null)
+      failure = tool.result;
   }
+
+  if (tool.endBatch)
+    tool.endBatch();
+
+  this._preview = null;
+
+  if (failure === tool.TOOLRESULT_NO_MONEY)
+    $('#toolOutput').text(Text.toolMessages.noMoney);
+  else if (succeeded === 0 && failure === tool.TOOLRESULT_NEEDS_BULLDOZE)
+    $('#toolOutput').text(needsDozeText());
+  else
+    $('#toolOutput').text($('.toolButton.selected').attr('data-label') || 'Tools');
+};
+
+
+// Works out what applying the current tool at the given placements would do, without changing the map
+Game.prototype._simulateTool = function(tool, placements) {
+  var effects = tool._worldEffects;
+  var blockMaps = this.simulation.blockMaps;
+  var results = [];
+
+  tool.clear();
+  if (tool.startBatch)
+    tool.startBatch();
+
+  for (var i = 0, l = placements.length; i < l; i++) {
+    var p = placements[i];
+
+    // Snapshot the pending effects, so that a failed placement leaves no trace (as it would when applied)
+    var snapshot = Object.assign({}, effects._data);
+    var cost = tool._applicationCost;
+
+    tool.doTool(p.x, p.y, blockMaps);
+    results.push(tool.result);
+
+    if (tool.result !== tool.TOOLRESULT_OK) {
+      effects._data = snapshot;
+      tool._applicationCost = cost;
+    }
+  }
+
+  var totalCost = tool._applicationCost;
+  var demolished = tool.getDemolished ? tool.getDemolished() : [];
+  tool.clear();
+  if (tool.endBatch)
+    tool.endBatch();
+
+  return {results: results, cost: totalCost, demolished: demolished};
+};
+
+
+var formatMoney = function(amount) {
+  return '$' + Math.round(amount).toLocaleString('en-US');
+};
+
+
+// Computes the overlay showing where the current tool will act, its validity and cost
+Game.prototype.computeOverlay = function() {
+  var pending = this.inputStatus.getPendingPlacements();
+  if (pending === null)
+    return null;
+
+  var toolName = this.inputStatus.toolName;
+  var tool = this.inputStatus.currentTool;
+  var placements = pending.placements;
+  var size = this.inputStatus.toolWidth;
+  var colour = this.inputStatus.toolColour;
+  var category = InputStatus.getToolCategory(toolName);
+
+  // Simulating is relatively costly: only recompute when something changes, or periodically as the map evolves
+  var key = toolName + ':' + placements.map(function(p) { return p.x + ',' + p.y; }).join(';');
+  var now = Date.now();
+  var preview = this._preview;
+  if (preview === null || preview.key !== key || now - preview.time > 250) {
+    var simulated = category === InputStatus.TOOL_SINGLE ? {results: [tool.TOOLRESULT_OK], cost: 0, demolished: []} :
+                    this._simulateTool(tool, placements);
+    preview = this._preview = {key: key, time: now, results: simulated.results, cost: simulated.cost,
+                               demolished: simulated.demolished};
+  }
+
+  var rects = [];
+  var anySucceeded = false;
+  var needsBulldoze = false;
+  var offset = size > 2 ? 1 : 0;
+
+  for (var i = 0, l = placements.length; i < l; i++) {
+    var ok = preview.results[i] === tool.TOOLRESULT_OK;
+    anySucceeded = anySucceeded || ok;
+    needsBulldoze = needsBulldoze || preview.results[i] === tool.TOOLRESULT_NEEDS_BULLDOZE;
+
+    // When bulldozing or planting an area, tiles where there is nothing to do are simply left unmarked
+    if (!ok && category === InputStatus.TOOL_AREA && (pending.dragging || pending.brush > 1))
+      continue;
+
+    rects.push({x: placements[i].x - offset, y: placements[i].y - offset, width: size, height: size,
+                colour: colour, valid: ok});
+  }
+
+  // The whole of the buildings that the bulldozer would demolish
+  var marked = new Set(rects.map(function(r) { return r.x + ',' + r.y; }));
+  preview.demolished.forEach(function(tile) {
+    if (!marked.has(tile.x + ',' + tile.y))
+      rects.push({x: tile.x, y: tile.y, width: 1, height: 1, colour: colour, valid: true});
+  });
+
+  // The outline of a brush wider than a tile, under the pointer
+  if (pending.brush > 1) {
+    var reach = Math.floor((pending.brush - 1) / 2);
+    rects.push({x: pending.centre.x - reach, y: pending.centre.y - reach, width: pending.brush, height: pending.brush,
+                colour: colour, outline: true});
+  }
+
+  var last = placements[placements.length - 1];
+  var label = null;
+  var funds = this.simulation.budget.totalFunds;
+
+  if (category !== InputStatus.TOOL_SINGLE && last !== undefined) {
+    if (!anySucceeded && needsBulldoze)
+      label = {text: needsDozeText(), valid: false};
+    else if (preview.cost > funds)
+      label = {text: formatMoney(preview.cost) + ' (not enough funds)', valid: false};
+    else if (anySucceeded && preview.cost > 0)
+      label = {text: formatMoney(preview.cost), valid: true};
+
+    if (label !== null) {
+      label.x = last.x - offset + size - 1;
+      label.y = last.y - offset;
+    }
+  }
+
+  return {rects: rects, label: label};
 };
 
 
 Game.prototype.handleSave = function() {
-  this.save();
+  var saveData = this.getSaveData();
+  var succeeded = Storage.saveGame(saveData);
+
+  // The game can also be kept as a file, to be opened from the title screen
+  var fileName = (this.name || 'city').replace(/[^A-Za-z0-9_-]+/g, '_') + '.kawacity';
+  var file = new Blob([Storage.exportGame(saveData)], {type: 'application/json'});
+
   this.dialogOpen = true;
   this._openWindow = 'saveWindow';
-  this.saveWindow.open();
+  this.saveWindow.open(succeeded, URL.createObjectURL(file), fileName);
 };
 
 
 Game.prototype.handlePause = function() {
-  // XXX Currently only offer pause and run to the user
-  // No real difference among the speeds until we optimise
-  // the sim
+  if (this.dialogOpen)
+    return;
+
   this.isPaused = !this.isPaused;
 
   if (this.isPaused)
     this.simulation.setSpeed(Simulation.SPEED_PAUSED);
   else
     this.simulation.setSpeed(this.defaultSpeed);
+
+  this._updateSpeedButtons();
 };
 
 
-Game.prototype.handleInput = function() {
-  if (!this.dialogOpen) {
-    // Handle keyboard movement
+// Sets the running speed (resuming the game if it was paused)
+Game.prototype.setSpeed = function(speed) {
+  if (speed !== Simulation.SPEED_SLOW && speed !== Simulation.SPEED_MED && speed !== Simulation.SPEED_FAST)
+    return;
 
-    if (this.inputStatus.left)
-      this.gameCanvas.moveWest();
-    else if (this.inputStatus.up)
-      this.gameCanvas.moveNorth();
-    else if (this.inputStatus.right)
-      this.gameCanvas.moveEast();
-    else if (this.inputStatus.down)
-      this.gameCanvas.moveSouth();
-  }
-
-  if (this.inputStatus.escape) {
-    // We need to handle escape, as InputStatus won't know what dialogs are showing
-    if (this.dialogOpen) {
-      this.dialogOpen = false;
-      this[this._openWindow].close();
-      this._openWindow = null;
-    } else
-      this.inputStatus.clearTool();
-  }
+  this.defaultSpeed = speed;
+  this.isPaused = false;
+  this.simulation.setSpeed(speed);
+  this._updateSpeedButtons();
 };
 
 
-// Will be bound on construction
-var touchListener = function(e) {
-  window.removeEventListener('touchstart', this.touchListener, false);
-  this._openWindow = 'touchWindow';
-  this.dialogOpen = true;
-  this.touchWindow.open();
+Game.prototype._updateSpeedButtons = function() {
+  $('#pauseRequest').text(this.isPaused ? 'Play' : 'Pause').toggleClass('paused', this.isPaused);
+
+  var current = this.isPaused ? -1 : this.defaultSpeed;
+  $('.speedButton').each(function() {
+    var active = ($(this).attr('data-speed') - 0) === current;
+    $(this).toggleClass('active', active).attr('aria-pressed', active ? 'true' : 'false');
+  });
+};
+
+
+Game.prototype.handleEscape = function() {
+  // Close the menus first, if one is open
+  if (InputStatus.toggleMoreMenu(false) || Toolbar.closeFlyout())
+    return;
+
+  // A lost scenario can't be escaped
+  if (this._openWindow === 'scenarioWindow' && this.scenarioWindow.mode === ScenarioWindow.LOST)
+    return;
+
+  // InputStatus doesn't know what dialogs are showing, so we must handle escape here
+  if (this.dialogOpen) {
+    var win = this[this._openWindow];
+    this.dialogOpen = false;
+    this._openWindow = null;
+    win.close();
+  } else {
+    this.inputStatus.clearTool();
+  }
 };
 
 
@@ -594,6 +970,10 @@ Game.prototype.processFrontEndMessage = function(message) {
     return;
   }
 
+  // The ground shakes for longer in a stronger earthquake
+  if (subject === Messages.EARTHQUAKE)
+    this.gameCanvas.shoogle(4, 1500 + (message.data && message.data.strength ? message.data.strength * 3 : 1500));
+
   // Show disaster if applicable
   if (message.data) {
     if (message.data.showable)
@@ -621,34 +1001,35 @@ Game.prototype.processFrontEndMessage = function(message) {
 };
 
 
-Game.prototype.calculateMouseForPaint = function() {
-  // Determine whether we need to draw a tool outline in the
-  // canvas
-  var mouse = null;
-
-  if (this.inputStatus.mouseX !== -1 && this.inputStatus.toolWidth > 0) {
-    var tileCoords = this.gameCanvas.canvasCoordinateToTileOffset(this.inputStatus.mouseX, this.inputStatus.mouseY);
-    if (tileCoords !== null) {
-      mouse = {};
-
-      mouse.x = tileCoords.x;
-      mouse.y = tileCoords.y;
-
-      // The inputStatus fields came from DOM attributes, so will be strings.
-      // Coerce back to numbers.
-      mouse.width = this.inputStatus.toolWidth - 0;
-      mouse.height = this.inputStatus.toolWidth - 0;
-      mouse.colour = this.inputStatus.toolColour || 'yellow';
-    }
+// Shows the time of day in the heads-up display (a day starts at 6 in the morning)
+Game.prototype.updateClock = function() {
+  var text = '';
+  if (this.ambientLife.dayNight) {
+    var minutes = Math.floor((6 * 60 + this.ambientLife.getTimeOfDay() * 24 * 60) % (24 * 60));
+    // Only show whole quarters of an hour, so the clock does not flicker
+    minutes -= minutes % 15;
+    var hours = Math.floor(minutes / 60);
+    text = (hours < 10 ? '0' : '') + hours + ':' + (minutes % 60 < 10 ? '0' : '') + (minutes % 60);
   }
 
-  return mouse;
+  if (text !== this._clockText) {
+    this._clockText = text;
+    $('#clock').text(text);
+    $('#clockStat').toggleClass('hidden', text === '');
+  }
 };
 
 
 Game.prototype.calculateSpritesForPaint = function(canvas) {
-  var origin = canvas.getTileOrigin();
-  var spriteList = this.simulation.spriteManager.getSpritesInView(origin.x, origin.y, canvas.canvasWidth, canvas.canvasHeight);
+  var rect = canvas.getVisibleWorldRect();
+  var tileSize = GameCanvas.TILE_SIZE;
+
+  // Include a margin, so that sprites partially in view are painted
+  var startX = Math.floor(rect.x / tileSize) - 3;
+  var startY = Math.floor(rect.y / tileSize) - 3;
+  var width = rect.width + 7 * tileSize;
+  var height = rect.height + 7 * tileSize;
+  var spriteList = this.simulation.spriteManager.getSpritesInView(startX, startY, width, height);
 
   if (spriteList.length === 0)
     return null;
@@ -657,56 +1038,66 @@ Game.prototype.calculateSpritesForPaint = function(canvas) {
 };
 
 
+// Runs the simulation. This is independent of painting, so that the simulation speed does not depend on the
+// display's frame rate.
 var tick = function() {
-  this.handleInput();
+  var delay = 50;
 
-  if (this.dialogOpen) {
-    window.setTimeout(this.tick, 0);
-    return;
-  }
-
-  if (!this.simulation.isPaused() && !$('#tooSmall').is(':visible')) {
-    // Run the sim
+  if (!this.dialogOpen && !this.simulation.isPaused() && !$('#tooSmall').is(':visible')) {
     this.simulation.simTick();
+    delay = Math.max(1, this.simulation.timeUntilNextStep());
   }
 
-  // Run this even when paused: you can still build when paused
-  this.mouse = this.calculateMouseForPaint();
-
-  window.setTimeout(this.tick, 0);
+  window.setTimeout(this.tick, delay);
 };
 
 
-var commonAnimate = function() {
-  if (this.dialogShowing) {
-    nextFrame(this.animate);
-    return;
+var commonAnimate = function(timestamp) {
+  var elapsed = this._lastFrameTime === null ? 0 : timestamp - this._lastFrameTime;
+  this._lastFrameTime = timestamp;
+
+  this.inputStatus.update(elapsed);
+
+  // Trains, ships, planes, monsters and tornadoes move 60 times a second, whatever the display's refresh rate
+  if (!this.isPaused && !this.dialogOpen) {
+    this._spriteTime = Math.min((this._spriteTime || 0) + elapsed, SPRITE_STEP * 4);
+    while (this._spriteTime >= SPRITE_STEP) {
+      this.simulation.spriteManager.moveObjects(this.simulation._constructSimData());
+      this._spriteTime -= SPRITE_STEP;
+    }
   }
 
-  if (!this.isPaused)
-    this.simulation.spriteManager.moveObjects(this.simulation._constructSimData());
+  // Run this even when paused: you can still build when paused
+  this.overlay = this.computeOverlay();
+
+  this.minimap.paint();
+  this.ambientLife.update(elapsed, this.gameCanvas.getVisibleWorldRect(), !this.isPaused && !this.dialogOpen);
+  this.updateClock();
+  this.updateScenarioPanel();
 
   var sprites = this.calculateSpritesForPaint(this.gameCanvas);
-  this.gameCanvas.paint(this.mouse, sprites, this.isPaused);
+  this.gameCanvas.paint(this.overlay, sprites, this.isPaused, this.minimap.getOverlayCanvas(), this.ambientLife);
 
-  sprites = this.calculateSpritesForPaint(this.monsterTV.canvas);
-  this.monsterTV.paint(sprites, this.isPaused);
+  if (this.monsterTV.isOpen) {
+    sprites = this.calculateSpritesForPaint(this.monsterTV.canvas);
+    this.monsterTV.paint(sprites, this.isPaused);
+  }
 
   nextFrame(this.animate);
 };
 
 
-var debugAnimate = function() {
+var debugAnimate = function(timestamp) {
   var date = new Date();
   var elapsed = Math.floor((date - this.animStart) / 1000);
 
-  if (elapsed > this.lastElapsed && this.frameCount > 0) {
+  if (elapsed > 0 && elapsed > this.lastElapsed && this.frameCount > 0) {
     $('#fpsValue').text(Math.floor(this.frameCount/elapsed));
     this.lastElapsed = elapsed;
   }
 
   this.frameCount++;
-  this.commonAnimate();
+  this.commonAnimate(timestamp);
 };
 
 

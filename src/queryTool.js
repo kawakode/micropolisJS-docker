@@ -68,9 +68,9 @@ QueryTool.prototype.classifyPollution = function(x, y, blockMaps) {
   var pollution = blockMaps.pollutionDensityMap.worldGet(x, y);
   if (Config.debug || Config.queryDebug)
     $('#queryPollutionRaw').text(pollution);
-  pollution = pollution >> 6;
-  pollution = pollution & 3;
-  $('#queryPollution').text(Text.pollutionStrings[pollution]);
+  // As in the original game, any pollution at all is at least moderate
+  var index = pollution > 0 && pollution < 64 ? 1 : (pollution >> 6) & 3;
+  $('#queryPollution').text(Text.pollutionStrings[index]);
 };
 
 
@@ -78,9 +78,9 @@ QueryTool.prototype.classifyRateOfGrowth = function(x, y, blockMaps) {
   var rate = blockMaps.rateOfGrowthMap.worldGet(x, y);
   if (Config.debug || Config.queryDebug)
     $('#queryRateRaw').text(rate);
-  rate = rate >> 6;
-  rate = rate & 3;
-  $('#queryRate').text(Text.rateStrings[rate]);
+  // The rate of growth ranges from -200 to 200
+  var index = rate < 0 ? 0 : (rate === 0 ? 1 : (rate > 100 ? 3 : 2));
+  $('#queryRate').text(Text.rateStrings[index]);
 };
 
 
@@ -105,7 +105,9 @@ QueryTool.prototype.classifyZone = function(x, y) {
       TileValues.INDBASE, TileValues.PORTBASE, TileValues.AIRPORTBASE, TileValues.COALBASE,
       TileValues.FIRESTBASE, TileValues.POLICESTBASE, TileValues.STADIUMBASE, TileValues.NUCLEARBASE,
       TileValues.HBRDG0, TileValues.RADAR0, TileValues.FOUNTAIN, TileValues.INDBASE2,
-      TileValues.FOOTBALLGAME1, TileValues.VBRDG0, 952];
+      TileValues.FOOTBALLGAME1, TileValues.VBRDG0, 952, TileValues.CHURCH1BASE, 1020,
+      TileValues.WINDTURBINE, TileValues.GASBASE, TileValues.SOLARBASE, TileValues.SCHOOLBASE,
+      TileValues.UNIVERSITYBASE, TileValues.BIGPARKBASE, TileValues.GARDEN, TileValues.PLAZA, TileValues.KAWALAST + 1];
 
   var tileValue = this._map.getTileValue(x, y);
   if (tileValue >= TileValues.COALSMOKE1 && tileValue < TileValues.FOOTBALLGAME1)
@@ -117,7 +119,13 @@ QueryTool.prototype.classifyZone = function(x, y) {
       break;
   }
 
-  $('#queryZoneType').text(Text.zoneTypes[index]);
+  var name = Text.zoneTypes[index];
+
+  // The kind of road
+  if (name === 'Road' || name === 'Draw Bridge')
+    name = ['Street', 'Dirt road', 'Avenue', 'Highway'][this._map.getRoadClass(x, y)] || name;
+
+  $('#queryZoneType').text(name);
 };
 
 

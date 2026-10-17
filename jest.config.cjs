@@ -16,6 +16,8 @@ module.exports = {
   testEnvironment: "node",
   testMatch: ["**/test/*.ts", "**/test/**/*.ts"],
   transform: {
-    "^.+\\.ts$": "ts-jest"
+    "^.+\\.ts$": "ts-jest",
+    // The game is mostly JavaScript (ES modules): its tools are tested too
+    "^.+\\.js$": "ts-jest"
   }
 };
