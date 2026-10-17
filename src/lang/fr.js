@@ -42,7 +42,6 @@ var strings = {
   'Zoom out (-)': 'Dézoomer (-)',
   'Live': 'En direct',
   'Close': 'Fermer',
-  'Kawa News': 'Kawa Infos',
   'City news': 'Actualités de la ville',
   'Show on the map': 'Voir sur la carte',
 
