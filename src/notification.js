@@ -13,8 +13,10 @@
 
 import $ from "jquery";
 
+import { I18n } from './i18n.js';
 import { MiscUtils } from './miscUtils.js';
 import { Text } from './text.js';
+
 
 var TIMEOUT_SECS = 30;
 
@@ -99,11 +101,11 @@ var handleClick = function(e) {
 Notification.prototype.createMessage = function(message) {
 
   if (message.hasOwnProperty('data') && message.data !== undefined && message.data.hasOwnProperty('x') && message.data.hasOwnProperty('y')) {
-    this._displayLink(Text.messageText[message.subject], message.data.x, message.data.y);
+    this._displayLink(I18n.t(Text.messageText[message.subject]), message.data.x, message.data.y);
     return;
   }
 
-  this._displayText(Text.messageText[message.subject]);
+  this._displayText(I18n.t(Text.messageText[message.subject]));
 };
 
 

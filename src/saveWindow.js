@@ -13,8 +13,10 @@
 
 import $ from "jquery";
 
+import { I18n } from './i18n.js';
 import { SAVE_WINDOW_CLOSED } from './messages.ts';
 import { ModalWindow } from './modalWindow.js';
+
 
 var SaveWindow = ModalWindow(function() {
   $(saveFormID).on('submit', submit.bind(this));
@@ -39,9 +41,9 @@ SaveWindow.prototype.close = function() {
 
 // downloadURL and fileName: the game as a file, to keep or to move to another browser
 SaveWindow.prototype.open = function(succeeded, downloadURL, fileName) {
-  $('#saveMessage').text(succeeded === false ?
+  $('#saveMessage').text(I18n.t(succeeded === false ?
     'Sorry, the game could not be saved in this browser: it may be blocking storage, or it may be full. You can still keep it as a file.' :
-    'Game saved! Choose "Load saved game" on the title screen to carry on later.');
+    'Game saved! Choose "Load saved game" on the title screen to carry on later.'));
 
   var link = $('#saveDownload');
   var previous = link.attr('href');

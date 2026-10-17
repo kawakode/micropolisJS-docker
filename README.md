@@ -34,8 +34,9 @@ npm test        # unit tests
 npm run lint    # type check
 ```
 
-- `?debug=1` in the URL shows a debug menu and exposes the game as `window.kawaCity`.
+- `?debug=1` in the URL shows a debug menu and exposes the game as `window.kawaCity`, and the translations as `window.kawaI18n`.
 - `docker build -t kawacity .` builds the image.
+- The texts are written in English; `src/lang/fr.js` translates them into French (see `src/i18n.js`). `npm test` checks that every text has its translation.
 - `python3 tools/pixelart/generate.py` regenerates the tiles and sprites in `images/` from the original artwork (needs Pillow and numpy).
 
 **Releasing**: push a version tag. The tests run, then the image is published with the tag's version (`1.2.3`, `1.2`, `1`) and as `latest` (except pre-releases such as `v1.2.3-rc.1`).
@@ -49,6 +50,8 @@ git push origin v1.2.3
 
 - **Start**: a new city, one of the eight scenarios of the original game, a sample city, or a saved file (`.kawacity`, or `.cty` from the original game).
 - **Build**: zones, transport, power, services, leisure and terrain tools. The budget, evaluation, graphs and map overlays show how the city is doing.
+- **Languages**: English and French. The game starts in the browser's language, and Settings change it.
+- **News**: the ticker along the bottom of the screen tells how the city is doing (at least one item in three: disasters, what needs fixing), between jokes about what the mayor has been doing.
 - **Controls**: click to build, drag for roads, lines and areas. Right-drag, arrows or WASD to move; wheel, pinch or `+`/`-` to zoom.
 - **Shortcuts**: `1`–`9` tools, `B` bulldozer (again for the next size), `Q` query, `Space` pause, `Esc` cancel.
 

@@ -33,6 +33,13 @@ var DisasterManager = EventEmitter(function(map, spriteManager, gameLevel) {
 
 var DisChance = [479, 239, 59];
 
+
+// Flood waters are still spreading or receding
+DisasterManager.prototype.isFlooding = function() {
+  return this._floodCount > 0;
+};
+
+
 DisasterManager.prototype.doDisasters = function(census) {
   if (this._floodCount)
       this._floodCount--;

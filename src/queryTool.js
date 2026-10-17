@@ -16,9 +16,11 @@ import $ from "jquery";
 import { BaseTool } from './baseTool.js';
 import { Config } from './config.js';
 import { EventEmitter } from './eventEmitter.js';
+import { I18n } from './i18n.js';
 import { QUERY_WINDOW_NEEDED } from './messages.ts';
 import { Text } from './text.js';
 import * as TileValues from "./tileValues.ts";
+
 
 var makeTool = BaseTool.makeTool;
 var QueryTool = EventEmitter(makeTool(function(map) {
@@ -32,7 +34,7 @@ QueryTool.prototype.classifyPopulationDensity = function(x, y, blockMaps) {
     $('#queryDensityRaw').text(density);
   density = density >> 6;
   density = density & 3;
-  $('#queryDensity').text(Text.densityStrings[density]);
+  $('#queryDensity').text(I18n.t(Text.densityStrings[density]));
 };
 
 
@@ -50,7 +52,7 @@ QueryTool.prototype.classifyLandValue = function(x, y, blockMaps) {
      i = 1;
 
    var text = Text.landValueStrings[i];
-   $('#queryLandValue').text(text);
+   $('#queryLandValue').text(I18n.t(text));
 };
 
 
@@ -60,7 +62,7 @@ QueryTool.prototype.classifyCrime = function(x, y, blockMaps) {
     $('#queryCrimeRaw').text(crime);
   crime = crime >> 6;
   crime = crime & 3;
-  $('#queryCrime').text(Text.crimeStrings[crime]);
+  $('#queryCrime').text(I18n.t(Text.crimeStrings[crime]));
 };
 
 
@@ -70,7 +72,7 @@ QueryTool.prototype.classifyPollution = function(x, y, blockMaps) {
     $('#queryPollutionRaw').text(pollution);
   // As in the original game, any pollution at all is at least moderate
   var index = pollution > 0 && pollution < 64 ? 1 : (pollution >> 6) & 3;
-  $('#queryPollution').text(Text.pollutionStrings[index]);
+  $('#queryPollution').text(I18n.t(Text.pollutionStrings[index]));
 };
 
 
@@ -80,7 +82,7 @@ QueryTool.prototype.classifyRateOfGrowth = function(x, y, blockMaps) {
     $('#queryRateRaw').text(rate);
   // The rate of growth ranges from -200 to 200
   var index = rate < 0 ? 0 : (rate === 0 ? 1 : (rate > 100 ? 3 : 2));
-  $('#queryRate').text(Text.rateStrings[index]);
+  $('#queryRate').text(I18n.t(Text.rateStrings[index]));
 };
 
 
@@ -125,7 +127,7 @@ QueryTool.prototype.classifyZone = function(x, y) {
   if (name === 'Road' || name === 'Draw Bridge')
     name = ['Street', 'Dirt road', 'Avenue', 'Highway'][this._map.getRoadClass(x, y)] || name;
 
-  $('#queryZoneType').text(name);
+  $('#queryZoneType').text(I18n.t(name));
 };
 
 

@@ -11,6 +11,7 @@
 
 import $ from "jquery";
 
+import { I18n } from './i18n.js';
 import { ROAD_STYLE_TILES } from './roadStyles.js';
 import * as TileValues from "./tileValues.ts";
 
@@ -145,42 +146,60 @@ var makeIcon = function(spec, tileSet) {
 var decorateToolButtons = function(tileSet) {
   $('.toolButton').each(function() {
     var button = $(this);
-    var tool = button.attr('data-tool');
-    var spec = iconSpecs[tool];
-    var name = button.text().trim();
-    var label = button.attr('data-label') || name;
-    var cost = button.attr('data-cost');
+    var spec = iconSpecs[button.attr('data-tool')];
     var key = button.attr('data-key');
+
+    // The button's text is the tool's name, in English
+    if (!button.attr('data-name'))
+      button.attr('data-name', button.text().trim());
 
     button.empty();
 
     if (spec)
       button.append(makeIcon(spec, tileSet));
 
-    button.append($('<span class="toolName"></span>').text(name));
+    button.append($('<span class="toolName"></span>'));
 
-    if (cost)
-      button.append($('<span class="toolCost"></span>').text('$' + Number(cost).toLocaleString('en-US')));
+    if (button.attr('data-cost'))
+      button.append($('<span class="toolCost"></span>'));
 
     if (key)
       button.append($('<span class="toolKey" aria-hidden="true"></span>').text(key));
 
     // What the tool does, shown in the palettes of the tool bar
-    var description = button.attr('data-description');
-    if (description)
-      button.append($('<span class="toolDescription"></span>').text(description));
+    if (button.attr('data-description'))
+      button.append($('<span class="toolDescription"></span>'));
 
-    var title = label + (cost ? ' ($' + Number(cost).toLocaleString('en-US') + ')' : '') + (key ? ' [' + key + ']' : '') +
-                (description ? ': ' + description : '');
+    button.attr('aria-pressed', 'false');
+  });
+
+  labelToolButtons();
+};
+
+
+// Writes the texts of the tool buttons, in the current language
+var labelToolButtons = function() {
+  $('.toolButton').each(function() {
+    var button = $(this);
+    var label = I18n.t(button.attr('data-label') || button.attr('data-name'));
+    var cost = button.attr('data-cost') ? I18n.money(Number(button.attr('data-cost'))) : '';
+    var key = button.attr('data-key');
+    var description = button.attr('data-description') ? I18n.t(button.attr('data-description')) : '';
+
+    button.find('.toolName').text(I18n.t(button.attr('data-name')));
+    button.find('.toolCost').text(cost);
+    button.find('.toolDescription').text(description);
+
+    var title = label + (cost ? ' (' + cost + ')' : '') + (key ? ' [' + key + ']' : '') + (description ? ': ' + description : '');
     button.attr('title', title);
     button.attr('aria-label', title);
-    button.attr('aria-pressed', 'false');
   });
 };
 
 
 var ToolIcons = {
-  decorateToolButtons: decorateToolButtons
+  decorateToolButtons: decorateToolButtons,
+  labelToolButtons: labelToolButtons
 };
 
 

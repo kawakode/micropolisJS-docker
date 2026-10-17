@@ -11,6 +11,7 @@
 
 import $ from "jquery";
 
+import { I18n } from './i18n.js';
 import { MiscUtils } from './miscUtils.js';
 import { BIT_MASK, CONDBIT } from "./tileFlags.ts";
 import { TILE_COUNT } from "./tileValues.ts";
@@ -116,7 +117,7 @@ function Minimap(parentID, map, simulation, gameCanvas, tileSet) {
 
   this._parent = $(MiscUtils.normaliseDOMid(parentID))[0];
   this._canvas = document.createElement('canvas');
-  this._canvas.setAttribute('aria-label', 'Map of the city: click to move the view');
+  this._canvas.setAttribute('aria-label', I18n.t('Map of the city: click to move the view'));
   this._parent.appendChild(this._canvas);
 
   // The map is painted at one pixel per tile into an offscreen canvas, then scaled up
@@ -186,10 +187,17 @@ Minimap.prototype.setOverlay = function(name) {
 
   var ramp = overlay.power ? [UNPOWERED, POWERED] : overlay.ramp;
   var stops = ramp.map(function(c) { return 'rgb(' + c.join(',') + ')'; }).join(', ');
-  this._legend.find('.low').text(overlay.low);
-  this._legend.find('.high').text(overlay.high);
+  this._legend.find('.low').text(I18n.t('legend|' + overlay.low));
+  this._legend.find('.high').text(I18n.t('legend|' + overlay.high));
   this._legend.find('.ramp').css('background', 'linear-gradient(90deg, ' + stops + ')');
   this._legend.removeClass('hidden');
+};
+
+
+// Shows the texts again, in the current language
+Minimap.prototype.translate = function() {
+  this._canvas.setAttribute('aria-label', I18n.t('Map of the city: click to move the view'));
+  this.setOverlay(this._overlay);
 };
 
 

@@ -13,17 +13,14 @@
 
 import $ from "jquery";
 
+import { I18n } from './i18n.js';
 import * as Messages from './messages.ts';
 import { MiscUtils } from './miscUtils.js';
 import { Text } from './text.js';
 
-// TODO L20N
 
-var formatNumber = function(value) {
-  return Math.round(value).toLocaleString('en-US');
-};
-
-
+// Returns a function that shows the values and follows them; it returns in turn a function to show them again (when
+// the language changes)
 var InfoBar = function(classification, population, score, funds, date, name) {
   var classificationSelector = MiscUtils.normaliseDOMid(classification);
   var populationSelector = MiscUtils.normaliseDOMid(population);
@@ -33,33 +30,32 @@ var InfoBar = function(classification, population, score, funds, date, name) {
   var nameSelector = MiscUtils.normaliseDOMid(name);
 
   return function(dataSource, initialValues) {
-    $(classificationSelector).text(initialValues.classification);
-    $(populationSelector).text(formatNumber(initialValues.population));
-    $(scoreSelector).text(initialValues.score);
-    $(fundsSelector).text(formatNumber(initialValues.funds));
-    $(dateSelector).text([Text.months[initialValues.date.month], initialValues.date.year].join(' '));
-    $(nameSelector).text(initialValues.name);
+    var values = Object.assign({}, initialValues);
 
-    // Add the various listeners
-    dataSource.addEventListener(Messages.CLASSIFICATION_UPDATED, function(classification) {
-      $(classificationSelector).text(classification);
-    });
+    var show = function() {
+      $(classificationSelector).text(I18n.t(Text.cityClass[values.classification]));
+      $(populationSelector).text(I18n.formatNumber(values.population));
+      $(scoreSelector).text(I18n.formatNumber(values.score));
+      $(fundsSelector).text(I18n.money(values.funds));
+      $(dateSelector).text([I18n.t(Text.months[values.date.month]), values.date.year].join(' '));
+      $(nameSelector).text(values.name);
+    };
 
-    dataSource.addEventListener(Messages.POPULATION_UPDATED, function(population) {
-      $(populationSelector).text(formatNumber(population));
-    });
+    var follow = function(message, key) {
+      dataSource.addEventListener(message, function(value) {
+        values[key] = value;
+        show();
+      });
+    };
 
-    dataSource.addEventListener(Messages.SCORE_UPDATED, function(score) {
-      $(scoreSelector).text(score);
-    });
+    follow(Messages.CLASSIFICATION_UPDATED, 'classification');
+    follow(Messages.POPULATION_UPDATED, 'population');
+    follow(Messages.SCORE_UPDATED, 'score');
+    follow(Messages.FUNDS_CHANGED, 'funds');
+    follow(Messages.DATE_UPDATED, 'date');
 
-    dataSource.addEventListener(Messages.FUNDS_CHANGED, function(funds) {
-      $(fundsSelector).text(formatNumber(funds));
-    });
-
-    dataSource.addEventListener(Messages.DATE_UPDATED, function(date) {
-      $(dateSelector).text([Text.months[date.month], date.year].join(' '));
-    });
+    show();
+    return show;
   };
 };
 

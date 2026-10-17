@@ -13,9 +13,11 @@
 
 import $ from "jquery";
 
+import { I18n } from './i18n.js';
 import { BUDGET_WINDOW_CLOSED } from './messages.ts';
 import { MiscUtils } from './miscUtils.js';
 import { ModalWindow } from './modalWindow.js';
+
 
 var BudgetWindow = ModalWindow(function() {
   $(budgetCancelID).on('click', cancel.bind(this));
@@ -36,7 +38,7 @@ var budgetOKID = '#budgetOK';
 var setSpendRangeText = function(element, percentage, totalSpend) {
   var labelID = element + 'Label';
   var cash = Math.floor(totalSpend * (percentage / 100));
-  var text = [percentage, '% of $', totalSpend, ' = $', cash].join('');
+  var text = I18n.t('{percent}% of {total} = {cash}', {percent: percentage, total: I18n.money(totalSpend), cash: I18n.money(cash)});
   $(MiscUtils.normaliseDOMid(labelID)).text(text);
 };
 
@@ -52,7 +54,7 @@ var onFundingUpdate = function(elementID, e) {
 var onTaxUpdate = function(e) {
   var elem = $('#taxRateLabel')[0];
   var sourceElem = $('#taxRate')[0];
-  $(elem).text(['Tax rate: ', sourceElem.value, '%'].join(''));
+  $(elem).text(I18n.t('Tax rate: {tax}%', {tax: sourceElem.value}));
 };
 
 
@@ -143,9 +145,7 @@ BudgetWindow.prototype.open = function(budgetData) {
 
   var cashFlow = taxesCollected - this.roadMaintenanceBudget - this.fireMaintenanceBudget - this.policeMaintenanceBudget;
   var currentFunds = previousFunds + cashFlow;
-  var money = function(value) {
-    return (value < 0 ? '-$' : '$') + Math.abs(value);
-  };
+  var money = I18n.money;
   $('#taxesCollected').text(money(taxesCollected));
   $('#cashFlow').text(money(cashFlow));
   $('#previousFunds').text(money(previousFunds));

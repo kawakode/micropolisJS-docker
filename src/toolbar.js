@@ -7,6 +7,8 @@
 
 import $ from "jquery";
 
+import { I18n } from './i18n.js';
+
 // The tool bar: the zones and the query tool are always at hand; everything else is grouped in categories (the
 // bulldozer's sizes too). Clicking a category takes up its last used tool, and opens a palette of all the category's tools.
 //
@@ -52,7 +54,7 @@ var TOOLS = {
   nuclear: {name: 'Nuclear plant', size: 4, cost: 5000, colour: '#f0abfc',
             description: '2000 MW, clean, but it may melt down.'},
 
-  police: {name: 'Police', size: 3, cost: 500, colour: '#1d4ed8', key: '8',
+  police: {name: 'tool|Police', size: 3, cost: 500, colour: '#1d4ed8', key: '8',
            description: 'Lowers crime around it. $100 a year.'},
   fire: {name: 'Fire station', size: 3, cost: 500, colour: '#dc2626', key: '9',
          description: 'Puts fires out faster around it. $100 a year.'},
@@ -113,8 +115,9 @@ var build = function() {
   CATEGORIES.forEach(function(category) {
     var bar = $(category.holder || '#categoryButtons');
     var palette = $('<div class="toolPalette" role="menu"></div>').attr({'data-category': category.id,
-                                                                        'aria-label': category.name});
-    $('<div class="paletteTitle"></div>').text(category.name).appendTo(palette);
+                                                                        'aria-label': I18n.t(category.name),
+                                                                        'data-i18n-aria-label': category.name});
+    $('<div class="paletteTitle"></div>').attr('data-i18n', category.name).text(I18n.t(category.name)).appendTo(palette);
     category.tools.forEach(function(toolName) {
       var item = makeToolButton(toolName).attr('role', 'menuitemradio');
       palette.append(item);
@@ -125,7 +128,7 @@ var build = function() {
     $('<button type="button" class="categoryButton unselected" aria-haspopup="menu" aria-expanded="false"></button>')
       .attr({'data-category': category.id, 'data-tool': category.tools[0]})
       .append($('<span class="categoryIcon"></span>'))
-      .append($('<span class="toolName"></span>').text(category.name))
+      .append($('<span class="toolName"></span>').attr('data-i18n', category.name).text(I18n.t(category.name)))
       .append($('<span class="categoryArrow" aria-hidden="true">&#9656;</span>'))
       .appendTo(bar);
   });
@@ -153,7 +156,7 @@ var refresh = function(currentTool) {
     }
 
     button.toggleClass('selected', !!inCategory).toggleClass('unselected', !inCategory);
-    button.attr('title', button.find('.toolName').text() + ': ' + TOOLS[shown].name);
+    button.attr('title', button.find('.toolName').text() + ': ' + I18n.t(TOOLS[shown].name));
   });
 };
 

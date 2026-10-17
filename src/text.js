@@ -15,16 +15,16 @@ import { Evaluation } from './evaluation.js';
 import * as Messages from './messages.ts';
 import { Simulation } from './simulation.js';
 
-// TODO Some kind of rudimentary L20N based on navigator.language?
+// The texts are in English: they are translated where they are shown (see I18n), and some carry a context
 
 // Query tool strings
-var densityStrings = ['Low', 'Medium', 'High', 'Very High'];
+var densityStrings = ['density|Low', 'density|Medium', 'density|High', 'density|Very High'];
 var landValueStrings = ['Slum', 'Lower Class', 'Middle Class', 'High'];
 var crimeStrings = ['Safe', 'Light', 'Moderate', 'Dangerous'];
 var pollutionStrings = ['None', 'Moderate', 'Heavy', 'Very Heavy'];
 var rateStrings = ['Declining', 'Stable', 'Slow Growth', 'Fast Growth'];
 var zoneTypes = ['Clear', 'Water', 'Trees', 'Rubble', 'Flood', 'Radioactive Waste',
-                 'Fire', 'Road', 'Power', 'Rail', 'Residential', 'Commercial',
+                 'Fire', 'Road', 'zone|Power', 'Rail', 'Residential', 'Commercial',
                  'Industrial', 'Seaport', 'Airport', 'Coal Power', 'Fire Department',
                  'Police Department', 'Stadium', 'Nuclear Power', 'Draw Bridge',
                  'Radar Dish', 'Fountain', 'Industrial', 'Steelers 38  Bears 3',
@@ -130,24 +130,24 @@ messageText[Messages.POLICE_NEEDS_FUNDING] = 'Police departments need funding';
 messageText[Messages.WELCOME] = 'Welcome to KawaCity';
 messageText[Messages.BLACKOUTS_REPORTED] = 'Brownouts, build another Power Plant';
 messageText[Messages.EARTHQUAKE] = 'Major earthquake reported !!';
-messageText[Messages.EXPLOSION_REPORTED] = 'Explosion detected ';
+messageText[Messages.EXPLOSION_REPORTED] = 'Explosion detected';
 messageText[Messages.FIREBOMBING] = 'Firebombing reported!';
 messageText[Messages.FLOODING_REPORTED] = 'Flooding reported !';
-messageText[Messages.FIRE_REPORTED] = 'Fire reported ';
+messageText[Messages.FIRE_REPORTED] = 'Fire reported';
 messageText[Messages.HEAVY_TRAFFIC] = 'Heavy Traffic reported';
-messageText[Messages.HELICOPTER_CRASHED] = 'A helicopter crashed ';
+messageText[Messages.HELICOPTER_CRASHED] = 'A helicopter crashed';
 messageText[Messages.HIGH_CRIME] = 'Crime very high';
 messageText[Messages.HIGH_POLLUTION] = 'Pollution very high';
 messageText[Messages.MONSTER_SIGHTED] = 'A Monster has been sighted !';
 messageText[Messages.NO_MONEY] = 'YOUR CITY HAS GONE BROKE';
 messageText[Messages.NOT_ENOUGH_POWER] = 'Blackouts reported: insufficient power capacity';
 messageText[Messages.NUCLEAR_MELTDOWN] = 'A Nuclear Meltdown has occurred !!';
-messageText[Messages.PLANE_CRASHED] = 'A plane has crashed ';
-messageText[Messages.SHIP_CRASHED] = 'Shipwreck reported ';
+messageText[Messages.PLANE_CRASHED] = 'A plane has crashed';
+messageText[Messages.SHIP_CRASHED] = 'Shipwreck reported';
 messageText[Messages.TAX_TOO_HIGH] = 'Citizens upset. The tax rate is too high';
 messageText[Messages.TORNADO_SIGHTED] = 'Tornado reported !';
 messageText[Messages.TRAFFIC_JAMS] = 'Frequent traffic jams reported';
-messageText[Messages.TRAIN_CRASHED] = 'A train crashed ';
+messageText[Messages.TRAIN_CRASHED] = 'A train crashed';
 messageText[Messages.REACHED_CAPITAL] = 'Population has reached 50,000';
 messageText[Messages.REACHED_CITY] = 'Population has reached 10,000';
 messageText[Messages.REACHED_MEGALOPOLIS] = 'Population has reached 500,000';

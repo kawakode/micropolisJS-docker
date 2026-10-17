@@ -84,6 +84,7 @@ var submit = function(e) {
 
   actions.push({action: SettingsWindow.DAY_NIGHT, data: $('.dayNightSetting:checked').val() === 'true'});
   actions.push({action: SettingsWindow.LEVEL, data: $('.levelSetting:checked').val() - 0});
+  actions.push({action: SettingsWindow.LANGUAGE, data: $('.languageSetting:checked').val()});
 
   this.close(actions);
 };
@@ -121,6 +122,10 @@ SettingsWindow.prototype.open = function(settingsData) {
     $(element).prop('checked', $(element).val() - 0 === settingsData.level);
   });
 
+  $('.languageSetting').each(function(i, element) {
+    $(element).prop('checked', $(element).val() === settingsData.language);
+  });
+
   this._toggleDisplay();
 };
 
@@ -141,6 +146,7 @@ defineAction('SPEED');
 defineAction('DISASTERS_CHANGED');
 defineAction('DAY_NIGHT');
 defineAction('LEVEL');
+defineAction('LANGUAGE');
 
 
 export { SettingsWindow };

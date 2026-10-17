@@ -7,9 +7,11 @@
 
 import $ from "jquery";
 
+import { I18n } from './i18n.js';
 import { SCENARIO_WINDOW_CLOSED } from './messages.ts';
 import { ModalWindow } from './modalWindow.js';
 import { Scenarios } from './scenarios.js';
+
 
 // Presents a scenario before it starts, and its outcome when its time is up.
 //
@@ -49,10 +51,10 @@ ScenarioWindow.prototype.open = function(mode, scenario) {
 
   var title, paragraphs;
   if (mode === ScenarioWindow.WON) {
-    title = 'You\'re a winner!';
+    title = I18n.t('You\'re a winner!');
     paragraphs = WON_TEXT;
   } else if (mode === ScenarioWindow.LOST) {
-    title = 'Impeachment notice!';
+    title = I18n.t('Impeachment notice!');
     paragraphs = LOST_TEXT;
   } else {
     title = scenario.name;
@@ -61,19 +63,20 @@ ScenarioWindow.prototype.open = function(mode, scenario) {
 
   $('#scenarioHeader').text(title);
   $('#scenarioWindow').toggleClass('won', mode === ScenarioWindow.WON).toggleClass('lost', mode === ScenarioWindow.LOST);
-  $('#scenarioPlace').text(scenario.place.toUpperCase() + '  ' + scenario.year);
+  $('#scenarioPlace').text(I18n.t(scenario.place).toUpperCase() + '  ' + scenario.year);
   $('#scenarioText').empty();
   paragraphs.forEach(function(text) {
-    $('<p>').text(text).appendTo('#scenarioText');
+    $('<p>').text(I18n.t(text)).appendTo('#scenarioText');
   });
 
-  var goal = Scenarios.GOAL_TEXT[scenario.goal];
+  var goal = I18n.t(Scenarios.GOAL_TEXT[scenario.goal]);
   var years = Math.round(scenario.scoreWait / 48);
-  $('#scenarioGoal').text(mode === ScenarioWindow.INTRO ? 'Goal: ' + goal + ' within ' + years + ' years.' :
-                          (mode === ScenarioWindow.WON ? 'Goal reached: ' : 'Goal missed: ') + goal + '.');
+  $('#scenarioGoal').text(I18n.t(mode === ScenarioWindow.INTRO ? 'Goal: {goal} within {years} years.' :
+                                 (mode === ScenarioWindow.WON ? 'Goal reached: {goal}.' : 'Goal missed: {goal}.'),
+                                 {goal: goal, years: years}));
 
   // Which ways out there are
-  $('#scenarioOK').val(mode === ScenarioWindow.INTRO ? 'Take office' : 'Keep playing').toggle(mode !== ScenarioWindow.LOST);
+  $('#scenarioOK').val(I18n.t(mode === ScenarioWindow.INTRO ? 'Take office' : 'Keep playing')).toggle(mode !== ScenarioWindow.LOST);
   $('#scenarioRetry').toggle(mode === ScenarioWindow.LOST);
   $('#scenarioTitle').toggle(mode !== ScenarioWindow.INTRO);
 

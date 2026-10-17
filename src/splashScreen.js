@@ -16,12 +16,14 @@ import $ from "jquery";
 import { CityFile } from './cityFile.js';
 import { Config } from './config.js';
 import { Game } from './game.js';
+import { I18n } from './i18n.js';
 import { MapGenerator } from './mapGenerator.js';
 import { Scenarios } from './scenarios.js';
 import { Simulation } from './simulation.js';
 import { SplashCanvas } from './splashCanvas.js';
 import { Storage } from './storage.js';
 import { BIT_MASK } from './tileFlags.ts';
+
 
 /*
  *
@@ -167,7 +169,7 @@ var openFile = function(e) {
     }
 
     if (savedGame === null) {
-      showError('Sorry, KawaCity can\'t open this file. Choose a city saved from KawaCity, or a city file (.cty) of the original game.');
+      showError(I18n.t('Sorry, KawaCity can\'t open this file. Choose a city saved from KawaCity, or a city file (.cty) of the original game.'));
       return;
     }
 
@@ -175,7 +177,7 @@ var openFile = function(e) {
   }.bind(this);
 
   reader.onerror = function() {
-    showError('Sorry, the file could not be read.');
+    showError(I18n.t('Sorry, the file could not be read.'));
   };
 
   reader.readAsArrayBuffer(file);
@@ -231,7 +233,7 @@ var showTab = function(tab) {
       choice.append($('<span class="year">').text(item.year));
   }, this);
 
-  $('#pickerPlay').text(tab === 'cities' ? 'Play this city' : 'Play this scenario');
+  $('#pickerPlay').text(I18n.t(tab === 'cities' ? 'Play this city' : 'Play this scenario'));
   select.call(this, tab === 'cities' ? (this._cityID || Scenarios.cities[0].id) : this._scenarioID);
 };
 
@@ -263,12 +265,12 @@ var select = function(id) {
 
   $('#pickerText').empty();
   if (scenario) {
-    $('#pickerPlace').text(scenario.place.toUpperCase() + '  ' + scenario.year);
+    $('#pickerPlace').text(I18n.t(scenario.place).toUpperCase() + '  ' + scenario.year);
     scenario.text.forEach(function(text) {
-      $('<p>').text(text).appendTo('#pickerText');
+      $('<p>').text(I18n.t(text)).appendTo('#pickerText');
     });
-    $('#pickerGoal').show().text('Goal: ' + Scenarios.GOAL_TEXT[scenario.goal] + ' within ' +
-                                 Math.round(scenario.scoreWait / 48) + ' years.');
+    $('#pickerGoal').show().text(I18n.t('Goal: {goal} within {years} years.',
+                                        {goal: I18n.t(Scenarios.GOAL_TEXT[scenario.goal]), years: Math.round(scenario.scoreWait / 48)}));
   } else {
     $('#pickerPlace').text(Scenarios.getCity(id).name.toUpperCase());
     $('#pickerGoal').hide();
@@ -284,9 +286,10 @@ var select = function(id) {
       // A short description of the city
       var city = Scenarios.getCity(id);
       var population = (savedGame.resPop + (savedGame.comPop + savedGame.indPop) * 8) * 20;
-      var text = city.empty ? 'An untouched landscape, waiting for its first settlers.' :
-                 'In ' + (1900 + Math.floor(savedGame._cityTime / 48)) + ', ' + population.toLocaleString('en-US') +
-                 ' people live here, and the city has $' + savedGame.totalFunds.toLocaleString('en-US') + ' in the bank.';
+      var text = city.empty ? I18n.t('An untouched landscape, waiting for its first settlers.') :
+                 I18n.t('In {year}, {population} people live here, and the city has {funds} in the bank.',
+                        {year: 1900 + Math.floor(savedGame._cityTime / 48), population: I18n.formatNumber(population),
+                         funds: I18n.money(savedGame.totalFunds)});
       $('#pickerText').empty().append($('<p>').text(text));
     }
 
@@ -319,7 +322,7 @@ var playScenario = function(e) {
     console.error(err);
     $('#pickerPlay').prop('disabled', false);
     hideScenarios.call(this);
-    showError('Sorry, the city could not be loaded.');
+    showError(I18n.t('Sorry, the city could not be loaded.'));
   }.bind(this));
 };
 

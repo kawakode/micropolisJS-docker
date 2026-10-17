@@ -21,6 +21,7 @@ import { DebugWindow } from './debugWindow.js';
 import { DisasterWindow } from './disasterWindow.js';
 import { EvaluationWindow } from './evaluationWindow.js';
 import { GraphsWindow } from './graphsWindow.js';
+import { I18n } from './i18n.js';
 import { Scenarios } from './scenarios.js';
 import { ScenarioWindow } from './scenarioWindow.js';
 import { GameCanvas } from './gameCanvas.js';
@@ -41,6 +42,8 @@ import { SettingsWindow } from './settingsWindow.js';
 import { Simulation } from './simulation.js';
 import { Storage } from './storage.js';
 import { Text } from './text.js';
+import { Ticker } from './ticker.js';
+import { TickerNews } from './tickerNews.js';
 import { AmbientLife } from './ambientLife.js';
 import { Minimap } from './minimap.js';
 import { ToolIcons } from './toolIcons.js';
@@ -104,6 +107,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.inputStatus.addEventListener(Messages.TOOL_CHANGED, function(toolName) {
     Toolbar.refresh(toolName);
   });
+  this._showToolLabel();
 
   this.dialogOpen = false;
   this._openWindow = null;
@@ -126,16 +130,15 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
       self.nagWindow.open();
     }, 30 * 60 * 1000);
 
-    $('.nag').each(function() {
-      $(this).click(function(e) {
-        if (self.nagger !== null) {
-          window.clearTimeout(self.nagger);
+    // The link is written again when the language changes
+    $('#nagMessage').on('click', '.nag', function() {
+      if (self.nagger !== null) {
+        window.clearTimeout(self.nagger);
         self.nagger = null;
         self.everClicked = true;
       }
 
       return true;
-      });
     });
   }
 
@@ -200,7 +203,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.handleSettingsRequest = makeWindowOpenHandler('settings', function() {
     return [{autoBudget: this.simulation.budget.autoBudget, autoBulldoze: BaseTool.getAutoBulldoze(),
              speed: this.defaultSpeed, disasters: this.simulation.disasterManager.disastersEnabled,
-             dayNight: this.ambientLife.dayNight, level: this.simulation.getLevel()}];
+             dayNight: this.ambientLife.dayNight, level: this.simulation.getLevel(), language: I18n.getLanguage()}];
   }.bind(this));
   this.settingsWindow = new SettingsWindow(opacityLayerID, 'settingsWindow');
   this.settingsWindow.addEventListener(Messages.SETTINGS_WINDOW_CLOSED, this.handleSettingsWindowClosure.bind(this));
@@ -265,9 +268,17 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
     date: this.simulation.getDate(),
     name: this.name
   };
-  this.infoBar(this.simulation, initialValues);
+  this._showInfoBar = this.infoBar(this.simulation, initialValues);
 
-  this._notificationBar = new Notification('#notifications', this.gameCanvas, Text.messageText[Messages.WELCOME]);
+  this._notificationBar = new Notification('#notifications', this.gameCanvas, I18n.t(Text.messageText[Messages.WELCOME]));
+
+  // The news ticker: how the city is doing, and jokes about what the mayor does
+  this.tickerNews = new TickerNews(this.name);
+  this.ticker = new Ticker('#ticker', function() {
+    return this.tickerNews.next(this.simulation.getCityStatus());
+  }.bind(this), function(x, y) {
+    this.gameCanvas.centreOn(x, y);
+  }.bind(this));
 
   this.congratsWindow = new CongratsWindow(opacityLayerID, 'congratsWindow');
   this.congratsWindow.addEventListener(Messages.CONGRATS_WINDOW_CLOSED, function() {
@@ -304,6 +315,9 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
 
   // Keep the demand indicator crisp when the window changes size
   $(window).on('resize', function() { self.rci.update(); });
+
+  // Everything shown changes language with the settings
+  I18n.onChange(this.translate.bind(this));
 
   // Run the sim
   this.tick = tick.bind(this);
@@ -395,27 +409,27 @@ Game.prototype.updateScenarioPanel = function() {
   var wait = scenarioState.scoreWait;
   var years = Math.floor(wait / 48);
   var months = Math.floor((wait % 48) / 4);
-  var timeLeft = (years > 0 ? years + 'y ' : '') + months + 'm left';
+  var timeLeft = I18n.t(years > 0 ? '{years}y {months}m left' : '{months}m left', {years: years, months: months});
 
   var label, fraction;
   switch (scenarioState.goal) {
     case Scenarios.GOAL_METROPOLIS:
-      label = 'Population ' + progress.value.toLocaleString('en-US');
+      label = I18n.t('Population {n}', {n: I18n.formatNumber(progress.value)});
       fraction = progress.value / progress.target;
       break;
 
     case Scenarios.GOAL_TRAFFIC:
-      label = 'Traffic ' + Math.round(progress.value);
+      label = I18n.t('Traffic {n}', {n: Math.round(progress.value)});
       fraction = progress.met ? 1 : progress.target / Math.max(progress.value, 1);
       break;
 
     case Scenarios.GOAL_CRIME:
-      label = 'Crime ' + Math.round(progress.value);
+      label = I18n.t('Crime {n}', {n: Math.round(progress.value)});
       fraction = progress.met ? 1 : progress.target / Math.max(progress.value, 1);
       break;
 
     default:
-      label = 'Score ' + progress.value;
+      label = I18n.t('Score {n}', {n: progress.value});
       fraction = progress.value / progress.target;
   }
 
@@ -426,7 +440,7 @@ Game.prototype.updateScenarioPanel = function() {
   this._scenarioPanelText = text;
   $('#scenarioPanel').removeClass('hidden').toggleClass('met', progress.met);
   $('#scenarioPanelName').text(scenario.name);
-  $('#scenarioPanelGoal').text(Scenarios.GOAL_TEXT[scenarioState.goal]);
+  $('#scenarioPanelGoal').text(I18n.t(Scenarios.GOAL_TEXT[scenarioState.goal]));
   $('#scenarioPanelValue').text(label);
   $('#scenarioPanelTime').text(timeLeft);
   $('#scenarioPanelBar').css('width', Math.round(Math.min(1, Math.max(0, fraction)) * 100) + '%');
@@ -506,6 +520,8 @@ Game.prototype.handleDisasterWindowClosure = function(request) {
   if (request === DisasterWindow.DISASTER_NONE)
     return;
 
+  this.tickerNews.record('disaster:' + request);
+
   switch (request) {
     case DisasterWindow.DISASTER_MONSTER:
       this.simulation.spriteManager.makeMonster();
@@ -558,15 +574,25 @@ Game.prototype.handleSettingsWindowClosure = function(actions) {
         break;
 
       case SettingsWindow.DISASTERS_CHANGED:
+        if (!a.data && this.simulation.disasterManager.disastersEnabled)
+          this.tickerNews.record('disastersOff');
         this.simulation.disasterManager.disastersEnabled = a.data;
         break;
 
       case SettingsWindow.DAY_NIGHT:
+        if (!a.data && this.ambientLife.dayNight)
+          this.tickerNews.record('nightOff');
         this.ambientLife.setDayNight(a.data);
         break;
 
       case SettingsWindow.LEVEL:
+        if (a.data !== this.simulation.getLevel())
+          this.tickerNews.record(a.data > this.simulation.getLevel() ? 'harder' : 'easier');
         this.simulation.changeLevel(a.data);
+        break;
+
+      case SettingsWindow.LANGUAGE:
+        I18n.setLanguage(a.data);
         break;
 
       default:
@@ -600,6 +626,8 @@ Game.prototype.handleScreenshotWindowClosure = function(action) {
   if (action === null)
     return;
 
+  this.tickerNews.record('picture');
+
   var dataURI;
   if (action === ScreenshotWindow.SCREENSHOT_VISIBLE)
     dataURI = this.gameCanvas.screenshotVisible();
@@ -616,6 +644,7 @@ Game.prototype.handleBudgetWindowClosure = function(data) {
   this.dialogOpen = false;
 
   if (!data.cancelled) {
+    this.recordBudgetChanges(data);
     this.simulation.budget.roadPercent = data.roadPercent / 100;
     this.simulation.budget.firePercent = data.firePercent / 100;
     this.simulation.budget.policePercent = data.policePercent / 100;
@@ -630,6 +659,25 @@ Game.prototype.handleBudgetWindowClosure = function(data) {
   } else if (!data.cancelled) {
     this.simulation.budget.updateFundEffects();
   }
+};
+
+
+// Tells the ticker how the mayor changed the budget (data: the budget window's new values, in percent)
+Game.prototype.recordBudgetChanges = function(data) {
+  var budget = this.simulation.budget;
+  var tax = data.taxPercent - 0;
+  if (tax > budget.cityTax)
+    this.tickerNews.record('taxUp');
+  else if (tax < budget.cityTax)
+    this.tickerNews.record('taxDown');
+
+  var services = [['policeCut', data.policePercent, budget.policePercent],
+                  ['fireCut', data.firePercent, budget.firePercent],
+                  ['roadCut', data.roadPercent, budget.roadPercent]];
+  services.forEach(function(service) {
+    if (service[1] / 100 < service[2] && service[1] < 100)
+      this.tickerNews.record(service[0]);
+  }, this);
 };
 
 
@@ -669,7 +717,7 @@ Game.prototype.handleMandatoryBudget = function() {
 
 // The warning for a tool that can't act until the land is bulldozed: hint at the setting when it is off
 var needsDozeText = function() {
-  return BaseTool.getAutoBulldoze() ? Text.toolMessages.needsDoze : Text.toolMessages.needsDozeManual;
+  return I18n.t(BaseTool.getAutoBulldoze() ? Text.toolMessages.needsDoze : Text.toolMessages.needsDozeManual);
 };
 
 
@@ -711,12 +759,24 @@ Game.prototype.handleTool = function(data) {
 
   this._preview = null;
 
+  if (succeeded > 0)
+    this.tickerNews.record(data.toolName, succeeded);
   if (failure === tool.TOOLRESULT_NO_MONEY)
-    $('#toolOutput').text(Text.toolMessages.noMoney);
+    this.tickerNews.record('noMoney');
+  else if (succeeded === 0 && failure === tool.TOOLRESULT_NEEDS_BULLDOZE)
+    this.tickerNews.record('needsBulldoze');
+
+  if (failure === tool.TOOLRESULT_NO_MONEY)
+    $('#toolOutput').text(I18n.t(Text.toolMessages.noMoney));
   else if (succeeded === 0 && failure === tool.TOOLRESULT_NEEDS_BULLDOZE)
     $('#toolOutput').text(needsDozeText());
   else
-    $('#toolOutput').text($('.toolButton.selected').attr('data-label') || 'Tools');
+    this._showToolLabel();
+};
+
+
+Game.prototype._showToolLabel = function() {
+  $('#toolOutput').text(I18n.t($('.toolButton.selected').attr('data-label') || 'Tools'));
 };
 
 
@@ -753,11 +813,6 @@ Game.prototype._simulateTool = function(tool, placements) {
     tool.endBatch();
 
   return {results: results, cost: totalCost, demolished: demolished};
-};
-
-
-var formatMoney = function(amount) {
-  return '$' + Math.round(amount).toLocaleString('en-US');
 };
 
 
@@ -825,9 +880,9 @@ Game.prototype.computeOverlay = function() {
     if (!anySucceeded && needsBulldoze)
       label = {text: needsDozeText(), valid: false};
     else if (preview.cost > funds)
-      label = {text: formatMoney(preview.cost) + ' (not enough funds)', valid: false};
+      label = {text: I18n.t('{cost} (not enough funds)', {cost: I18n.money(preview.cost)}), valid: false};
     else if (anySucceeded && preview.cost > 0)
-      label = {text: formatMoney(preview.cost), valid: true};
+      label = {text: I18n.money(preview.cost), valid: true};
 
     if (label !== null) {
       label.x = last.x - offset + size - 1;
@@ -840,6 +895,7 @@ Game.prototype.computeOverlay = function() {
 
 
 Game.prototype.handleSave = function() {
+  this.tickerNews.record('save');
   var saveData = this.getSaveData();
   var succeeded = Storage.saveGame(saveData);
 
@@ -859,10 +915,12 @@ Game.prototype.handlePause = function() {
 
   this.isPaused = !this.isPaused;
 
-  if (this.isPaused)
+  if (this.isPaused) {
+    this.tickerNews.record('pause');
     this.simulation.setSpeed(Simulation.SPEED_PAUSED);
-  else
+  } else {
     this.simulation.setSpeed(this.defaultSpeed);
+  }
 
   this._updateSpeedButtons();
 };
@@ -873,6 +931,9 @@ Game.prototype.setSpeed = function(speed) {
   if (speed !== Simulation.SPEED_SLOW && speed !== Simulation.SPEED_MED && speed !== Simulation.SPEED_FAST)
     return;
 
+  if (speed !== this.defaultSpeed && speed !== Simulation.SPEED_MED)
+    this.tickerNews.record(speed === Simulation.SPEED_FAST ? 'fast' : 'slow');
+
   this.defaultSpeed = speed;
   this.isPaused = false;
   this.simulation.setSpeed(speed);
@@ -881,13 +942,28 @@ Game.prototype.setSpeed = function(speed) {
 
 
 Game.prototype._updateSpeedButtons = function() {
-  $('#pauseRequest').text(this.isPaused ? 'Play' : 'Pause').toggleClass('paused', this.isPaused);
+  $('#pauseRequest').text(I18n.t(this.isPaused ? 'Play' : 'Pause')).toggleClass('paused', this.isPaused);
 
   var current = this.isPaused ? -1 : this.defaultSpeed;
   $('.speedButton').each(function() {
     var active = ($(this).attr('data-speed') - 0) === current;
     $(this).toggleClass('active', active).attr('aria-pressed', active ? 'true' : 'false');
   });
+};
+
+
+// Shows everything again in the new language (the page's own texts are translated by I18n)
+Game.prototype.translate = function() {
+  this._showInfoBar();
+  ToolIcons.labelToolButtons();
+  Toolbar.refresh(this.inputStatus.toolName);
+  this._showToolLabel();
+  this._updateSpeedButtons();
+  this.minimap.translate();
+  this.rci.update();
+  this._scenarioPanelText = null;
+  this._preview = null;
+  this.ticker.reset();
 };
 
 
@@ -916,42 +992,44 @@ Game.prototype.processFrontEndMessage = function(message) {
   var subject = message.subject;
   var d = new Date();
 
+  this.tickerNews.report(subject, message.data);
+
   if (Text.goodMessages[subject] !== undefined) {
-    var cMessage = this.name + ' is now a ';
+    var cMessage = null;
 
     switch (subject) {
       case Messages.REACHED_CAPITAL:
         if (!this._reachedCapital) {
           this._reachedCapital = true;
-          cMessage += 'capital!';
+          cMessage = '{city} is now a capital!';
         }
         break;
 
       case Messages.REACHED_CITY:
         if (!this._reachedCity) {
           this._reachedCity = true;
-          cMessage += 'city!';
+          cMessage = '{city} is now a city!';
         }
         break;
 
       case Messages.REACHED_MEGALOPOLIS:
         if (!this._reachedMegalopolis) {
           this._reachedMegalopolis = true;
-          cMessage += 'megalopolis!';
+          cMessage = '{city} is now a megalopolis!';
         }
         break;
 
       case Messages.REACHED_METROPOLIS:
         if (!this._reachedMetropolis) {
           this._reachedMetropolis = true;
-          cMessage += 'metropolis!';
+          cMessage = '{city} is now a metropolis!';
         }
         break;
 
       case Messages.REACHED_TOWN:
         if (!this._reachedTown) {
           this._reachedTown = true;
-          cMessage += 'town!';
+          cMessage = '{city} is now a town!';
         }
         break;
     }
@@ -961,10 +1039,10 @@ Game.prototype.processFrontEndMessage = function(message) {
       this._notificationBar.goodNews(message);
     }
 
-    if (cMessage !== (this.name + ' is now a ')) {
+    if (cMessage !== null) {
       this.dialogOpen = true;
       this._openWindow = 'congratsWindow';
-      this.congratsWindow.open(cMessage);
+      this.congratsWindow.open(I18n.t(cMessage, {city: this.name}));
     }
 
     return;
@@ -1074,6 +1152,7 @@ var commonAnimate = function(timestamp) {
   this.ambientLife.update(elapsed, this.gameCanvas.getVisibleWorldRect(), !this.isPaused && !this.dialogOpen);
   this.updateClock();
   this.updateScenarioPanel();
+  this.ticker.update(elapsed);
 
   var sprites = this.calculateSpritesForPaint(this.gameCanvas);
   this.gameCanvas.paint(this.overlay, sprites, this.isPaused, this.minimap.getOverlayCanvas(), this.ambientLife);
