@@ -259,7 +259,9 @@ button:disabled {
 
 /* Forms */
 
-input[type="text"], select {
+/* The production build minifies the HTML, which drops type="text" (the default), so text fields are also matched by
+   input:not([type]) */
+input[type="text"], input:not([type]), select {
   width: 100%;
   min-height: 40px;
   padding: 6px 10px;
@@ -276,12 +278,12 @@ select {
   cursor: pointer;
 }
 
-input[type="text"]:focus, select:focus {
+input[type="text"]:focus, input:not([type]):focus, select:focus {
   outline: 2px dashed var(--gold);
   outline-offset: 2px;
 }
 
-input[type="text"]::placeholder {
+input[type="text"]::placeholder, input:not([type])::placeholder {
   color: #7d88c8;
 }
 
