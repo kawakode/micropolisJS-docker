@@ -61,11 +61,12 @@ function SplashScreen(tileSet, snowTileSet, spriteSheet) {
   this.tileSet = tileSet;
   this.snowTileSet = snowTileSet;
   this.spriteSheet = spriteSheet;
-  this.map = MapGenerator();
+  this.map = MapGenerator(120, 100, mapOptions());
 
   // Set up listeners on buttons. When play is clicked, we will move on to get the player's desired
   // difficulty level and city name before launching the game properly
   $('#splashGenerate').click(regenerateMap.bind(this));
+  $('#mapOptions select').on('change', regenerateMap.bind(this));
   $('#splashPlay').click(acquireNameAndDifficulty.bind(this));
   $('#splashLoad').click(handleLoad.bind(this));
   $('#splashScenarios').click(showScenarios.bind(this));
@@ -102,11 +103,29 @@ function SplashScreen(tileSet, snowTileSet, spriteSheet) {
 }
 
 
+// The terrain the player asked for (see MapGenerator)
+var mapOptions = function() {
+  var water = $('#mapWater').val();
+  var number = function(id) {
+    var value = parseInt($(id).val(), 10);
+    return isNaN(value) ? -1 : value;
+  };
+
+  return {
+    island: number('#mapLand'),
+    trees: number('#mapTrees'),
+    // No water at all, a river and the odd pond, or a river and many lakes
+    curve: water === 'none' ? 0 : -1,
+    lakes: water === 'none' ? 0 : (water === 'some' ? 2 : (water === 'lots' ? 24 : -1))
+  };
+};
+
+
 // Launches the game with the given saved game (from storage, a file, or a scenario). We won't return from here
 var launch = function(savedGame) {
   // Remove installed event listeners
   $('#splashLoad, #splashGenerate, #splashPlay, #splashScenarios, #splashOpen, #pickerBack, #pickerPlay').off('click');
-  $('#splashFile').off('change');
+  $('#splashFile, #mapOptions select').off('change');
 
   // Hide the title screen
   $('#splash').hide();
@@ -309,7 +328,7 @@ var playScenario = function(e) {
 var regenerateMap = function(e) {
   e.preventDefault();
 
-  this.map = MapGenerator();
+  this.map = MapGenerator(120, 100, mapOptions());
   this.splashCanvas.paint(this.map);
 };
 
@@ -334,7 +353,7 @@ var acquireNameAndDifficulty = function(e) {
 
   // Remove the initial event listeners
   $('#splashLoad, #splashGenerate, #splashPlay, #splashScenarios, #splashOpen, #pickerBack, #pickerPlay').off('click');
-  $('#splashFile').off('change');
+  $('#splashFile, #mapOptions select').off('change');
 
   // Get rid of the initial splash screen
   $('#splash').toggle();

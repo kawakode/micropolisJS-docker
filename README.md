@@ -37,6 +37,13 @@ npm run lint    # type check
 
 Adding `?debug=1` to the game's URL shows the frame rate and a debug menu, and exposes the game as `window.kawaCity` in the browser console.
 
+## Playing ##
+
+- **New city**: generate maps until you find one you like (the map options choose an island or mainland, how much water and how many forests), then name your city and pick a difficulty.
+- **Scenarios & cities**: the eight scenarios of the original game (Dullsville, San Francisco, Hamburg, Bern, Tokyo, Detroit, Boston, Rio de Janeiro), each with its disaster, its time limit and its goal, and the sample cities of the original game (`cities/`, read by `src/cityFile.js`).
+- **Saving**: "Save" keeps the game in the browser, and can also download it as a `.kawacity` file. "Open a city file" on the title screen opens these files, and the city files (`.cty`) of the original game.
+- **Running the city**: the budget, the evaluation (with what the citizens complain about), the graphs of the city's history, the minimap's data overlays (power, population, traffic, pollution, crime, land value, police and fire coverage, rate of growth) and the query tool tell you how the city is doing. Disasters can be unleashed from the menu, or turned off in the settings, where the difficulty can also be changed.
+
 ## Graphics ##
 
 The tiles and sprites in `images/` are generated from the original Micropolis artwork (kept in `art/micropolis/`) by `tools/pixelart/generate.py`, which repaints the terrain and remasters everything else in a 16-bit console style. It also renders the frames of the water animation (`images/tiles-water.png` and `src/waterTiles.js`) and the lights that come on at night (`images/tiles-lights.png` and `src/lightTiles.js`). To regenerate them (requires Python 3 with Pillow and numpy):
@@ -63,6 +70,7 @@ The map is also brought to life by purely decorative effects (`src/ambientLife.j
 - [micropolisJS](https://github.com/graememcc/micropolisJS): Copyright (C) Graeme McCutcheon, 2013, and [contributors](https://github.com/graememcc/micropolisJS/graphs/contributors).
 - Micropolis: the open-source release of a city simulation game once sold by Electronic Arts.
 - KawaCity: renamed and modified from micropolisJS by [kawakode](https://github.com/kawakode) in 2026.
+- Scenarios and sample cities (`cities/`): from the Micropolis release, Copyright (C) 1989 - 2007 Electronic Arts Inc., under the GPLv3 with the additional terms in [LICENSE](LICENSE).
 - Fonts: [Press Start 2P](https://github.com/codeman38/PressStart2P) by Cody "CodeMan38" Boisclair and [DotGothic16](https://github.com/fontworks-fonts/DotGothic16) by Fontworks, under the SIL Open Font License (see `css/fonts/`).
 
 ## License ##

@@ -1837,3 +1837,35 @@ kbd {
     flex: 1 1 140px;
   }
 }
+
+/* Title screen: map options */
+
+.mapOptions {
+  border: 2px solid var(--win-outline);
+  background: var(--win-inset);
+  box-shadow: inset 2px 2px 0 #050820;
+  padding: 4px 10px;
+}
+
+.mapOptions summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 700;
+  padding: 4px 0;
+}
+
+.mapOptions[open] summary {
+  margin-bottom: 4px;
+}
+
+.mapOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 6px;
+}
+
+.mapOption select {
+  flex: 0 0 130px;
+}

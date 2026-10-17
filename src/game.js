@@ -192,7 +192,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.handleSettingsRequest = makeWindowOpenHandler('settings', function() {
     return [{autoBudget: this.simulation.budget.autoBudget, autoBulldoze: BaseTool.getAutoBulldoze(),
              speed: this.defaultSpeed, disasters: this.simulation.disasterManager.disastersEnabled,
-             dayNight: this.ambientLife.dayNight}];
+             dayNight: this.ambientLife.dayNight, level: this.simulation.getLevel()}];
   }.bind(this));
   this.settingsWindow = new SettingsWindow(opacityLayerID, 'settingsWindow');
   this.settingsWindow.addEventListener(Messages.SETTINGS_WINDOW_CLOSED, this.handleSettingsWindowClosure.bind(this));
@@ -555,6 +555,10 @@ Game.prototype.handleSettingsWindowClosure = function(actions) {
 
       case SettingsWindow.DAY_NIGHT:
         this.ambientLife.setDayNight(a.data);
+        break;
+
+      case SettingsWindow.LEVEL:
+        this.simulation.changeLevel(a.data);
         break;
 
       default:

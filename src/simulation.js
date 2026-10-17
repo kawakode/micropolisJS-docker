@@ -137,6 +137,22 @@ Simulation.prototype.setLevel = function(l) {
 };
 
 
+Simulation.prototype.getLevel = function() {
+  return this._gameLevel;
+};
+
+
+// Changes the difficulty during the game: taxes, demand, disasters and the evaluation follow
+Simulation.prototype.changeLevel = function(l) {
+  if (l === this._gameLevel)
+    return;
+
+  this.setLevel(l);
+  this.disasterManager._gameLevel = l;
+  this.evaluation.gameLevel = '' + l;
+};
+
+
 Simulation.prototype.setSpeed = function(s) {
   if (s !== Simulation.SPEED_PAUSED &&
       s !== Simulation.SPEED_SLOW &&

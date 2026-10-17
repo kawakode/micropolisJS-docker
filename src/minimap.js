@@ -41,6 +41,8 @@ var overlays = {
   landValue: {map: 'landValueMap', max: 200, ramp: RAMP_GOOD, low: 'Low', high: 'High'},
   police: {map: 'policeStationEffectMap', max: 300, ramp: RAMP_COVER, low: 'None', high: 'Full'},
   fire: {map: 'fireStationEffectMap', max: 300, ramp: RAMP_COVER, low: 'None', high: 'Full'},
+  // The rate of growth ranges from -max to max
+  growth: {map: 'rateOfGrowthMap', max: 100, signed: true, ramp: RAMP_GOOD, low: 'Declining', high: 'Growing'},
   power: {power: true, low: 'Unpowered', high: 'Powered'}
 };
 
@@ -239,12 +241,12 @@ Minimap.prototype._computeOverlay = function() {
       i = (y * map.width + x) * 4;
       var value = blockMap.worldGet(x, y);
 
-      if (value <= 0) {
+      if (value === 0 || (value < 0 && !overlay.signed)) {
         result[i + 3] = 0;
         continue;
       }
 
-      colour = interpolate(overlay.ramp, value / overlay.max);
+      colour = interpolate(overlay.ramp, overlay.signed ? (value + overlay.max) / (2 * overlay.max) : value / overlay.max);
       result[i] = colour[0];
       result[i + 1] = colour[1];
       result[i + 2] = colour[2];

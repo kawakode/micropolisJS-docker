@@ -79,6 +79,33 @@
               <div id="splashButtons">
                 <button id="splashPlay" class="button primary splashButton">Play this map</button>
                 <button id="splashGenerate" class="button splashButton">Generate another</button>
+                <details id="mapOptions" class="mapOptions">
+                  <summary>Map options</summary>
+                  <label class="mapOption">Land
+                    <select id="mapLand">
+                      <option value="-1">Random</option>
+                      <option value="0">Mainland</option>
+                      <option value="1">Island</option>
+                    </select>
+                  </label>
+                  <label class="mapOption">Water
+                    <select id="mapWater">
+                      <option value="random">Random</option>
+                      <option value="none">Dry</option>
+                      <option value="some">A river</option>
+                      <option value="lots">Lakes</option>
+                    </select>
+                  </label>
+                  <label class="mapOption">Forests
+                    <select id="mapTrees">
+                      <option value="-1">Random</option>
+                      <option value="0">None</option>
+                      <option value="20">Few</option>
+                      <option value="100">Many</option>
+                      <option value="250">Wild</option>
+                    </select>
+                  </label>
+                </details>
                 <button id="splashScenarios" class="button splashButton">Scenarios &amp; cities</button>
                 <button id="splashLoad" class="button loadSave splashButton" disabled>Load saved game</button>
                 <button id="splashOpen" class="button splashButton">Open a city file&hellip;</button>
@@ -217,6 +244,7 @@
             <option value="landValue">Land value</option>
             <option value="police">Police coverage</option>
             <option value="fire">Fire coverage</option>
+            <option value="growth">Rate of growth</option>
           </select>
         </div>
         <div id="RCIContainer" class="panel" title="Demand for residential, commercial and industrial zones"></div>
@@ -512,6 +540,12 @@
                 <input type="radio" class="speedSetting" name="speedSetting" id="speedSlow" value="1" checked="checked"><label for="speedSlow">Slow</label>
                 <input type="radio" class="speedSetting" name="speedSetting" id="speedMed" value="2"><label for="speedMed">Normal</label>
                 <input type="radio" class="speedSetting" name="speedSetting" id="speedFast" value="3"><label for="speedFast">Fast</label>
+              </fieldset>
+              <fieldset id="levelSelect" class="choice">
+                <legend class="fieldLabel">Difficulty</legend>
+                <input type="radio" class="levelSetting" name="levelSetting" id="levelEasy" value="0" checked="checked"><label for="levelEasy">Easy</label>
+                <input type="radio" class="levelSetting" name="levelSetting" id="levelMed" value="1"><label for="levelMed">Medium</label>
+                <input type="radio" class="levelSetting" name="levelSetting" id="levelHard" value="2"><label for="levelHard">Hard</label>
               </fieldset>
               <fieldset id="disastersSelect" class="choice">
                 <legend class="fieldLabel">Random disasters</legend>
