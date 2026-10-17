@@ -7,13 +7,14 @@
 
 import { Evaluation } from './evaluation.js';
 import { Simulation } from './simulation.js';
+import { fromClassicValue, ZONEBIT } from './tileFlags.ts';
 
 // Reads the city files of the original game (.cty, and the scenario files), and turns them into a saved game
 //
 // A city file holds 16 bit big-endian values: six histories of 240 values (residential, commercial, industrial,
 // crime, pollution and cash flow: 120 for the last 10 years, then 120 for the last 120 years), 120 miscellaneous
-// values, then the 120x100 map, column by column. The map values use the same layout as ours: a tile number in the
-// low 10 bits, and the flags above.
+// values, then the 120x100 map, column by column. The map values hold a tile number in the low 10 bits, and the flags
+// above (ours has an extra bit for the tile number: see TileFlags).
 
 var WIDTH = 120;
 var HEIGHT = 100;
@@ -67,7 +68,7 @@ var read = function(buffer, options) {
   var map = new Array(WIDTH * HEIGHT);
   for (var x = 0; x < WIDTH; x++) {
     for (var y = 0; y < HEIGHT; y++)
-      map[y * WIDTH + x] = {value: readShort() & 0xffff};
+      map[y * WIDTH + x] = {value: fromClassicValue(readShort() & 0xffff)};
   }
 
   var clamp = function(value, min, max, fallback) {
@@ -75,7 +76,7 @@ var read = function(buffer, options) {
   };
 
   // Some of the original files hold junk in their statistics: only trust them for maps that have been built on
-  var built = map.some(function(tile) { return (tile.value & 0x0400) !== 0; });
+  var built = map.some(function(tile) { return (tile.value & ZONEBIT) !== 0; });
   if (!built) {
     HISTORIES.forEach(function(name) {
       histories[name] = histories[name].map(function() { return 0; });

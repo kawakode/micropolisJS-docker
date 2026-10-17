@@ -12,6 +12,7 @@
  */
 
 import { MiscUtils } from './miscUtils.js';
+import { fromClassicValue } from './tileFlags.ts';
 
 // A very thin wrapper around localStorage, in case we wish to move to some other storage mechanism
 // (such as indexedDB) in the future
@@ -103,6 +104,13 @@ var transitionOldSave = function(savedGame) {
       savedGame.cityCentreX = Math.floor(savedGame.width / 2);
       savedGame.cityCentreY = Math.floor(savedGame.height / 2);
 
+      /* falls through */
+    case 3:
+      // The tile numbers grew from 10 to 11 bits, pushing the flags up a bit
+      savedGame.map.forEach(function(tile) {
+        tile.value = fromClassicValue(tile.value);
+      });
+
       break;
 
     default:
@@ -120,7 +128,7 @@ var Storage = {
 };
 
 
-Object.defineProperty(Storage, 'CURRENT_VERSION', MiscUtils.makeConstantDescriptor(3));
+Object.defineProperty(Storage, 'CURRENT_VERSION', MiscUtils.makeConstantDescriptor(4));
 Object.defineProperty(Storage, 'KEY', MiscUtils.makeConstantDescriptor('micropolisJSGame'));
 Object.defineProperty(Storage, 'canStore', MiscUtils.makeConstantDescriptor(canStore));
 

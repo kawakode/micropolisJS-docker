@@ -317,6 +317,8 @@ export const CHURCH7LAST    = 1018;
 
 // tiles 1020-1023 unused
 
-export const TILE_COUNT     = 1024;
+// KawaCity's tiles: 1024-2047 (see tools/pixelart)
+
+export const TILE_COUNT     = 2048;
 
 export const TILE_INVALID   = -1; // Invalid tile (not used in the world map).

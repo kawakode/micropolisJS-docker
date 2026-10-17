@@ -13,10 +13,11 @@
 
 import { TILE_COUNT } from "./tileValues.ts";
 
-// Tiles must be 16px square
+// Tiles must be 16px square, 32 to a row
 var TILE_SIZE = 16;
-var TILES_PER_ROW = Math.sqrt(TILE_COUNT);
-var ACCEPTABLE_DIMENSION = TILES_PER_ROW * TILE_SIZE;
+var TILES_PER_ROW = 32;
+var ACCEPTABLE_WIDTH = TILES_PER_ROW * TILE_SIZE;
+var ACCEPTABLE_HEIGHT = Math.ceil(TILE_COUNT / TILES_PER_ROW) * TILE_SIZE;
 
 
 function TileSet(image, callback, errorCallback) {
@@ -46,8 +47,8 @@ TileSet.prototype._verifyImage = function(image, callback, errorCallback) {
   var width = image.width;
   var height = image.height;
 
-  // We expect tilesets to be square, and of the required width/height
-  if (width !== height || width !== ACCEPTABLE_DIMENSION) {
+  // We expect tilesets of the required width and height
+  if (width !== ACCEPTABLE_WIDTH || height !== ACCEPTABLE_HEIGHT) {
     // Spin the event loop
     window.setTimeout(errorCallback, 0);
     return;

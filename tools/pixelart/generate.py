@@ -13,6 +13,8 @@
 #     animation frames in the context of the building they belong to), so no seams appear between tiles;
 #   - recolours the sprites and gives them an outline.
 #
+# KawaCity's own tiles (tile numbers 1024 and up) are drawn in kawa.py, and remastered the same way.
+#
 # Usage (from the repository root): python3 tools/pixelart/generate.py
 # Requires Pillow and numpy.
 
@@ -844,10 +846,13 @@ def write_uri_module(image_path, module, name):
 
 
 def main():
+    import kawa
+
     source = os.path.join(SOURCE, 'tiles.png')
     summer = generate_tiles(source, 'summer')
-    summer.save(os.path.join(OUTPUT, 'tiles.png'), optimize=True)
-    generate_tiles(source, 'winter').save(os.path.join(OUTPUT, 'tilessnow.png'), optimize=True)
+    # KawaCity's own tiles follow the original ones
+    kawa.extend(summer, 'summer').save(os.path.join(OUTPUT, 'tiles.png'), optimize=True)
+    kawa.extend(generate_tiles(source, 'winter'), 'winter').save(os.path.join(OUTPUT, 'tilessnow.png'), optimize=True)
     generate_sprites(os.path.join(SOURCE, 'sprites.png')).save(os.path.join(OUTPUT, 'sprites.png'), optimize=True)
 
     write_uri_module(os.path.join(OUTPUT, 'tiles.png'), 'tileSetURI.ts', 'TileSetURI')
@@ -860,6 +865,8 @@ def main():
                            [('WATER_FRAME_COUNT', WATER_FRAMES), ('WATER_TILES', animated)])
 
     lights, lit = generate_lights(source)
+    lights, extra = kawa.extend_lights(lights)
+    lit += extra
     lights.save(os.path.join(OUTPUT, 'tiles-lights.png'), optimize=True)
     write_tile_list_module('lightTiles.js', 'The tiles that have lights at night, in images/tiles-lights.png (laid '
                            'out like the tile set).', [('LIGHT_TILES', lit)])
