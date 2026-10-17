@@ -34,8 +34,22 @@ var getSavedGame = function() {
     savedGame = window.localStorage.getItem(this.KEY);
     if (savedGame === null)
       return null;
+  } catch (e) {
+    console.error('Unable to read saved game', e);
+    return null;
+  }
 
-    savedGame = JSON.parse(savedGame);
+  return this.parseSavedGame(savedGame);
+};
+
+
+// Reads a saved game from its text (as stored, or as exported to a file). Returns null if it isn't one
+var parseSavedGame = function(text) {
+  var savedGame;
+  try {
+    savedGame = JSON.parse(text);
+    if (savedGame === null || typeof(savedGame) !== 'object' || !Array.isArray(savedGame.map))
+      return null;
 
     if (savedGame.version !== this.CURRENT_VERSION)
       this.transitionOldSave(savedGame);
@@ -47,6 +61,13 @@ var getSavedGame = function() {
   // Flag as a saved game for Game/Simulation etc...
   savedGame.isSavedGame = true;
   return savedGame;
+};
+
+
+// The text of a saved game, to be kept in a file
+var exportGame = function(gameData) {
+  gameData.version = this.CURRENT_VERSION;
+  return JSON.stringify(gameData);
 };
 
 
@@ -91,7 +112,9 @@ var transitionOldSave = function(savedGame) {
 
 
 var Storage = {
+  exportGame: exportGame,
   getSavedGame: getSavedGame,
+  parseSavedGame: parseSavedGame,
   saveGame: saveGame,
   transitionOldSave: transitionOldSave
 };

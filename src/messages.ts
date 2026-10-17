@@ -31,6 +31,7 @@ export const EVAL_UPDATED = "Evaluation Updated";
 export const EVAL_WINDOW_CLOSED = "Eval window closed";
 export const EXPLOSION_REPORTED = "Explosion Reported";
 export const FIRE_REPORTED = "Fire!";
+export const FIREBOMBING = "Firebombing reported";
 export const FIRE_STATION_NEEDS_FUNDING = "Fire station needs funding";
 export const FLOODING_REPORTED = "Flooding reported";
 export const GRAPHS_REQUESTED = "Graphs requested";
@@ -71,6 +72,8 @@ export const REACHED_VILLAGE = "Now a village";
 export const ROAD_NEEDS_FUNDING = "Roads need funding";
 export const SAVE_REQUESTED = "Save requested";
 export const SAVE_WINDOW_CLOSED = "Save window closed";
+export const SCENARIO_ENDED = "Scenario ended";
+export const SCENARIO_WINDOW_CLOSED = "Scenario window closed";
 export const SCORE_UPDATED = "Scoe updated";
 export const SCREENSHOT_LINK_CLOSED = "Screenshot link closed";
 export const SCREENSHOT_WINDOW_CLOSED = "Screenshot window closed";
@@ -100,6 +103,7 @@ export const DISASTER_MESSAGES = [
   EARTHQUAKE,
   EXPLOSION_REPORTED,
   FIRE_REPORTED,
+  FIREBOMBING,
   FLOODING_REPORTED,
   MONSTER_SIGHTED,
   NUCLEAR_MELTDOWN,

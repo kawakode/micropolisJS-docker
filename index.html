@@ -79,7 +79,11 @@
               <div id="splashButtons">
                 <button id="splashPlay" class="button primary splashButton">Play this map</button>
                 <button id="splashGenerate" class="button splashButton">Generate another</button>
+                <button id="splashScenarios" class="button splashButton">Scenarios &amp; cities</button>
                 <button id="splashLoad" class="button loadSave splashButton" disabled>Load saved game</button>
+                <button id="splashOpen" class="button splashButton">Open a city file&hellip;</button>
+                <input type="file" id="splashFile" class="hidden" accept=".kawacity,.json,.cty">
+                <p id="splashError" class="splashError" role="alert"></p>
               </div>
               <p class="splashHint">Drag to build roads and zones, right-drag or use the arrow keys to move around, and the mouse wheel to zoom.</p>
             </div>
@@ -88,6 +92,28 @@
             <p>KawaCity by <a href="https://github.com/kawakode" target="_blank" rel="noopener">kawakode</a>, based on <a href="https://github.com/graememcc/micropolisJS" target="_blank" rel="noopener">micropolisJS</a> by <a href="http://www.graememcc.co.uk" target="_blank" rel="noopener">Graeme McCutcheon</a> and <a href="https://github.com/graememcc/micropolisJS/graphs/contributors" target="_blank" rel="noopener">contributors</a>, a port of the open-source city simulator Micropolis. &middot; <a href="about.html" target="_blank" rel="noopener">About</a> &middot; <a href="https://github.com/kawakode/micropolisJS-docker" target="_blank" rel="noopener">GitHub</a></p>
             <p class="nameLicense">Micropolis is a registered trademark of <a href="https://www.micropolis.com" target="_blank" rel="noopener">Micropolis Corporation (Micropolis GmbH)</a> and is licensed here as a courtesy of the owner under the <a href="name_license.html" target="_blank" rel="noopener">Micropolis Public Name License</a>.</p>
             <p class="build">Build <%= htmlWebpackPlugin.options.gitHash %></p>
+          </div>
+        </div>
+
+        <div id="scenarioPicker" class="card centred" data-version="<%= htmlWebpackPlugin.options.gitHash %>">
+          <h2 class="cardTitle">Scenarios &amp; cities</h2>
+          <fieldset class="choice pickerTabs">
+            <legend class="srOnly">Show</legend>
+            <input type="radio" class="pickerTab" name="pickerTab" id="pickerTabScenarios" value="scenarios" checked="checked"><label for="pickerTabScenarios">Scenarios</label>
+            <input type="radio" class="pickerTab" name="pickerTab" id="pickerTabCities" value="cities"><label for="pickerTabCities">Cities</label>
+          </fieldset>
+          <div class="pickerBody">
+            <div id="scenarioList" class="scenarioList" role="listbox" aria-label="Scenarios"></div>
+            <div class="pickerDetails">
+              <div id="scenarioPreview"></div>
+              <p id="pickerPlace" class="scenarioPlace"></p>
+              <div id="pickerText" class="scenarioText"></div>
+              <p id="pickerGoal" class="scenarioGoal"></p>
+            </div>
+          </div>
+          <div class="modalButtons pickerButtons">
+            <button id="pickerBack" class="button cancel">Back</button>
+            <button id="pickerPlay" class="button primary">Play this scenario</button>
           </div>
         </div>
 
@@ -194,6 +220,12 @@
           </select>
         </div>
         <div id="RCIContainer" class="panel" title="Demand for residential, commercial and industrial zones"></div>
+        <div id="scenarioPanel" class="panel hidden" aria-live="polite">
+          <div class="panelTitle" id="scenarioPanelName"></div>
+          <p id="scenarioPanelGoal"></p>
+          <div class="scenarioBar"><div id="scenarioPanelBar"></div></div>
+          <div class="scenarioFigures"><span id="scenarioPanelValue"></span><span id="scenarioPanelTime"></span></div>
+        </div>
       </aside>
 
       <div class="hidden modal" id="budget" role="dialog" aria-labelledby="budgetHeader">
@@ -294,6 +326,20 @@
             <div class="modalButtons">
               <input type="submit" id="graphsOK" class="button primary dialogOK" value="OK">
             </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="hidden modal" id="scenarioWindow" role="dialog" aria-labelledby="scenarioHeader">
+        <header id="scenarioHeader" class="modalHeader">Scenario</header>
+        <div class="modalBody">
+          <p id="scenarioPlace" class="scenarioPlace"></p>
+          <div id="scenarioText" class="scenarioText"></div>
+          <p id="scenarioGoal" class="scenarioGoal"></p>
+          <form id="scenarioForm" class="modalButtons">
+            <button id="scenarioTitle" class="button cancel" type="button">Title screen</button>
+            <button id="scenarioRetry" class="button primary" type="button">Try again</button>
+            <input type="submit" id="scenarioOK" class="button primary dialogOK" value="Take office">
           </form>
         </div>
       </div>
@@ -410,6 +456,7 @@
         <header id="saveHeader" class="modalHeader">Save</header>
         <div id="saveContainer" class="modalBody">
           <div id="saveMessage" class="alignCenter">Game saved!</div>
+          <p class="alignCenter saveFile">Or <a id="saveDownload" href="#" download="city.kawacity">keep a copy as a file</a>, to open it from the title screen.</p>
           <form id="saveForm" class="modalButtons">
             <input type="submit" id="saveOK" class="button primary dialogOK" value="OK">
           </form>

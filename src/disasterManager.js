@@ -156,6 +156,19 @@ DisasterManager.prototype.setFire = function(times, zonesOnly) {
 };
 
 
+// A bombing raid (the Hamburg scenario): two or three bombs fall at random
+DisasterManager.prototype.makeFireBombs = function() {
+  var count = 2 + (Random.getRandom16() & 1);
+
+  for (var i = 0; i < count; i++) {
+    var x = Random.getRandom(this._map.width - 1);
+    var y = Random.getRandom(this._map.height - 1);
+    this._spriteManager.makeExplosion(x, y);
+    this._emitEvent(Messages.FIREBOMBING, {showable: true, x: x, y: y});
+  }
+};
+
+
 // User initiated plane crash
 DisasterManager.prototype.makeCrash = function() {
   var s = this._spriteManager.getSprite(SPRITE_AIRPLANE);

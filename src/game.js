@@ -21,6 +21,8 @@ import { DebugWindow } from './debugWindow.js';
 import { DisasterWindow } from './disasterWindow.js';
 import { EvaluationWindow } from './evaluationWindow.js';
 import { GraphsWindow } from './graphsWindow.js';
+import { Scenarios } from './scenarios.js';
+import { ScenarioWindow } from './scenarioWindow.js';
 import { GameCanvas } from './gameCanvas.js';
 import { GameMap } from './gameMap.js';
 import { InfoBar } from './infoBar.js';
@@ -213,6 +215,11 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.nagWindow = new NagWindow(opacityLayerID, 'nagWindow');
   this.nagWindow.addEventListener(Messages.NAG_WINDOW_CLOSED, this.genericDialogClosure);
 
+  // ... the scenario window: the briefing, and the outcome
+  this.scenarioWindow = new ScenarioWindow(opacityLayerID, 'scenarioWindow');
+  this.scenarioWindow.addEventListener(Messages.SCENARIO_WINDOW_CLOSED, this.handleScenarioWindowClosure.bind(this));
+  this.simulation.addEventListener(Messages.SCENARIO_ENDED, this.handleScenarioEnded.bind(this));
+
   // ... and finally the query window
   this.queryWindow = new QueryWindow(opacityLayerID, 'queryWindow');
   this.queryWindow.addEventListener(Messages.QUERY_WINDOW_CLOSED, this.genericDialogClosure);
@@ -311,13 +318,118 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   // Expose the game in debug mode, to help diagnose problems from the browser console
   if (Config.debug)
     window.kawaCity = this;
+
+  // A scenario starts with its briefing
+  this._scenarioPanelText = null;
+  var scenario = this.simulation.getScenario();
+  if (scenario && savedGame && savedGame.scenarioBriefing && Scenarios.get(scenario.id)) {
+    this.dialogOpen = true;
+    this._openWindow = 'scenarioWindow';
+    this.scenarioWindow.open(ScenarioWindow.INTRO, Scenarios.get(scenario.id));
+  }
 }
+
+
+// The time is up for the scenario: the city has won, or the mayor is impeached
+Game.prototype.handleScenarioEnded = function(data) {
+  var scenario = Scenarios.get(data.id);
+  if (!scenario)
+    return;
+
+  if (this.dialogOpen && this._openWindow && this[this._openWindow])
+    this[this._openWindow].close();
+
+  this.dialogOpen = true;
+  this._openWindow = 'scenarioWindow';
+  this.scenarioWindow.open(data.won ? ScenarioWindow.WON : ScenarioWindow.LOST, scenario);
+
+  if (data.won)
+    this.ambientLife.celebrate(this.gameCanvas.getVisibleWorldRect());
+};
+
+
+Game.prototype.handleScenarioWindowClosure = function(data) {
+  this.genericDialogClosure();
+
+  switch (data.action) {
+    case ScenarioWindow.CONTINUE:
+      // Free play from now on
+      this.simulation.endScenario();
+      break;
+
+    case ScenarioWindow.RETRY:
+      // Start again from the title screen, which launches the scenario
+      window.location.hash = 'scenario=' + data.scenario.id;
+      window.location.reload();
+      break;
+
+    case ScenarioWindow.TITLE:
+      window.location.hash = '';
+      window.location.reload();
+      break;
+  }
+};
+
+
+// Keeps the scenario panel up to date: the goal, how the city is doing, and the time left
+Game.prototype.updateScenarioPanel = function() {
+  var scenarioState = this.simulation.getScenario();
+  var scenario = scenarioState ? Scenarios.get(scenarioState.id) : null;
+  if (!scenario || scenarioState.ended) {
+    if (this._scenarioPanelText !== '') {
+      this._scenarioPanelText = '';
+      $('#scenarioPanel').addClass('hidden');
+    }
+    return;
+  }
+
+  var progress = this.simulation.getScenarioProgress();
+  var wait = scenarioState.scoreWait;
+  var years = Math.floor(wait / 48);
+  var months = Math.floor((wait % 48) / 4);
+  var timeLeft = (years > 0 ? years + 'y ' : '') + months + 'm left';
+
+  var label, fraction;
+  switch (scenarioState.goal) {
+    case Scenarios.GOAL_METROPOLIS:
+      label = 'Population ' + progress.value.toLocaleString('en-US');
+      fraction = progress.value / progress.target;
+      break;
+
+    case Scenarios.GOAL_TRAFFIC:
+      label = 'Traffic ' + Math.round(progress.value);
+      fraction = progress.met ? 1 : progress.target / Math.max(progress.value, 1);
+      break;
+
+    case Scenarios.GOAL_CRIME:
+      label = 'Crime ' + Math.round(progress.value);
+      fraction = progress.met ? 1 : progress.target / Math.max(progress.value, 1);
+      break;
+
+    default:
+      label = 'Score ' + progress.value;
+      fraction = progress.value / progress.target;
+  }
+
+  var text = [scenario.name, label, timeLeft, progress.met].join('|');
+  if (text === this._scenarioPanelText)
+    return;
+
+  this._scenarioPanelText = text;
+  $('#scenarioPanel').removeClass('hidden').toggleClass('met', progress.met);
+  $('#scenarioPanelName').text(scenario.name);
+  $('#scenarioPanelGoal').text(Scenarios.GOAL_TEXT[scenarioState.goal]);
+  $('#scenarioPanelValue').text(label);
+  $('#scenarioPanelTime').text(timeLeft);
+  $('#scenarioPanelBar').css('width', Math.round(Math.min(1, Math.max(0, fraction)) * 100) + '%');
+};
 
 
 var milestones = ['_reachedTown', '_reachedCity', '_reachedCapital', '_reachedMetropolis', '_reachedMegalopolis'];
 
 
-Game.prototype.save = function() {
+// Everything needed to restore the game
+Game.prototype.getSaveData = function() {
   var saveData = {name: this.name, everClicked: this.everClicked};
   for (var i = 0; i < milestones.length; i++)
     saveData[milestones[i]] = this[milestones[i]];
@@ -329,7 +441,13 @@ Game.prototype.save = function() {
   BaseTool.save(saveData);
   this.simulation.save(saveData);
 
-  return Storage.saveGame(saveData);
+  return saveData;
+};
+
+
+// Saves the game in the browser. Returns whether it worked
+Game.prototype.save = function() {
+  return Storage.saveGame(this.getSaveData());
 };
 
 
@@ -678,10 +796,16 @@ Game.prototype.computeOverlay = function() {
 
 
 Game.prototype.handleSave = function() {
-  var succeeded = this.save();
+  var saveData = this.getSaveData();
+  var succeeded = Storage.saveGame(saveData);
+
+  // The game can also be kept as a file, to be opened from the title screen
+  var fileName = (this.name || 'city').replace(/[^A-Za-z0-9_-]+/g, '_') + '.kawacity';
+  var file = new Blob([Storage.exportGame(saveData)], {type: 'application/json'});
+
   this.dialogOpen = true;
   this._openWindow = 'saveWindow';
-  this.saveWindow.open(succeeded);
+  this.saveWindow.open(succeeded, URL.createObjectURL(file), fileName);
 };
 
 
@@ -726,6 +850,10 @@ Game.prototype._updateSpeedButtons = function() {
 Game.prototype.handleEscape = function() {
   // Close the menu first, if it is open
   if (InputStatus.toggleMoreMenu(false))
+    return;
+
+  // A lost scenario can't be escaped
+  if (this._openWindow === 'scenarioWindow' && this.scenarioWindow.mode === ScenarioWindow.LOST)
     return;
 
   // InputStatus doesn't know what dialogs are showing, so we must handle escape here
@@ -901,6 +1029,7 @@ var commonAnimate = function(timestamp) {
   this.minimap.paint();
   this.ambientLife.update(elapsed, this.gameCanvas.getVisibleWorldRect(), !this.isPaused && !this.dialogOpen);
   this.updateClock();
+  this.updateScenarioPanel();
 
   var sprites = this.calculateSpritesForPaint(this.gameCanvas);
   this.gameCanvas.paint(this.overlay, sprites, this.isPaused, this.minimap.getOverlayCanvas(), this.ambientLife);

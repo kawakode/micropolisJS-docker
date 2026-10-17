@@ -37,10 +37,20 @@ SaveWindow.prototype.close = function() {
 };
 
 
-SaveWindow.prototype.open = function(succeeded) {
+// downloadURL and fileName: the game as a file, to keep or to move to another browser
+SaveWindow.prototype.open = function(succeeded, downloadURL, fileName) {
   $('#saveMessage').text(succeeded === false ?
-    'Sorry, the game could not be saved. Your browser may be blocking storage, or it may be full.' :
+    'Sorry, the game could not be saved in this browser: it may be blocking storage, or it may be full. You can still keep it as a file.' :
     'Game saved! Choose "Load saved game" on the title screen to carry on later.');
+
+  var link = $('#saveDownload');
+  var previous = link.attr('href');
+  if (previous && previous.indexOf('blob:') === 0)
+    URL.revokeObjectURL(previous);
+  $('.saveFile').toggle(!!downloadURL);
+  if (downloadURL)
+    link.attr({href: downloadURL, download: fileName});
+
   this._toggleDisplay();
   $(saveOKID).focus();
 };

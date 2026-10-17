@@ -185,6 +185,12 @@ Evaluation.prototype.voteProblems = function() {
 
 
 var getTrafficAverage = function(blockMaps, census) {
+  return census.trafficAverage = computeTrafficAverage(blockMaps);
+};
+
+
+// The average traffic on developed land (with no side effects)
+var computeTrafficAverage = function(blockMaps) {
   var trafficDensityMap = blockMaps.trafficDensityMap;
   var landValueMap = blockMaps.landValueMap;
 
@@ -200,9 +206,7 @@ var getTrafficAverage = function(blockMaps, census) {
     }
   }
 
-  var trafficAverage = census.trafficAverage = Math.floor(trafficTotal / count) * 2.4;
-
-  return trafficAverage;
+  return Math.trunc(trafficTotal / count * 2.4);
 };
 
 
@@ -342,6 +346,11 @@ Evaluation.prototype.doVotes = function() {
     if (this.cityScore > voterExpectation)
       this.cityYes++;
   }
+};
+
+
+Evaluation.prototype.computeTrafficAverage = function(blockMaps) {
+  return computeTrafficAverage(blockMaps);
 };
 
 

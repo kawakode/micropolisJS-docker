@@ -1640,3 +1640,200 @@ kbd {
   height: 12px;
   border: 2px solid var(--win-outline);
 }
+
+/* Scenarios */
+
+#scenarioPanel {
+  padding: 8px 10px 10px;
+}
+
+#scenarioPanel.hidden {
+  display: none;
+}
+
+#scenarioPanelGoal {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.scenarioBar {
+  height: 10px;
+  border: 2px solid var(--win-outline);
+  background: var(--win-inset);
+  box-shadow: inset 2px 2px 0 #050820;
+}
+
+#scenarioPanelBar {
+  height: 100%;
+  width: 0;
+  background: var(--gold);
+  box-shadow: inset 0 2px 0 var(--gold-light), inset 0 -2px 0 var(--gold-dark);
+}
+
+#scenarioPanel.met #scenarioPanelBar {
+  background: var(--green);
+  box-shadow: inset 0 2px 0 #a8f0b4, inset 0 -2px 0 #2a7a3c;
+}
+
+.scenarioFigures {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+#scenarioWindow {
+  width: 540px;
+}
+
+.scenarioPlace {
+  margin: 0 0 10px;
+  font-family: var(--title-font);
+  font-size: 11px;
+  color: var(--teal);
+  white-space: pre;
+}
+
+.scenarioText p {
+  margin: 0 0 10px;
+  font-family: var(--text-font);
+  line-height: 1.45;
+}
+
+.scenarioGoal {
+  margin: 14px 0 4px;
+  padding: 8px 10px;
+  border: 2px solid var(--win-outline);
+  background: var(--win-inset);
+  color: var(--gold);
+  font-weight: 700;
+}
+
+#scenarioWindow.won .modalHeader {
+  color: var(--green);
+}
+
+#scenarioWindow.lost .modalHeader {
+  color: var(--red);
+}
+
+/* Title screen: scenarios and city files */
+
+.splashError {
+  margin: 0;
+  color: #ff8a7a;
+  font-size: 14px;
+}
+
+.splashError:empty {
+  display: none;
+}
+
+#scenarioPicker {
+  display: none;
+  width: 760px;
+  max-width: calc(100vw - 30px);
+  max-height: calc(100vh - 30px);
+  overflow: auto;
+}
+
+.pickerBody {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.pickerTabs {
+  margin-top: 0;
+}
+
+.scenarioList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 210px;
+  /* The list of cities is long: it scrolls, so the buttons stay in view */
+  max-height: min(400px, calc(100vh - 240px));
+  overflow-y: auto;
+  padding: 2px 6px 2px 2px;
+}
+
+.scenarioChoice {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 2px solid var(--win-outline);
+  background: var(--win-inset);
+  box-shadow: inset 2px 2px 0 #050820, inset -2px -2px 0 var(--win-inset-light);
+  color: var(--text);
+  font-family: var(--pixel-font);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.scenarioChoice .year {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.scenarioChoice[aria-selected="true"] {
+  background: var(--gold);
+  box-shadow: inset 2px 2px 0 var(--gold-light), inset -2px -2px 0 var(--gold-dark);
+  color: #2a1800;
+}
+
+.scenarioChoice[aria-selected="true"] .year {
+  color: #5a3a00;
+}
+
+.pickerDetails {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#scenarioPreview {
+  line-height: 0;
+  margin-bottom: 10px;
+}
+
+#scenarioPreview canvas {
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  border: 3px solid var(--win-outline);
+  box-shadow: 0 0 0 2px var(--win-border);
+  image-rendering: pixelated;
+}
+
+/* On small screens the card scrolls: its buttons stay at the bottom */
+.pickerButtons {
+  position: sticky;
+  bottom: -22px;
+  margin-bottom: -22px;
+  padding: 12px 0 22px;
+  background: var(--win-bottom);
+}
+
+@media (max-width: 700px) {
+  .pickerBody {
+    flex-direction: column;
+  }
+
+  .scenarioList {
+    flex: 0 0 auto;
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .scenarioChoice {
+    flex: 1 1 140px;
+  }
+}

@@ -45,6 +45,9 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame) {
   this._cityTime = 0;
   this._cityPopLast = 0;
   this._cityClassLive = null;
+
+  // The scenario being played, if any (see Scenarios)
+  this._scenario = null;
   this._messageLast = undefined;
   this._startingYear = 1900;
 
@@ -156,6 +159,8 @@ Simulation.prototype.save = function(saveData) {
   for (var i = 0, l = saveProps.length; i < l; i++)
     saveData[saveProps[i]] = this[saveProps[i]];
 
+  saveData.scenario = this._scenario ? Object.assign({}, this._scenario) : null;
+
   this._map.save(saveData);
   this.evaluation.save(saveData);
   this._valves.save(saveData);
@@ -167,6 +172,8 @@ Simulation.prototype.save = function(saveData) {
 Simulation.prototype.load = function(saveData) {
   for (var i = 0, l = saveProps.length; i < l; i++)
     this[saveProps[i]] = saveData[saveProps[i]];
+
+  this._scenario = saveData.scenario ? Object.assign({}, saveData.scenario) : null;
 
   this._map.load(saveData);
   this.evaluation.load(saveData);
@@ -390,6 +397,8 @@ var simulate = function(simData) {
       if ((this._simCycle % speedFireAnalysis[speedIndex]) === 0)
         BlockMapUtils.fireAnalysis(this.blockMaps);
 
+      // A scenario's disasters strike whether or not disasters are enabled
+      this._scenarioDisaster();
       this.disasterManager.doDisasters(this._census);
       break;
   }
@@ -415,6 +424,14 @@ Simulation.prototype._wrapMessage = function(message, data) {
 
 
 Simulation.prototype._sendMessages = function() {
+  // When a scenario's time is up, the city is judged
+  var scenario = this._scenario;
+  if (scenario && scenario.scoreWait > 0) {
+    scenario.scoreWait--;
+    if (scenario.scoreWait === 0)
+      this._scenarioScore();
+  }
+
   this._checkGrowth();
 
   var totalZonePop = this._census.resZonePop + this._census.comZonePop +
@@ -613,6 +630,100 @@ Simulation.prototype._onValveChange  = function() {
   this._emitEvent(Messages.VALVES_UPDATED, {residential: this._valves.resValve,
                                             commercial: this._valves.comValve,
                                             industrial: this._valves.indValve});
+};
+
+
+// Lets the disasters of the scenario strike, as in the original game: the countdown is tested, then decremented
+Simulation.prototype._scenarioDisaster = function() {
+  var scenario = this._scenario;
+  if (!scenario || !scenario.disaster)
+    return;
+
+  var wait = scenario.disasterWait;
+  switch (scenario.disaster) {
+    case 'earthquake':
+      if (wait === 1)
+        this.disasterManager.makeEarthquake();
+      break;
+
+    case 'firebombs':
+      if (wait % 10 === 0)
+        this.disasterManager.makeFireBombs();
+      break;
+
+    case 'monster':
+      if (wait === 1)
+        this.spriteManager.makeMonster();
+      break;
+
+    case 'meltdown':
+      if (wait === 1)
+        this.disasterManager.makeMeltdown();
+      break;
+
+    case 'flood':
+      if (wait % 24 === 0)
+        this.disasterManager.makeFlood();
+      break;
+  }
+
+  if (wait > 0)
+    scenario.disasterWait--;
+  else
+    scenario.disaster = null;
+};
+
+
+var CLASS_ORDER = [Evaluation.CC_VILLAGE, Evaluation.CC_TOWN, Evaluation.CC_CITY, Evaluation.CC_CAPITAL,
+                   Evaluation.CC_METROPOLIS, Evaluation.CC_MEGALOPOLIS];
+
+// How the city is doing on the scenario's goal: {value, target, met}
+Simulation.prototype.getScenarioProgress = function() {
+  var scenario = this._scenario;
+  if (!scenario)
+    return null;
+
+  switch (scenario.goal) {
+    case 'metropolis':
+      // The population as the player sees it (before the first count, the one the city was saved with)
+      var population = this._cityPopLast || this.evaluation.cityPop;
+      var cityClass = this.evaluation.classify(population);
+      return {value: population, target: 100000,
+              met: CLASS_ORDER.indexOf(cityClass) >= CLASS_ORDER.indexOf(Evaluation.CC_METROPOLIS)};
+
+    case 'traffic':
+      // Measured as the evaluation does, but up to date
+      var traffic = this.evaluation.computeTrafficAverage(this.blockMaps);
+      return {value: traffic, target: 80, met: traffic < 80};
+
+    case 'crime':
+      return {value: this._census.crimeAverage, target: 60, met: this._census.crimeAverage < 60};
+
+    default:
+      return {value: this.evaluation.cityScore, target: 500, met: this.evaluation.cityScore > 500};
+  }
+};
+
+
+Simulation.prototype._scenarioScore = function() {
+  var progress = this.getScenarioProgress();
+  var scenario = this._scenario;
+  scenario.ended = true;
+  scenario.won = progress.met;
+
+  this._emitEvent(Messages.SCENARIO_ENDED, {id: scenario.id, won: progress.met});
+};
+
+
+// The scenario being played (null in free play): {id, goal, disaster, disasterWait, scoreWait, ended, won}
+Simulation.prototype.getScenario = function() {
+  return this._scenario;
+};
+
+
+// After a scenario is won, the player may carry on building the city freely
+Simulation.prototype.endScenario = function() {
+  this._scenario = null;
 };
 
 
