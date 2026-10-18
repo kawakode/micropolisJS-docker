@@ -176,6 +176,8 @@ export async function startTestApp(env: Env = {}, deps: Partial<AppDeps> = {}): 
     staticFiles: deps.staticFiles ?? loadStaticFiles(makeStaticDirectory()),
     mailer,
     defer: deps.defer,
+    // The shared cities' frames run when a test calls them (app.game.rooms.frame())
+    game: deps.game ?? {rooms: {frameLoop: false}},
   });
 
   await new Promise<void>(resolve => app.server.listen(0, '127.0.0.1', () => resolve()));

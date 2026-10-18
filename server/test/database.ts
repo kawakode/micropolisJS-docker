@@ -62,7 +62,39 @@ describe('Database', () => {
 
     const tables = db.all<{name: string}>("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE " +
                                           "'sqlite_%' ORDER BY name").map(row => row.name);
-    expect(tables).toEqual(['captcha_used', 'email_tokens', 'sessions', 'settings', 'signup_tokens', 'users']);
+    expect(tables).toEqual(['captcha_used', 'cities', 'city_invitations', 'city_members', 'email_tokens',
+                            'region_invitations', 'region_members', 'regions', 'sessions', 'settings', 'signup_tokens',
+                            'users']);
+    db.close();
+  });
+
+  test('A database of version 1 (the accounts) gains the shared cities, its accounts kept', () => {
+    const db = new Database(':memory:');
+    migrate(db, MIGRATIONS.slice(0, 1), {backupDirectory: '/nonexistent', now: 0});
+    const alice = addUser(db, 'Alice');
+    expect(migrate(db, MIGRATIONS, {backupDirectory: '/nonexistent', now: 0}))
+      .toEqual({from: 1, to: MIGRATIONS.length, backup: null});
+    expect(db.get<{n: number}>('SELECT count(*) AS n FROM users')?.n).toBe(1);
+
+    // A city goes with its owner, its members and invitations with it; a region's cities stay
+    const region = db.run(`INSERT INTO regions (public_id, owner_id, name, width, height, created_at, updated_at)
+                           VALUES (?, ?, 'R', 2, 2, 0, 0)`, newPublicId(), alice).lastInsertRowid;
+    const bob = addUser(db, 'Bob');
+    const city = (owner: number, x: number) => db.run(
+      `INSERT INTO cities (public_id, owner_id, name, state, region_id, region_x, region_y, created_at, updated_at)
+       VALUES (?, ?, 'C', x'01', ?, ?, 0, 0, 0)`, newPublicId(), owner, region, x).lastInsertRowid;
+    const own = city(alice, 0);
+    const other = city(bob, 1);
+    expect(() => city(bob, 1)).toThrow(/UNIQUE/);
+    expect(() => db.run(`INSERT INTO regions (public_id, owner_id, name, width, height, created_at, updated_at)
+                         VALUES (?, ?, 'R', 5, 2, 0, 0)`, newPublicId(), alice)).toThrow(/CHECK/);
+    db.run(`INSERT INTO city_members (city_id, user_id, role, joined_at) VALUES (?, ?, 'viewer', 0)`, own, bob);
+    expect(() => db.run(`INSERT INTO city_invitations (public_id, city_id, inviter_id, invitee_id, role, created_at)
+                         VALUES (?, ?, ?, ?, 'owner', 0)`, newPublicId(), own, alice, bob)).toThrow(/CHECK/);
+    db.run('DELETE FROM users WHERE id = ?', alice);
+    expect(db.get<{n: number}>('SELECT count(*) AS n FROM city_members')?.n).toBe(0);
+    expect(db.all<{id: number; region_id: number | null}>('SELECT id, region_id FROM cities'))
+      .toEqual([{id: other, region_id: null}]);
     db.close();
   });
 
@@ -81,18 +113,20 @@ describe('Database', () => {
 
     const next = [...MIGRATIONS, 'CREATE TABLE extra (id INTEGER PRIMARY KEY AUTOINCREMENT)'];
     const result = migrate(db, next, {backupDirectory: path.join(directory, 'backups'), now: Date.UTC(2026, 9, 18)});
-    expect(result.backup).toBe(path.join(directory, 'backups', `before-v1-to-v2.db`));
+    const from = MIGRATIONS.length;
+    const to = from + 1;
+    expect(result.backup).toBe(path.join(directory, 'backups', `before-v${from}-to-v${to}.db`));
     expect(statSync(result.backup!).mode & 0o777).toBe(0o600);
 
     const copy = new Database(result.backup!);
-    expect(copy.schemaVersion()).toBe(1);
+    expect(copy.schemaVersion()).toBe(from);
     expect(copy.get<{n: number}>('SELECT count(*) AS n FROM users')?.n).toBe(1);
     copy.close();
 
     // The same migration again (after a restore) does not overwrite the first copy
-    db.exec('DROP TABLE extra; PRAGMA user_version = 1');
+    db.exec(`DROP TABLE extra; PRAGMA user_version = ${from}`);
     const again = migrate(db, next, {backupDirectory: path.join(directory, 'backups'), now: Date.UTC(2026, 9, 18)});
-    expect(again.backup).toBe(path.join(directory, 'backups', `before-v1-to-v2-20261018T000000Z.db`));
+    expect(again.backup).toBe(path.join(directory, 'backups', `before-v${from}-to-v${to}-20261018T000000Z.db`));
     expect(readdirSync(path.join(directory, 'backups')).length).toBe(2);
     db.close();
   });

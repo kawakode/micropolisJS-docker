@@ -54,6 +54,12 @@ var InfoBar = function(classification, population, score, funds, date, name) {
     follow(Messages.FUNDS_CHANGED, 'funds');
     follow(Messages.DATE_UPDATED, 'date');
 
+    // Shows another value (the city's new name, for instance)
+    show.set = function(key, value) {
+      values[key] = value;
+      show();
+    };
+
     show();
     return show;
   };

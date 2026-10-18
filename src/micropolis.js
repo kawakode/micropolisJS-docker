@@ -16,6 +16,8 @@ import $ from "jquery";
 import { AccountScreens } from './accountScreens.js';
 import { Config } from './config.js';
 import { I18n } from './i18n.js';
+import { Lobby } from './lobby.js';
+import { Multiplayer } from './multiplayer.js';
 import { PixelIcons } from './pixelIcons.js';
 import { SplashScreen } from './splashScreen.js';
 import { TileSet } from './tileSet.js';
@@ -59,6 +61,9 @@ var onAllTilesLoaded = function() {
       snowTileSet.roadsImage = roads;
     }
     $('#loadingBanner').css('display', 'none');
+
+    // A shared city, played from the lobby, is shown with the same pictures
+    Multiplayer.setAssets(tileSet, snowTileSet, sprites);
     var s = new SplashScreen(tileSet, snowTileSet, sprites);
   } else {
      window.setTimeout(onAllTilesLoaded, 0);
@@ -109,9 +114,12 @@ Config.debug = window.location.search.slice(1).split('&').some(function(param) {
   return param.trim().toLowerCase() === 'debug=1';
 });
 
-// The translations too: I18n.missing lists the texts that have none
-if (Config.debug)
+// The translations too: I18n.missing lists the texts that have none; and the shared cities (kawaMultiplayer.play(id)
+// joins one, kawaMultiplayer.playing() is the game being played)
+if (Config.debug) {
   window.kawaI18n = I18n;
+  window.kawaMultiplayer = Multiplayer;
+}
 
 
 // The page, in the player's language, with its icons
@@ -119,8 +127,10 @@ document.documentElement.lang = I18n.getLanguage();
 I18n.translateDocument();
 PixelIcons.decorate();
 
-// The accounts, if the game's server offers them: asked now, shown with the title screen (which does not wait)
+// The accounts, if the game's server offers them: asked now, shown with the title screen (which does not wait); and
+// the multiplayer lobby, one of their screens
 AccountScreens.boot();
+Lobby.boot();
 
 
 var tiles = $('#tiles')[0];

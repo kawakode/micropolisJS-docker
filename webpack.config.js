@@ -184,6 +184,8 @@ function serverConfig(env, argv, buildId) {
     resolve: {
       extensions: ADD_TS_EXTENSIONS_TO_WEPACK,
       extensionAlias: SUPPORT_FULLY_QUALIFIED_TS_ESM_IMPORTS,
+      // The game's windows use jQuery; the server only runs the simulation and the tools, never a window
+      alias: {jquery: false},
     },
     module: {
       rules: [

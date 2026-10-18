@@ -60,6 +60,7 @@
         <button id="speedFastRequest" class="hudButton speedButton" data-speed="3" title="Fast" data-i18n-title>3×</button>
       </div>
       <nav id="miscButtons" class="hudMenu" aria-label="Game menu" data-i18n-aria-label>
+        <button id="playersRequest" class="hudButton playersButton hidden" type="button" aria-controls="playersPanel" aria-expanded="false" data-status="connecting"><span class="statusDot" aria-hidden="true"></span><span data-i18n>Players</span><span id="playersUnread" class="unreadBadge hidden" aria-hidden="true">0</span></button>
         <button id="budgetRequest" class="hudButton" data-icon="budget" title="Budget" data-i18n-title><span data-i18n>Budget</span></button>
         <button id="evalRequest" class="hudButton" data-icon="evaluation" title="Evaluation" data-i18n-title><span data-i18n>Evaluation</span></button>
         <button id="graphsRequest" class="hudButton" data-icon="graphs" title="Graphs" data-i18n-title><span data-i18n>Graphs</span></button>
@@ -133,6 +134,7 @@
           <div id="accountStrip" class="accountStrip">
             <p id="accountStatus" class="accountStatus" role="status"></p>
             <div id="accountButtons" class="accountButtons">
+              <button type="button" id="accountMultiplayer" class="button small" data-i18n>Multiplayer</button>
               <button type="button" id="accountLogin" class="button small" data-i18n>Log in</button>
               <button type="button" id="accountRegister" class="button small" data-i18n>Create an account</button>
               <button type="button" id="accountOpen" class="button small accountOpen"><span class="srOnly" data-i18n>Your account:</span> <span id="accountOpenName"></span></button>
@@ -180,7 +182,9 @@
               <input type="radio" class="difficulty" name="difficulty" id="difficultyMed" value="1"><label for="difficultyMed" data-i18n>Medium</label>
               <input type="radio" class="difficulty" name="difficulty" id="difficultyHard" value="2"><label for="difficultyHard" data-i18n>Hard</label>
             </fieldset>
+            <p id="startError" class="splashError startError" role="alert"></p>
             <div id="playSubmitDiv">
+              <button type="button" id="startBack" class="button cancel" data-i18n>Back</button>
               <input id="playit" class="button primary" type="submit" value="Found the city" data-i18n-value>
             </div>
           </form>
@@ -388,7 +392,239 @@
           </div>
         </section>
 
+        <!-- The multiplayer lobby (see Lobby): the shared cities and the regions of the player logged in -->
+        <section id="lobbyCard" class="card centred accountCard lobbyCard" aria-labelledby="lobbyTitle">
+          <h2 id="lobbyTitle" class="cardTitle" tabindex="-1" data-i18n>Multiplayer</h2>
+          <p id="lobbyNote" class="cardNote" role="status"></p>
+          <p id="lobbyStatus" class="lobbyStatus" role="status"></p>
+          <p id="lobbyError" class="splashError lobbyError" role="alert"></p>
+          <section id="lobbyInvitationsSection" class="lobbySection" aria-labelledby="lobbyInvitationsTitle">
+            <h3 id="lobbyInvitationsTitle" class="lobbyHeading" data-i18n>Invitations</h3>
+            <ul id="lobbyInvitations" class="lobbyList"></ul>
+          </section>
+          <section class="lobbySection" aria-labelledby="lobbyCitiesTitle">
+            <h3 id="lobbyCitiesTitle" class="lobbyHeading" data-i18n>Your shared cities</h3>
+            <ul id="lobbyCities" class="lobbyList"></ul>
+            <p id="lobbyNoCity" class="lobbyEmpty" data-i18n>No shared city yet: start one, or ask a friend to invite you to theirs.</p>
+            <div class="lobbyActions">
+              <button type="button" id="lobbyNewCity" class="button small primary" data-i18n>New shared city</button>
+            </div>
+          </section>
+          <section class="lobbySection" aria-labelledby="lobbyRegionsTitle">
+            <h3 id="lobbyRegionsTitle" class="lobbyHeading" data-i18n>Regions</h3>
+            <p class="lobbyHint" data-i18n>A region is a map of cities: each city is the neighbour of the cities beside it, and their mayors can trade with each other.</p>
+            <ul id="lobbyRegions" class="lobbyList"></ul>
+            <p id="lobbyNoRegion" class="lobbyEmpty" data-i18n>No region yet.</p>
+            <details id="regionCreateSection" class="accountSection">
+              <summary data-i18n>Create a region</summary>
+              <form id="regionCreateForm" class="accountForm" novalidate>
+                <label for="regionCreateName" class="fieldLabel" data-i18n>Name of the region</label>
+                <input id="regionCreateName" name="name" type="text" required maxlength="30" autocomplete="off">
+                <fieldset class="regionSize">
+                  <legend class="fieldLabel" data-i18n>Size, in cities</legend>
+                  <label class="mapOption"><span data-i18n>Columns</span>
+                    <select id="regionCreateWidth">
+                      <option value="2">2</option>
+                      <option value="3" selected>3</option>
+                      <option value="4">4</option>
+                    </select>
+                  </label>
+                  <label class="mapOption"><span data-i18n>Rows</span>
+                    <select id="regionCreateHeight">
+                      <option value="2">2</option>
+                      <option value="3" selected>3</option>
+                      <option value="4">4</option>
+                    </select>
+                  </label>
+                </fieldset>
+                <p class="formError splashError" role="alert"></p>
+                <div class="modalButtons">
+                  <button type="submit" class="button primary accountSubmit" data-i18n>Create the region</button>
+                </div>
+              </form>
+            </details>
+          </section>
+          <div class="modalButtons">
+            <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+            <button type="button" id="lobbyRefresh" class="button" data-i18n>Refresh</button>
+          </div>
+        </section>
+
+        <section id="cityCard" class="card centred accountCard lobbyCard" aria-labelledby="cityTitle">
+          <h2 id="cityTitle" class="cardTitle" tabindex="-1"><bdi id="cityName"></bdi></h2>
+          <p id="cityNote" class="cardNote" role="status"></p>
+          <p id="cityStatus" class="lobbyStatus" role="status"></p>
+          <dl class="accountFacts">
+            <dt data-i18n="role|Owner">Owner</dt>
+            <dd><bdi id="cityOwner"></bdi></dd>
+            <dt data-i18n>Your role</dt>
+            <dd id="cityRole"></dd>
+            <dt data-i18n>Population</dt>
+            <dd id="cityPopulation"></dd>
+            <dt data-i18n>Year</dt>
+            <dd id="cityYear"></dd>
+            <dt data-i18n>Region</dt>
+            <dd id="cityRegion"></dd>
+          </dl>
+          <div class="accountActions">
+            <button type="button" id="cityPlay" class="button small primary" data-i18n>Play</button>
+            <button type="button" id="cityDownload" class="button small" data-i18n>Download a copy</button>
+          </div>
+          <section class="lobbySection" aria-labelledby="cityMembersTitle">
+            <h3 id="cityMembersTitle" class="lobbyHeading" data-i18n>Members</h3>
+            <ul id="cityMembers" class="lobbyList memberList"></ul>
+          </section>
+          <section id="cityInvitationsSection" class="lobbySection" aria-labelledby="cityInvitationsTitle">
+            <h3 id="cityInvitationsTitle" class="lobbyHeading" data-i18n>Invitations not answered yet</h3>
+            <ul id="cityInvitations" class="lobbyList memberList"></ul>
+          </section>
+          <details id="cityInviteSection" class="accountSection">
+            <summary data-i18n>Invite a player</summary>
+            <form id="cityInviteForm" class="accountForm" novalidate>
+              <label for="cityInviteName" class="fieldLabel" data-i18n>Username</label>
+              <input id="cityInviteName" name="username" type="text" required autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64">
+              <label for="cityInviteRole" class="fieldLabel" data-i18n>Role</label>
+              <select id="cityInviteRole" aria-describedby="cityInviteHint">
+                <option value="player" data-i18n="role|Player">Player</option>
+                <option value="viewer" data-i18n="role|Viewer">Viewer</option>
+              </select>
+              <p id="cityInviteHint" class="fieldHint" data-i18n>A player builds and runs the city with you. A viewer watches it, and chats.</p>
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button primary accountSubmit" data-i18n>Invite</button>
+              </div>
+            </form>
+          </details>
+          <details id="cityRenameSection" class="accountSection">
+            <summary data-i18n>Rename the city</summary>
+            <form id="cityRenameForm" class="accountForm" novalidate>
+              <label for="cityRenameName" class="fieldLabel" data-i18n>City name</label>
+              <input id="cityRenameName" name="name" type="text" required maxlength="15" autocomplete="off">
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button primary accountSubmit" data-i18n>Rename</button>
+              </div>
+            </form>
+          </details>
+          <details id="cityLeaveSection" class="accountSection">
+            <summary data-i18n>Leave this city</summary>
+            <p class="cardText" data-i18n>You will no longer be a member of this city. Its owner can invite you again.</p>
+            <div class="modalButtons">
+              <button type="button" id="cityLeave" class="button danger" data-i18n>Leave the city</button>
+            </div>
+          </details>
+          <details id="cityDeleteSection" class="accountSection">
+            <summary data-i18n>Delete this city</summary>
+            <p class="cardText" data-i18n>This deletes the city for all its members, at once and for good. Download a copy first to keep it.</p>
+            <div class="modalButtons">
+              <button type="button" id="cityDelete" class="button danger" data-i18n>Delete the city</button>
+            </div>
+          </details>
+          <p id="cityError" class="splashError lobbyError" role="alert"></p>
+          <div class="modalButtons">
+            <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+          </div>
+        </section>
+
+        <section id="regionCard" class="card centred accountCard lobbyCard regionCard" aria-labelledby="regionTitle">
+          <h2 id="regionTitle" class="cardTitle" tabindex="-1"><bdi id="regionName"></bdi></h2>
+          <p id="regionNote" class="cardNote" role="status"></p>
+          <p id="regionStatus" class="lobbyStatus" role="status"></p>
+          <p id="regionFacts" class="lobbyFacts"></p>
+          <section class="lobbySection" aria-labelledby="regionMapTitle">
+            <h3 id="regionMapTitle" class="lobbyHeading" data-i18n>Map of the region</h3>
+            <p class="lobbyHint" data-i18n>Each city is the neighbour of the cities beside it. Every member of the region can build a city on a free place.</p>
+            <ol id="regionGrid" class="regionGrid" aria-labelledby="regionMapTitle"></ol>
+          </section>
+          <section class="lobbySection" aria-labelledby="regionMembersTitle">
+            <h3 id="regionMembersTitle" class="lobbyHeading" data-i18n>Members</h3>
+            <ul id="regionMembers" class="lobbyList memberList"></ul>
+          </section>
+          <section id="regionInvitationsSection" class="lobbySection" aria-labelledby="regionInvitationsTitle">
+            <h3 id="regionInvitationsTitle" class="lobbyHeading" data-i18n>Invitations not answered yet</h3>
+            <ul id="regionInvitations" class="lobbyList memberList"></ul>
+          </section>
+          <details id="regionInviteSection" class="accountSection">
+            <summary data-i18n>Invite a player</summary>
+            <form id="regionInviteForm" class="accountForm" novalidate>
+              <label for="regionInviteName" class="fieldLabel" data-i18n>Username</label>
+              <input id="regionInviteName" name="username" type="text" required autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64">
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button primary accountSubmit" data-i18n>Invite</button>
+              </div>
+            </form>
+          </details>
+          <details id="regionRenameSection" class="accountSection">
+            <summary data-i18n>Rename the region</summary>
+            <form id="regionRenameForm" class="accountForm" novalidate>
+              <label for="regionRenameName" class="fieldLabel" data-i18n>Name of the region</label>
+              <input id="regionRenameName" name="name" type="text" required maxlength="30" autocomplete="off">
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button primary accountSubmit" data-i18n>Rename</button>
+              </div>
+            </form>
+          </details>
+          <details id="regionLeaveSection" class="accountSection">
+            <summary data-i18n>Leave this region</summary>
+            <p class="cardText" data-i18n>Your cities in this region leave it, and stay yours.</p>
+            <div class="modalButtons">
+              <button type="button" id="regionLeave" class="button danger" data-i18n>Leave the region</button>
+            </div>
+          </details>
+          <details id="regionDeleteSection" class="accountSection">
+            <summary data-i18n>Delete this region</summary>
+            <p class="cardText" data-i18n>The region is deleted for all its members. Its cities stay, out of the region.</p>
+            <div class="modalButtons">
+              <button type="button" id="regionDelete" class="button danger" data-i18n>Delete the region</button>
+            </div>
+          </details>
+          <p id="regionError" class="splashError lobbyError" role="alert"></p>
+          <div class="modalButtons">
+            <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+          </div>
+        </section>
+
+        <!-- While a shared city is being made on the title screen (see Lobby and SplashScreen.share) -->
+        <div id="sharedBanner" class="sharedBanner" role="region" aria-label="New shared city" data-i18n-aria-label>
+          <p id="sharedBannerText" class="sharedBannerText" role="status"></p>
+          <button type="button" id="sharedCancel" class="button small cancel" data-i18n>Cancel</button>
+        </div>
+
         <div id="notifications" class="initialHidden neutral" role="status" aria-live="polite"></div>
+
+        <div id="mpReconnecting" class="mpReconnecting hidden" role="status">
+          <span class="mpReconnectingText" data-i18n>Connection lost. Reconnecting&hellip;</span>
+          <button type="button" id="mpReconnectingLobby" class="button small" data-i18n>Back to the lobby</button>
+        </div>
+
+        <aside id="playersPanel" class="panel playersPanel hidden" aria-labelledby="playersTitle">
+          <div class="playersHeader">
+            <h2 id="playersTitle" class="panelTitle" data-i18n>Players</h2>
+            <button type="button" id="playersClose" class="button small cancel" data-i18n>Close</button>
+          </div>
+          <p id="playersConnection" class="playersConnection" data-status="connecting"><span class="statusDot" aria-hidden="true"></span><span id="playersStatus"></span></p>
+          <p id="playersRole" class="playersRole"></p>
+          <ul id="playersList" class="playersList" aria-label="Players of this city" data-i18n-aria-label></ul>
+          <div id="chatLog" class="chatLog inset" role="log" aria-live="polite" aria-label="Chat" data-i18n-aria-label tabindex="0"></div>
+          <form id="chatForm" class="chatForm">
+            <label class="srOnly" for="chatInput" data-i18n>Message to the other players</label>
+            <input id="chatInput" type="text" maxlength="300" autocomplete="off" enterkeyhint="send" placeholder="Message" data-i18n-placeholder>
+            <button type="submit" id="chatSend" class="button small primary" data-i18n>Send</button>
+          </form>
+          <button type="button" id="backToLobby" class="button small" data-i18n>Back to the lobby</button>
+        </aside>
+
+        <div id="mpScreen" class="mpScreen hidden">
+          <section id="mpCard" class="card mpCard" role="alertdialog" aria-labelledby="mpCardTitle" aria-describedby="mpCardText">
+            <h2 id="mpCardTitle" class="cardTitle">Shared city</h2>
+            <p id="mpCardText" class="mpCardText" role="status"></p>
+            <div class="modalButtons">
+              <button type="button" id="mpCardLobby" class="button primary">Back to the lobby</button>
+            </div>
+          </section>
+        </div>
 
         <div id="tooSmall" data-hasscript="false"><div id="tooSmallInner" class="card"><h2 class="cardTitle" data-i18n>Uh-oh!</h2><p data-i18n>This window is too small to fit the city and all the controls. Try a bigger window, or rotating your device.</p></div></div>
         <noscript>

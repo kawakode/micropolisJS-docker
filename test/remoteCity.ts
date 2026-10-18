@@ -454,6 +454,64 @@ describe("The copy of a shared city", () => {
         expect(train.frame).toBe(0);
     });
 
+    it("tells which tiles the power reaches, from the powered tiles and those that conduct", () => {
+        const city = R.fromWelcome(welcomeOf(getSave()), 0);
+        const set = (x: number, y: number, value: number, flags: number) => city.map.getTile(x, y).set(value, flags);
+        for (let y = 0; y < 100; y++)
+            for (let x = 0; x < 120; x++)
+                set(x, y, DIRT, 0);
+
+        // A powered zone's centre, a line of wire from it, round a corner; a line apart; a gap that stops the power
+        set(10, 10, 765, CONDBIT | POWERBIT | ZONEBIT);
+        for (let x = 11; x <= 15; x++)
+            set(x, 10, 210, CONDBIT);
+        set(15, 11, 210, CONDBIT);
+        set(15, 12, 210, CONDBIT);
+        set(17, 12, 210, CONDBIT);
+        for (let x = 30; x <= 35; x++)
+            set(x, 40, 210, CONDBIT);
+        // Corners do not join, nor the map's edges
+        set(16, 13, 210, CONDBIT);
+        set(119, 50, 210, CONDBIT | POWERBIT);
+        set(0, 51, 210, CONDBIT);
+
+        const powered = city.poweredTiles();
+        const on: string[] = [];
+        powered.forEach((value: number, i: number) => {
+            if (value)
+                on.push((i % 120) + "," + Math.floor(i / 120));
+        });
+        expect(on.sort()).toEqual(["10,10", "11,10", "12,10", "13,10", "14,10", "15,10", "15,11", "15,12",
+                                   "119,50"].sort());
+        expect(powered.length).toBe(12000);
+    });
+
+    it("tells mostly what the power grid tells, in a real city", () => {
+        const simulation = new (Simulation as any)(new (GameMap as any)(120, 100), 0, Simulation.SPEED_MED,
+                                                   load("kowloon.cty"));
+        for (let i = 0; i < 32; i++)
+            simulation.step();
+        const save: any = {};
+        simulation.save(save);
+        const city = R.fromWelcome(welcomeOf(JSON.parse(JSON.stringify(save))), 0);
+        const powered = city.poweredTiles();
+        const grid = simulation._powerManager.powerGridMap;
+
+        let conductive = 0;
+        let agree = 0;
+        for (let y = 0; y < 100; y++) {
+            for (let x = 0; x < 120; x++) {
+                if (!(city.map.getTile(x, y).getRawValue() & CONDBIT))
+                    continue;
+                conductive++;
+                if ((grid.worldGet(x, y) > 0) === (powered[y * 120 + x] === 1))
+                    agree++;
+            }
+        }
+        expect(conductive).toBeGreaterThan(1000);
+        expect(agree / conductive).toBeGreaterThan(0.95);
+    });
+
     it("needs neither jQuery nor a page", () => {
         jest.isolateModules(() => {
             jest.doMock("jquery", () => { throw new Error("jQuery loaded"); });

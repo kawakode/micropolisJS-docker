@@ -11,7 +11,7 @@ import { GameMap } from './gameMap.js';
 import * as Messages from './messages.ts';
 import { Simulation } from './simulation.js';
 import * as SpriteConstants from './spriteConstants.ts';
-import { ALLBITS, BIT_MASK } from './tileFlags.ts';
+import { ALLBITS, BIT_MASK, CONDBIT, POWERBIT } from './tileFlags.ts';
 
 // The copy of a shared city that each player's game keeps. The server simulates the city and sends what changes (see
 // server/game/cityState.ts): this module applies its messages to a GameMap and to an inert Simulation (one that never
@@ -721,6 +721,53 @@ RemoteCity.prototype.infoBarValues = function() {
     funds: this.simulation.budget.totalFunds,
     date: this.simulation.getDate()
   };
+};
+
+
+// The tiles the power reaches, as far as the tiles tell (the server keeps the power grid, see the minimap's power
+// overlay): the conductive tiles (CONDBIT) joined, through other conductive tiles, to a powered one (POWERBIT: the
+// power plants, and the zones the power reached). A Uint8Array of the map's tiles, row by row: 1 where the power is.
+RemoteCity.prototype.poweredTiles = function() {
+  var count = WIDTH * HEIGHT;
+  var powered = new Uint8Array(count);
+  var conductive = new Uint8Array(count);
+  var queue = new Int32Array(count);
+  var head = 0;
+  var tail = 0;
+
+  for (var i = 0; i < count; i++) {
+    var raw = this.map.getTile(i % WIDTH, Math.floor(i / WIDTH)).getRawValue();
+    if (!(raw & CONDBIT))
+      continue;
+
+    conductive[i] = 1;
+    if (raw & POWERBIT) {
+      powered[i] = 1;
+      queue[tail++] = i;
+    }
+  }
+
+  var reach = function(j) {
+    if (conductive[j] && !powered[j]) {
+      powered[j] = 1;
+      queue[tail++] = j;
+    }
+  };
+
+  while (head < tail) {
+    var index = queue[head++];
+    var x = index % WIDTH;
+    if (x > 0)
+      reach(index - 1);
+    if (x < WIDTH - 1)
+      reach(index + 1);
+    if (index >= WIDTH)
+      reach(index - WIDTH);
+    if (index < count - WIDTH)
+      reach(index + WIDTH);
+  }
+
+  return powered;
 };
 
 

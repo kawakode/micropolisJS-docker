@@ -15,6 +15,7 @@ import type { Config } from './config';
 import { registerCoreRoutes } from './coreRoutes';
 import type { Database } from './db/database';
 import { purgeExpired } from './db/purge';
+import { GameOptions, GameServices, registerGameRoutes } from './game/gameRoutes';
 import { ClientAbortError, ClientAddress, clientAddress, parseCookies, parseRequestTarget, readJsonBody,
          RequestContext, RequestSession, RequestTarget, RequestUser } from './http/request';
 import { HttpError, sendError } from './http/response';
@@ -49,6 +50,8 @@ export interface AppDeps {
   staticFiles?: StaticFiles;
   // Runs work after the answer was written (setImmediate by default; tests may hold it)
   defer?: (task: () => void) => void;
+  // Settings of the multiplayer server (tests: no frame loop of its own, shorter timeouts)
+  game?: Partial<GameOptions>;
 }
 
 export interface ResolvedSession {
@@ -104,16 +107,19 @@ export interface AppContext {
 export interface App {
   readonly server: http.Server;
   readonly context: AppContext;
+  // The shared cities: the lobby's stores, the rooms, the regions and the WebSocket server
+  readonly game: GameServices;
   runPurge(): void;
   // Stops accepting connections, runs the shutdown tasks, and waits (a few seconds at most) for requests to finish.
   // The database is left open for the caller to close.
   shutdown(): Promise<void>;
 }
 
-// Every API route. Stage B adds the multiplayer ones and the WebSocket at /api/ws (registerGameRoutes).
-function registerRoutes(context: AppContext): void {
+// Every API route, and the WebSocket at /api/ws
+function registerRoutes(context: AppContext, gameOptions: Partial<GameOptions> = {}): GameServices {
   registerCoreRoutes(context);
   registerAuthRoutes(context);
+  return registerGameRoutes(context, gameOptions);
 }
 
 export const API_LIMIT = {name: 'api', limit: 600, windowMs: 60 * 1000};
@@ -234,7 +240,7 @@ export function createApp(config: Config, deps: AppDeps): App {
   // Logins to unknown accounts are checked against a hash made now, with the same settings as the others
   context.auth.passwords.prepare().catch(error => log.error('passwords.prepare', {err: error}));
 
-  registerRoutes(context);
+  const game = registerRoutes(context, deps.game);
   // Last at shutdown: mails still queued get a few seconds to go
   if (mailer)
     context.onShutdown(() => mailer.close());
@@ -475,5 +481,5 @@ export function createApp(config: Config, deps: AppDeps): App {
     return shuttingDown;
   };
 
-  return {server, context, runPurge, shutdown};
+  return {server, context, game, runPurge, shutdown};
 }

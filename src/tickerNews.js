@@ -435,6 +435,12 @@ function TickerNews(cityName, random, now) {
 }
 
 
+// The city's new name, for the news
+TickerNews.prototype.setCityName = function(cityName) {
+  this._city = cityName;
+};
+
+
 // A message from the simulation (see Game.processFrontEndMessage): disasters and milestones are news at once
 TickerNews.prototype.report = function(subject, data) {
   var at = data && typeof(data.x) === 'number' && typeof(data.y) === 'number' ? {x: data.x, y: data.y} : null;

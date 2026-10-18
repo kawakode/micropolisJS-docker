@@ -70,6 +70,13 @@ var InputStatus = EventEmitter(function(map, gameCanvas) {
   // Should be replaced by the owner: when it returns true (e.g. a dialog is open), the map does not respond to input
   this.isBlocked = function() { return false; };
 
+  // May be replaced by the owner: whether a tool can be taken up (a viewer of a shared city has only the query tool)
+  this.isToolAllowed = function() { return true; };
+
+  // When true, a tool's drag stays on the map: its ends are the nearest tiles of the map (a shared city's server only
+  // takes drags whose ends are on the map, and builds what the preview showed)
+  this.clampToMap = false;
+
   // Keyboard movement
   this._keysHeld = {up: false, down: false, left: false, right: false};
 
@@ -268,6 +275,16 @@ InputStatus.prototype._tileAt = function(coords) {
 };
 
 
+// The tile of a tool's drag at these coordinates (see clampToMap), or null
+InputStatus.prototype._dragTileAt = function(coords) {
+  var tile = this._tileAt(coords);
+  if (tile === null || !this.clampToMap)
+    return tile;
+
+  return {x: Math.max(0, Math.min(this._map.width - 1, tile.x)), y: Math.max(0, Math.min(this._map.height - 1, tile.y))};
+};
+
+
 var pointerDownHandler = function(e) {
   if (this.isBlocked())
     return;
@@ -303,7 +320,7 @@ var pointerDownHandler = function(e) {
   if (panButton || this.currentTool === null) {
     this._gesture = {type: 'pan', pointerId: e.pointerId, button: e.button, start: coords, last: coords, moved: false};
   } else if (e.button === 0) {
-    var tile = this._tileAt(coords);
+    var tile = this._dragTileAt(coords);
     if (tile !== null) {
       this._gesture = {type: 'tool', pointerId: e.pointerId, start: coords, anchor: tile, current: tile,
                        toolName: this.toolName};
@@ -348,7 +365,7 @@ var pointerMoveHandler = function(e) {
       if (e.pointerId !== gesture.pointerId)
         return;
 
-      var tile = this._tileAt(coords);
+      var tile = this._dragTileAt(coords);
       if (tile !== null)
         gesture.current = tile;
       break;
@@ -393,7 +410,7 @@ var pointerUpHandler = function(e) {
     if (gesture.button === 2 && !gesture.moved)
       this.clearTool();
   } else if (gesture.type === 'tool' && gesture.toolName === this.toolName) {
-    var tile = this._tileAt(coords);
+    var tile = this._dragTileAt(coords);
     if (tile !== null)
       gesture.current = tile;
 
@@ -587,6 +604,28 @@ InputStatus.prototype.getPendingPlacements = function() {
 };
 
 
+// Where the pointer is on the map, for the other players of a shared city: {x, y, anchor}, anchor being the tile where
+// a drag of the current tool started (or null), or null when the pointer is not over the map
+InputStatus.prototype.getPointer = function() {
+  var gesture = this._gesture;
+  if (gesture !== null && gesture.type === 'tool' && gesture.toolName === this.toolName &&
+      this._map.testBounds(gesture.current.x, gesture.current.y)) {
+    var anchor = this._map.testBounds(gesture.anchor.x, gesture.anchor.y) ? {x: gesture.anchor.x, y: gesture.anchor.y} :
+                 null;
+    return {x: gesture.current.x, y: gesture.current.y, anchor: anchor};
+  }
+
+  if (this._hover === null)
+    return null;
+
+  var tile = this._tileAt(this._hover);
+  if (tile === null || !this._map.testBounds(tile.x, tile.y))
+    return null;
+
+  return {x: tile.x, y: tile.y, anchor: null};
+};
+
+
 InputStatus.prototype._updateCursor = function() {
   var canvas = $(this._canvasElement);
   var gesture = this._gesture;
@@ -613,7 +652,7 @@ InputStatus.prototype.selectTool = function(toolName, keep) {
   }
 
   var button = $('.toolButton[data-tool="' + toolName + '"]');
-  if (button.length === 0 || this.gameTools[toolName] === undefined)
+  if (button.length === 0 || this.gameTools[toolName] === undefined || !this.isToolAllowed(toolName))
     return;
 
   $('.toolButton.selected').removeClass('selected').addClass('unselected').attr('aria-pressed', 'false');

@@ -428,6 +428,8 @@ var renderStrip = function() {
   var here = Session.isPublicOrigin(window.location.origin);
   var user = info.user;
   $('#accountButtons').toggle(here);
+  // The lobby of the shared cities (see Lobby): logged out, it asks to log in first
+  $('#accountMultiplayer').toggle(here && info.features.multiplayer);
   $('#accountLogin').toggle(here && !user);
   $('#accountRegister').toggle(here && !user && info.features.registration);
   $('#accountOpen').toggle(here && user !== null);
@@ -1130,6 +1132,12 @@ var addRoute = function(name, handler) {
 };
 
 
+// Whether a card is shown (id: that card)
+var isOpen = function(id) {
+  return id === undefined ? stack.length > 0 : current() === id;
+};
+
+
 var AccountScreens = {
   checkEmail: checkEmail,
   checkUsername: checkUsername,
@@ -1142,9 +1150,20 @@ var AccountScreens = {
   openLogin: openLogin,
   back: back,
   closeAll: closeAll,
+  isOpen: isOpen,
   addCard: addCard,
   addRoute: addRoute,
-  setStatus: setStatus
+  setStatus: setStatus,
+  // The forms' helpers, for the other cards' forms (see Lobby)
+  forms: {
+    setFieldError: setFieldError,
+    showFieldErrors: showFieldErrors,
+    clearErrors: clearErrors,
+    showError: showError,
+    isBusy: isBusy,
+    setBusy: setBusy,
+    run: run
+  }
 };
 
 

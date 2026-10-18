@@ -9,7 +9,9 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { CityFile } from '../src/cityFile.js';
-import type { CitySave } from './game/headless';
+import { MapGenerator } from '../src/mapGenerator.js';
+import { Simulation } from '../src/simulation.js';
+import { CitySave, MILESTONE_KEYS, SAVE_VERSION } from './game/headless';
 
 // Helpers for the tests of the shared cities (server/test/): the game's sample cities, and predictable random numbers.
 // Kept apart from testing.ts, so that the other tests do not load the game.
@@ -45,4 +47,31 @@ export function seededRandom(seed: number): () => number {
 export function digest(value: unknown): string {
   return createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(value)).digest('hex')
     .slice(0, 16);
+}
+
+// The save of a new city on a generated map, as the game writes it once the player chose to play that map (see Game:
+// a new Simulation on the map, then Game.getSaveData and Storage.exportGame). The map comes from the seed.
+export function freshCitySave(name = 'Newtown', level = 0, seed = 1): CitySave {
+  const random = Math.random;
+  Math.random = seededRandom(seed);
+  try {
+    const map = (MapGenerator as unknown as (w: number, h: number) => unknown)(120, 100);
+    const SimulationClass = Simulation as unknown as {
+      new (map: unknown, level: number, speed: number, save: null): {save(data: CitySave): void};
+      SPEED_MED: number;
+    };
+    const simulation = new SimulationClass(map, level, SimulationClass.SPEED_MED, null);
+    const save: CitySave = {name};
+    for (const key of MILESTONE_KEYS)
+      save[key] = false;
+    save.dayNight = true;
+    save.disastersEnabled = true;
+    save.timeOfDay = 0.2;
+    save.autoBulldoze = true;
+    simulation.save(save);
+    save.version = SAVE_VERSION;
+    return JSON.parse(JSON.stringify(save)) as CitySave;
+  } finally {
+    Math.random = random;
+  }
 }

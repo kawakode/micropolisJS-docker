@@ -1383,6 +1383,250 @@ a.hudButton, a.hudButton:visited {
 }
 
 
+/* Shared cities: the players panel with the chat, and the state of the connection (see PlayersPanel and
+   Multiplayer) */
+
+.hudButton.playersButton {
+  gap: 6px;
+}
+
+.hudButton.playersButton.hidden, .playersPanel.hidden, .unreadBadge.hidden, .mpReconnecting.hidden,
+.mpScreen.hidden {
+  display: none;
+}
+
+.statusDot {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--win-outline);
+  background: var(--gold);
+}
+
+[data-status="online"] > .statusDot {
+  background: var(--green);
+}
+
+[data-status="offline"] > .statusDot {
+  background: var(--red);
+}
+
+.unreadBadge {
+  display: inline-block;
+  min-width: 22px;
+  padding: 0 4px;
+  border: 2px solid var(--win-outline);
+  background: var(--red);
+  color: #fff;
+  font-size: 13px;
+  line-height: 16px;
+  text-align: center;
+  text-shadow: none;
+}
+
+.playersPanel {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 16;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 320px;
+  max-height: calc(100% - 28px);
+  padding: 10px;
+}
+
+.playersHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.playersHeader .panelTitle {
+  margin: 0;
+}
+
+.playersConnection {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.playersRole {
+  color: var(--muted);
+  font-family: var(--text-font);
+  font-size: 13px;
+}
+
+.playersRole:empty {
+  display: none;
+}
+
+.playersList {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 30%;
+  min-height: 24px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.playerItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.playerSwatch {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--win-outline);
+}
+
+.playerName {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playerRole, .playerOnline {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.playerItem.offline .playerName, .playerItem.offline .playerSwatch {
+  opacity: 0.55;
+}
+
+.chatLog {
+  flex: 1 1 auto;
+  min-height: 90px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px 8px;
+  font-family: var(--text-font);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.chatLine {
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+
+.chatTime {
+  margin-right: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chatName {
+  font-weight: 700;
+}
+
+.chatNotice {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.chatForm {
+  display: flex;
+  gap: 6px;
+}
+
+.chatForm input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 34px;
+  font-family: var(--text-font);
+  font-size: 15px;
+}
+
+.playersPanel #backToLobby {
+  align-self: flex-start;
+}
+
+.mpReconnecting {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  z-index: 17;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 28px);
+  padding: 6px 12px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #8c5a0c 0%, #5c3a06 100%);
+  border: 2px solid var(--win-border);
+  box-shadow: 0 0 0 2px var(--win-outline), 5px 5px 0 2px rgba(0, 0, 0, 0.4);
+  text-shadow: 2px 2px 0 var(--win-outline);
+}
+
+.mpScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: rgba(5, 8, 32, 0.75);
+}
+
+.mpCard {
+  width: 100%;
+  max-width: 480px;
+  max-height: 100%;
+  overflow: auto;
+}
+
+.mpCardText {
+  font-family: var(--text-font);
+}
+
+/* On a phone, the players panel is a sheet along the bottom of the screen */
+@media (max-width: 600px) {
+  .playersPanel {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 35;
+    width: auto;
+    max-height: 40vh;
+    max-height: 40dvh;
+    padding: 8px 10px;
+  }
+
+  .playersList {
+    max-height: 4.5em;
+  }
+
+  .chatLog {
+    min-height: 48px;
+  }
+
+  .mpReconnecting {
+    top: 8px;
+    font-size: 14px;
+  }
+}
+
+
 /* Smaller screens */
 
 /* On wide screens, the less used buttons sit in the bar; on smaller ones, in a menu */
@@ -2712,6 +2956,366 @@ kbd {
   .accountFacts dd + dt {
     margin-top: 6px;
   }
+}
+
+/* Title screen: the multiplayer lobby, its cards of a city and of a region (see Lobby), and the making of a shared
+   city */
+
+.lobbyCard {
+  width: 580px;
+}
+
+.regionCard {
+  width: 700px;
+}
+
+.lobbyStatus {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.lobbyStatus:empty {
+  display: none;
+}
+
+.lobbyCard > .lobbyError {
+  margin: 0 0 12px;
+}
+
+.lobbySection {
+  margin-bottom: 16px;
+}
+
+.lobbyHeading {
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+
+.lobbyHint, .lobbyEmpty, .lobbyFacts {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.lobbyList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.lobbyList:empty {
+  display: none;
+}
+
+.lobbyItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 8px 10px;
+  border: 2px solid var(--win-outline);
+  background: var(--win-inset);
+  box-shadow: inset 2px 2px 0 #050820;
+}
+
+.lobbyItem.declineAll {
+  justify-content: flex-end;
+  padding: 2px 4px;
+  border: none;
+  background: none;
+  box-shadow: none;
+}
+
+.lobbyItemMain {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.lobbyItemName {
+  display: block;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.lobbyItemText {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.lobbyItemFacts {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+/* The facts of a line, one after the other, each kept on one line where it fits (the dots are not read out) */
+.lobbyFact {
+  display: inline-block;
+}
+
+.lobbyFact + .lobbyFact::before {
+  content: '\00A0\00B7\00A0';
+  content: '\00A0\00B7\00A0' / '';
+}
+
+.lobbyItemButtons, .slotButtons, .lobbyConfirmButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lobbyItemButtons .button, .slotButtons .button, .lobbyConfirmButtons .button, .memberControls .button,
+.lobbyActions .button {
+  min-height: 34px;
+  padding: 2px 12px;
+  font-size: 16px;
+}
+
+.lobbyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lobbyItem bdi, .memberItem bdi, .regionSlot bdi, .cardNote bdi {
+  overflow-wrap: anywhere;
+}
+
+/* The members of a city or a region */
+.memberItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 6px 10px;
+  border: 2px solid var(--win-outline);
+  background: var(--win-inset);
+}
+
+.memberName {
+  flex: 1 1 140px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.memberState, .memberRoleText {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.memberControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.memberControls select.memberRole {
+  width: auto;
+  min-width: 120px;
+  min-height: 34px;
+  padding: 2px 8px;
+}
+
+/* The buttons of a city's card, under its facts */
+.lobbyCard .accountActions {
+  margin: 0 0 16px;
+}
+
+/* A question before what cannot be undone */
+.lobbyConfirm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.lobbyConfirmText {
+  color: var(--gold-light);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+/* A region's map: a grid of its places, or a list on small screens */
+.regionGrid {
+  display: grid;
+  grid-template-columns: repeat(var(--columns, 3), minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.regionSlot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  min-height: 104px;
+  padding: 8px;
+  border: 2px solid var(--win-outline);
+  background: var(--win-inset);
+  box-shadow: inset 2px 2px 0 #050820;
+  font-size: 14px;
+}
+
+.regionSlot[data-free="true"] {
+  border-style: dashed;
+  border-color: var(--win-inset-light);
+  background: transparent;
+  box-shadow: none;
+}
+
+.slotName {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.slotFact, .slotFree {
+  color: var(--muted);
+}
+
+.slotButtons {
+  margin-top: auto;
+}
+
+/* In the grid, a place's row and column are only told, not shown */
+.slotPosition {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.regionSize {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 14px 0 0;
+  padding: 0;
+  border: none;
+}
+
+.regionSize legend {
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.regionSize .mapOption {
+  flex: 1 1 140px;
+}
+
+.regionSize .mapOption select {
+  flex: 0 0 70px;
+}
+
+@media (max-width: 600px) {
+  .regionGrid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .regionSlot {
+    min-height: 0;
+  }
+
+  .slotPosition {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    color: var(--gold);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+}
+
+@media (max-width: 480px) {
+  .lobbyItem, .memberItem {
+    padding: 6px 8px;
+  }
+}
+
+/* A shared city in the making: the title screen says so, above its cards */
+.sharedBanner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 31;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  padding: 6px 8px 6px 14px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #2d419c 0%, #182260 100%);
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 0 2px var(--win-outline), 5px 5px 0 2px rgba(0, 0, 0, 0.4);
+}
+
+.sharedBanner.shown {
+  display: flex;
+}
+
+.sharedBannerText {
+  color: var(--gold-light);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.sharedBanner .button {
+  flex: none;
+  min-height: 34px;
+  padding: 2px 12px;
+  font-size: 16px;
+}
+
+/* The cards leave room for the banner */
+#canvasContainer.sharedCreation > .centred {
+  top: calc(50% + 32px);
+  max-height: calc(100% - 104px);
+}
+
+/* The account strip waits: the banner's Cancel goes back to the lobby */
+#splash.sharedCity .accountStrip {
+  display: none !important;
+}
+
+#start:not(.sharedCity) #startBack {
+  display: none;
+}
+
+#start.sharedCity #playSubmitDiv {
+  display: flex;
+  gap: 10px;
+}
+
+#start.sharedCity #playit {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+.startError {
+  margin-top: 12px;
 }
 
 /* Tool bar: categories and their palettes */

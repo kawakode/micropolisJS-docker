@@ -7,6 +7,10 @@
 
 import { ADMIN_RESET_HOURS, createResetToken, linkTo, RESET_HOURS } from '../auth/mailTokens';
 import { checkEmail, checkUsername, isLocale, LOCALES, UserRow, Users, usernameKey } from '../auth/users';
+import { releaseAccount } from '../game/accounts';
+import { CityStore } from '../game/cityStore';
+import { RegionLink } from '../game/regionLink';
+import { RegionStore } from '../game/regionStore';
 import { MailTransport, NO_SENDER, smtpTransport } from '../mail/mailer';
 import { UNUSABLE_PASSWORD_HASH } from '../security/passwords';
 import type { AdminCommand, AdminContext } from './commands';
@@ -133,7 +137,12 @@ const deleteUser: AdminCommand = {
       return FAILED;
     }
 
+    // As the server does it (see game/accounts.ts), but this process has no room open: the cities beside the
+    // account's cities, and those in its regions, are changed in their stored saves
+    const cities = new CityStore(db);
+    const link = new RegionLink(db, cities, context.clock, {get: () => undefined});
     db.transaction(() => {
+      releaseAccount({cities, regions: new RegionStore(db), link, clock: context.clock}, user.id, () => {});
       users.delete(user.id);
       db.run('DELETE FROM signup_tokens WHERE email_key = ?', user.email_key);
     });

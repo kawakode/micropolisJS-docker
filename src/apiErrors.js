@@ -55,7 +55,8 @@ var FIELD_TEXTS = {
   reserved: 'This name is reserved. Please choose another one.'
 };
 
-// Why the server ended the connection to a shared city
+// Why the server ended the connection to a shared city (after shutdown, the game tries again until the server is
+// back, as when the connection drops: see Multiplayer)
 var KICK_TEXTS = {
   deleted: 'This city was deleted.',
   removed: 'You are no longer a member of this city.',

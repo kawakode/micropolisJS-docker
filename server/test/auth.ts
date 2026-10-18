@@ -964,7 +964,7 @@ describe('The account', () => {
 
   test('The export holds the account and its sessions, never a hash or a token', async () => {
     const userId = t.db.get<{id: number}>('SELECT id FROM users')?.id;
-    t.app.context.auth.addExportSection('cities', id => [{owner: id === userId ? 'me' : 'other'}]);
+    t.app.context.auth.addExportSection('extra', id => [{owner: id === userId ? 'me' : 'other'}]);
     const exported = await t.request('/api/account/export', {headers: {Cookie: alice.cookie}});
     expect(exported.status).toBe(200);
     expect(exported.headers['content-type']).toBe('application/json; charset=utf-8');
@@ -980,7 +980,12 @@ describe('The account', () => {
                   current: true}],
       pendingEmailChange: null,
       loginProtection: {failedLogins: 0, windowStart: null, lockedUntil: null},
-      cities: [{owner: 'me'}],
+      // The shared cities' sections (see game/gameRoutes.ts), and the one added here
+      cities: [],
+      regions: [],
+      memberships: {cities: [], regions: []},
+      invitations: {received: [], sent: []},
+      extra: [{owner: 'me'}],
     });
     const hashes = t.db.all<{token_hash: string}>('SELECT token_hash FROM sessions').map(row => row.token_hash);
     for (const secret of ['scrypt', alice.cookie.split('=')[1], ...hashes, 'password'])

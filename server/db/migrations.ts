@@ -76,4 +76,85 @@ export const MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX captcha_used_expiry ON captcha_used(expires_at);
   `,
+
+  // 2: shared cities and regions. A city's state is its save: one format byte (1: the save's JSON, gzipped) and the
+  // gzip. edge_state is what the city has at each of its edges for the cities beside it in a region (see
+  // game/regionLink.ts): {side: {transport, power, powerOut, signed: {trade, buyPower, sellPower, twinning}}}. Each member
+  // of a city has a colour of their own there (an index in the palette of game/room.ts).
+  `
+  CREATE TABLE regions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    public_id TEXT UNIQUE NOT NULL,
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    width INTEGER NOT NULL CHECK (width BETWEEN 2 AND 4),
+    height INTEGER NOT NULL CHECK (height BETWEEN 2 AND 4),
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE INDEX regions_owner ON regions(owner_id);
+
+  CREATE TABLE cities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    public_id TEXT UNIQUE NOT NULL,
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    state BLOB NOT NULL,
+    population INTEGER NOT NULL DEFAULT 0,
+    city_time INTEGER NOT NULL DEFAULT 0,
+    paused INTEGER NOT NULL DEFAULT 0,
+    region_id INTEGER REFERENCES regions(id) ON DELETE SET NULL,
+    region_x INTEGER,
+    region_y INTEGER,
+    edge_state TEXT NOT NULL DEFAULT '{}',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    played_at INTEGER,
+    UNIQUE (region_id, region_x, region_y)
+  );
+  CREATE INDEX cities_owner ON cities(owner_id);
+
+  CREATE TABLE city_members (
+    city_id INTEGER NOT NULL REFERENCES cities(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('owner', 'player', 'viewer')),
+    colour INTEGER NOT NULL DEFAULT 0,
+    joined_at INTEGER NOT NULL,
+    PRIMARY KEY (city_id, user_id)
+  );
+  CREATE INDEX city_members_user ON city_members(user_id);
+
+  CREATE TABLE city_invitations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    public_id TEXT UNIQUE NOT NULL,
+    city_id INTEGER NOT NULL REFERENCES cities(id) ON DELETE CASCADE,
+    inviter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    invitee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('player', 'viewer')),
+    created_at INTEGER NOT NULL,
+    UNIQUE (city_id, invitee_id)
+  );
+  CREATE INDEX city_invitations_invitee ON city_invitations(invitee_id);
+  CREATE INDEX city_invitations_inviter ON city_invitations(inviter_id);
+
+  CREATE TABLE region_members (
+    region_id INTEGER NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    joined_at INTEGER NOT NULL,
+    PRIMARY KEY (region_id, user_id)
+  );
+  CREATE INDEX region_members_user ON region_members(user_id);
+
+  CREATE TABLE region_invitations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    public_id TEXT UNIQUE NOT NULL,
+    region_id INTEGER NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+    inviter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    invitee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL,
+    UNIQUE (region_id, invitee_id)
+  );
+  CREATE INDEX region_invitations_invitee ON region_invitations(invitee_id);
+  CREATE INDEX region_invitations_inviter ON region_invitations(inviter_id);
+  `,
 ];
