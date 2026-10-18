@@ -9,6 +9,7 @@ import { BaseTool } from './baseTool.js';
 import { GameMap } from './gameMap.js';
 import { Simulation } from './simulation.js';
 import { Storage } from './storage.js';
+import { TextRules } from './textRules.js';
 
 // What the multiplayer lobby (see Lobby) reads from the server and sends to it, without the page: the server's answers
 // checked and copied into fresh objects (anything else is dropped, so the page only ever shows values of the expected
@@ -22,7 +23,7 @@ import { Storage } from './storage.js';
 // - GET /api/cities/:id: {city, members: [{id, username, role, colour, online}], invitations (owner only):
 //   [{id, username, userId, role, createdAt}]}
 // - GET /api/regions/:id: {region, slots: [{x, y, city: {id, name, ownerName, population, role} | null}],
-//   members: [{id, username}], invitations (owner only): [{id, username, userId, createdAt}]}
+//   members: [{id, username, owner}], invitations (owner only): [{id, username, userId, createdAt}]}
 // - POST /api/cities {name, level, save, region?: {id, x, y}}: 201 {city}
 
 var WIDTH = 120;
@@ -86,12 +87,13 @@ var shownName = function(name) {
 };
 
 
-// A name typed for a city or a region, as the server takes it: in NFC, without control and format characters,
-// trimmed, then 1 to max characters. Returns {text, reason}: reason is null when the name is right, else the key of
-// FIELD_TEXTS that says why not ('required', 'too_long').
+// A name typed for a city or a region, as the server takes it (see TextRules): in NFC, without control and format
+// characters nor others that show nothing, trimmed, then 1 to max characters, something that shows among them.
+// Returns {text, reason}: reason is null when the name is right, else the key of FIELD_TEXTS that says why not
+// ('required', 'too_long').
 var checkName = function(name, max) {
-  var text = typeof(name) === 'string' ? name.normalize('NFC').replace(/[\p{Cc}\p{Cf}]/gu, '').trim() : '';
-  if (text === '')
+  var text = TextRules.clean(name);
+  if (!TextRules.shows(text))
     return {text: text, reason: 'required'};
   if (Array.from(text).length > max)
     return {text: text, reason: 'too_long'};
@@ -290,7 +292,7 @@ var slotCity = function(entry) {
 };
 
 
-// A region and its map, from GET /api/regions/:id: {region, slots: [{x, y, city}], members: [{id, username}],
+// A region and its map, from GET /api/regions/:id: {region, slots: [{x, y, city}], members: [{id, username, owner}],
 // invitations (null unless the player owns it)}, or null. Each place of the map has one slot, empty (city null)
 // unless the server put a city there.
 var regionDetail = function(answer) {
@@ -320,7 +322,7 @@ var regionDetail = function(answer) {
   var members = listOf(answer.members, function(entry) {
     if (!isObject(entry) || !isPublicId(entry.id) || shownName(entry.username) === '')
       return null;
-    return {id: entry.id, username: shownName(entry.username), owner: shownName(entry.username) === checked.ownerName};
+    return {id: entry.id, username: shownName(entry.username), owner: entry.owner === true};
   }).sort(function(a, b) {
     if (a.owner !== b.owner)
       return a.owner ? -1 : 1;
@@ -423,7 +425,41 @@ var creationRequest = function(name, level, save, slot) {
 };
 
 
+// Changes sent once the player stopped making them (a list's choice changes at each arrow key): later(key, send) calls
+// send(false) after delay ms, the wait starting again when the same key changes meanwhile; now() calls send(true) at
+// once for each change still waiting (when what shows them closes: no change is lost).
+function Waiting(delay) {
+  this.delay = delay;
+  this._sends = {};
+}
+
+
+Waiting.prototype.later = function(key, send) {
+  var waiting = this._sends;
+  if (Object.prototype.hasOwnProperty.call(waiting, key))
+    clearTimeout(waiting[key].timer);
+
+  var entry = {send: send, timer: setTimeout(function() {
+    if (waiting[key] === entry)
+      delete waiting[key];
+    send(false);
+  }, this.delay)};
+  waiting[key] = entry;
+};
+
+
+Waiting.prototype.now = function() {
+  var waiting = this._sends;
+  this._sends = {};
+  Object.keys(waiting).forEach(function(key) {
+    clearTimeout(waiting[key].timer);
+    waiting[key].send(true);
+  });
+};
+
+
 var LobbyData = {
+  Waiting: Waiting,
   CITY_NAME_MAX: CITY_NAME_MAX,
   REGION_NAME_MAX: REGION_NAME_MAX,
   REGION_SIZES: REGION_SIZES,

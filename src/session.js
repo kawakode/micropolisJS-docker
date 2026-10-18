@@ -19,7 +19,8 @@ import { I18n } from './i18n.js';
 var DETECTION_TIMEOUT = 3000;
 
 // The server's rules, until it gives its own
-var DEFAULT_LIMITS = {passwordMin: 12, passwordMax: 128, usernameMin: 3, usernameMax: 20, cityNameMax: 15};
+var DEFAULT_LIMITS = {passwordMin: 12, passwordMax: 128, usernameMin: 3, usernameMax: 20, cityNameMax: 15,
+                      ownedCities: 5};
 
 var FEATURES = ['accounts', 'registration', 'mail', 'multiplayer'];
 

@@ -137,6 +137,10 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
 
   this.dialogOpen = false;
   this._openWindow = null;
+  // What the budget or settings window showed when it last opened
+  this._windowShown = null;
+  // The congratulations waiting for the window open to close
+  this._congrats = [];
   this.overlay = null;
   this._preview = null;
   this.simNeededBudget = false;
@@ -182,17 +186,18 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
   this.handleBudgetRequest = makeWindowOpenHandler('budget', function() {
     var budgetData = {
       roadMaintenanceBudget: this.simulation.budget.roadMaintenanceBudget,
-      roadRate: Math.floor(this.simulation.budget.roadPercent * 100),
+      roadRate: BudgetWindow.rateOf(this.simulation.budget.roadPercent),
       fireMaintenanceBudget: this.simulation.budget.fireMaintenanceBudget,
-      fireRate: Math.floor(this.simulation.budget.firePercent * 100),
+      fireRate: BudgetWindow.rateOf(this.simulation.budget.firePercent),
       policeMaintenanceBudget: this.simulation.budget.policeMaintenanceBudget,
-      policeRate: Math.floor(this.simulation.budget.policePercent * 100),
+      policeRate: BudgetWindow.rateOf(this.simulation.budget.policePercent),
       taxRate: this.simulation.budget.cityTax,
       totalFunds: this.simulation.budget.totalFunds,
       taxesCollected: this.simulation.budget.taxFund,
       dealsFund: this.simulation.budget.dealsFund
     };
 
+    this._windowShown = budgetData;
     return [budgetData];
   }.bind(this));
 
@@ -221,10 +226,11 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
 
   // ... the settings window
   this.handleSettingsRequest = makeWindowOpenHandler('settings', function() {
-    return [{autoBudget: this.simulation.budget.autoBudget, autoBulldoze: BaseTool.getAutoBulldoze(),
-             speed: this.defaultSpeed, disasters: this.simulation.disasterManager.disastersEnabled,
-             dayNight: this.ambientLife.dayNight, level: this.simulation.getLevel(), language: I18n.getLanguage(),
-             isometric: this.gameCanvas.isIsometric()}];
+    this._windowShown = {autoBudget: this.simulation.budget.autoBudget, autoBulldoze: BaseTool.getAutoBulldoze(),
+                         speed: this.defaultSpeed, disasters: this.simulation.disasterManager.disastersEnabled,
+                         dayNight: this.ambientLife.dayNight, level: this.simulation.getLevel(),
+                         language: I18n.getLanguage(), isometric: this.gameCanvas.isIsometric()};
+    return [this._windowShown];
   }.bind(this));
   this.settingsWindow = new SettingsWindow(opacityLayerID, 'settingsWindow');
   this.settingsWindow.addEventListener(Messages.SETTINGS_WINDOW_CLOSED, this.handleSettingsWindowClosure.bind(this));
@@ -552,9 +558,11 @@ Game.prototype.handleDisasterWindowClosure = function(request) {
 };
 
 
+// The window's choices, and what it showed when it opened (in a shared city, others may have changed the settings
+// meanwhile: what the player left as it was is not sent back, see RemoteController)
 Game.prototype.handleSettingsWindowClosure = function(actions) {
   this.dialogOpen = false;
-  this.controller.applySettings(actions);
+  this.controller.applySettings(actions, this._windowShown);
 };
 
 
@@ -606,7 +614,7 @@ Game.prototype.getPictureData = function() {
 
 Game.prototype.handleBudgetWindowClosure = function(data) {
   this.dialogOpen = false;
-  this.controller.applyBudget(data);
+  this.controller.applyBudget(data, this._windowShown);
 };
 
 
@@ -935,9 +943,8 @@ Game.prototype.processFrontEndMessage = function(message) {
     }
 
     if (cMessage !== null) {
-      this.dialogOpen = true;
-      this._openWindow = 'congratsWindow';
-      this.congratsWindow.open(I18n.t(cMessage, {city: this.name}));
+      this._congrats.push(I18n.t(cMessage, {city: this.name}));
+      this.showCongrats();
     }
 
     return;
@@ -1106,6 +1113,19 @@ Game.prototype.calculateSpritesForPaint = function(canvas) {
 };
 
 
+// Opens the congratulations that wait, one at a time, once no other window is open. A shared city's messages come
+// whatever the player is doing (the server's city does not stop for a window): opened over another window, they would
+// mix up which one shows (see ModalWindow), so they wait for it to close (see commonAnimate).
+Game.prototype.showCongrats = function() {
+  if (this.dialogOpen || this._congrats.length === 0)
+    return;
+
+  this.dialogOpen = true;
+  this._openWindow = 'congratsWindow';
+  this.congratsWindow.open(this._congrats.shift());
+};
+
+
 // Runs the simulation. This is independent of painting, so that the simulation speed does not depend on the
 // display's frame rate.
 var tick = function() {
@@ -1125,6 +1145,7 @@ var commonAnimate = function(timestamp) {
   this._lastFrameTime = timestamp;
 
   this.inputStatus.update(elapsed);
+  this.showCongrats();
 
   // Trains, ships, planes, monsters and tornadoes move 60 times a second, whatever the display's refresh rate. A
   // shared city's move on the server: they are drawn between the last positions it sent.

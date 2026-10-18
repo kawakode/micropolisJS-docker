@@ -69,8 +69,9 @@ export interface RoomDeps {
   buildId: string;
   // The city's edges changed (after a scan of the power grid, or a deal): the cities beside it are told
   onEdgeChanged(room: Room): void;
-  // The cities beside this one, looked at again (see regionLink.ts)
-  refreshNeighbours(room: Room): void;
+  // The room checked against the database (see RoomManager.recheck): the city's row, its members and the cities beside
+  // it. False when the room closed (the city is gone).
+  recheck(room: Room): boolean;
 }
 
 export interface RoomOptions {
@@ -88,8 +89,9 @@ export const ROOM_TIMING = Object.freeze({
   stateMs: 250,
   statsMs: 500,
   mapsMs: 2000,
-  // How often the cities beside this one are looked at again (their population changes)
-  neighboursMs: 2000,
+  // How often the room is checked against the database: the city still there, its members, and the cities beside it
+  // (their population changes)
+  recheckMs: 2000,
   // Steps and sprite moves caught up at most in a frame
   maxStepDebt: 2,
   maxSpriteMoves: 4,
@@ -118,7 +120,7 @@ export class Room {
   readonly city: HeadlessCity;
   readonly clients = new Set<RoomClient>();
   placement: RoomPlacement | null = null;
-  // What the city has at its edges, as last stored
+  // What the city has at its edges (saved with the city)
   edge: Record<string, EdgeState>;
 
   // Whether the city changed since it was last saved, and when that was
@@ -135,6 +137,8 @@ export class Room {
   private cursorsChanged = false;
   private readonly toolBucket = new TokenBucket(TOOL_BUCKETS.room.burst, TOOL_BUCKETS.room.perSecond);
   private readonly remoteKeys: Record<string, string> = {};
+  // The player's city on each side at the last look (null: none), once the room looked
+  private readonly remoteCities: Record<string, string | null> = {};
 
   private nextStepAt: number;
   private spriteAt: number;
@@ -144,7 +148,7 @@ export class Room {
   private statsMonth: number;
   private statsDirty = false;
   private lastMapsAt: number;
-  private lastNeighboursAt: number;
+  private lastRecheckAt: number;
 
   constructor(deps: RoomDeps, options: RoomOptions) {
     const {row, now} = options;
@@ -166,7 +170,7 @@ export class Room {
     this.lastPassAt = now;
     this.lastStateAt = now;
     this.lastMapsAt = now;
-    this.lastNeighboursAt = now;
+    this.lastRecheckAt = now;
     this.statsMonth = this.month();
   }
 
@@ -288,6 +292,17 @@ export class Room {
     }
     this.cursors.clear();
     this.emptySince = now;
+  }
+
+  // The members as the database has them: taken when they are not those the room knows (another process changed them)
+  checkMembers(members: readonly MemberRow[], now: number): void {
+    const same = members.length === this.members.size && members.every(member => {
+      const known = this.members.get(member.user_id);
+      return known !== undefined && known.role === member.role && known.colour === member.colour &&
+             known.username === member.username;
+    });
+    if (!same)
+      this.membersChanged(members, now);
   }
 
   // The members changed (someone joined, left, or got another role): the members are read again
@@ -434,9 +449,10 @@ export class Room {
       this.broadcast({t: 'cursors', list: [...this.cursors.values()]}, {skippable: true});
     }
 
-    if (now - this.lastNeighboursAt >= ROOM_TIMING.neighboursMs) {
-      this.lastNeighboursAt = now;
-      this.deps.refreshNeighbours(this);
+    if (now - this.lastRecheckAt >= ROOM_TIMING.recheckMs) {
+      this.lastRecheckAt = now;
+      if (!this.deps.recheck(this))
+        return;
     }
 
     const month = this.month();
@@ -457,22 +473,32 @@ export class Room {
 
   // The neighbours
 
-  // Stores the city's edges if they changed, and tells the cities beside it
+  // Takes the city's edges again, and tells the cities beside it when they changed (they read them from the room while
+  // it is open). They are stored with the city's save, never apart: a room closed without a save (an error, a crash)
+  // leaves the edges of its last save, which match the deals of that save.
   updateEdge(): void {
     const edge = this.city.edgeState();
     if (sameEdges(edge, this.edge))
       return;
 
     this.edge = edge;
-    this.deps.cities.setEdgeState(this.id, edge);
     this.deps.onEdgeChanged(this);
   }
 
-  // The players' cities beside this one, by side (null: the neighbour of the save)
+  // The players' cities beside this one, by side (null: the neighbour of the save). A side whose city is not the one
+  // of the last look (it left, or another city took its place) ends its deals (DESIGN §5.2), whoever changed it: the
+  // lobby does it too, in the same transaction, but the admin command user delete runs in a process of its own. The
+  // first look, as the room opens, keeps the deals of the save.
   setRemotes(remotes: Readonly<Record<string, RemoteInfo | null>>): boolean {
     let changed = false;
+    const ended: string[] = [];
     for (const side of SIDES) {
       const remote = remotes[side] ?? null;
+      const cityId = remote === null ? null : remote.cityId;
+      if (Object.hasOwn(this.remoteCities, side) && this.remoteCities[side] !== cityId)
+        ended.push(side);
+      this.remoteCities[side] = cityId;
+
       const key = remote === null ? '' : JSON.stringify(remote);
       if ((this.remoteKeys[side] ?? '') === key)
         continue;
@@ -484,6 +510,7 @@ export class Room {
 
     if (changed)
       this.statsDirty = true;
+    this.clearDeals(ended);
     return changed;
   }
 

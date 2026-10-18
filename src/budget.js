@@ -27,6 +27,9 @@ var roadMaintenanceCost = 1;
 // Cost of maintaining 1 rail tile
 var railMaintenanceCost = 2;
 
+// KawaCity: the most money a city may have
+var MAX_FUNDS = 2147483647;
+
 
 var Budget = EventEmitter(function() {
   Object.defineProperties(this,
@@ -279,6 +282,8 @@ Budget.prototype.setTax = function(amount) {
 
 
 Budget.prototype.setFunds = function(amount) {
+  // KawaCity: at most what a save may hold (a 32-bit integer, as the server checks it)
+  amount = Math.min(MAX_FUNDS, amount);
   if (amount === this.totalFunds)
     return;
 

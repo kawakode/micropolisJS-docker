@@ -192,6 +192,9 @@ describe("The chat of a shared city", () => {
         expect(P.cleanChat("left\u202eright\u2066x\u200by\ufeffz\u00adw")).toBe("leftrightxyzw");
         expect(P.cleanChat("line\none\ttwo")).toBe("lineonetwo");
         expect(P.cleanChat(" \u200b\n ")).toBe("");
+        // Nothing that shows: nothing to send
+        ["\u3164", "\u2800", "\u034F", "\u0301", "\u3164 \uFFA0"].forEach(text => expect(P.cleanChat(text)).toBe(""));
+        expect(P.cleanChat("\u3164hi\u3164")).toBe("hi");
         [null, undefined, 42, {}, ["hi"]].forEach(value => expect(P.cleanChat(value)).toBe(""));
 
         // At most 300 characters, an emoji counting as one
@@ -304,17 +307,24 @@ describe("The chat of a shared city", () => {
         expect(node("chatLog").scrollTop).toBe(node("chatLog").scrollHeight);
     });
 
-    it("starts again with each welcome's chat, counting only what is new", () => {
+    it("fills the log with the first welcome's chat, then adds only what is new (the log is read out as it grows)", () => {
         const {panel} = makePanel();
         panel.setChat([chat("bob", "bob", "old", 100), chat("me", "alice", "mine", 200)], "me");
         expect(node("chatLog").children.length).toBe(2);
         expect(panel.unread()).toBe(0);
+        panel.addNotice(I18n.t("{name} joined the city."), "carol");
+        const shown = [...node("chatLog").children];
 
-        // After reconnecting: the same messages, and what was said meanwhile
+        // After reconnecting: the same messages, and what was said meanwhile. The lines shown stay as they are.
         panel.setChat([chat("bob", "bob", "old", 100), chat("me", "alice", "mine", 200), chat("bob", "bob", "new", 300),
                        chat("me", "alice", "mine too", 400), {broken: true}], "me");
-        expect(node("chatLog").children.length).toBe(4);
+        expect(node("chatLog").children.length).toBe(5);
+        shown.forEach((line, i) => expect(node("chatLog").children[i]).toBe(line));
         expect(panel.unread()).toBe(1);
+
+        // A server that started again lost its chat: nothing changes
+        panel.setChat([], "me");
+        expect(node("chatLog").children.length).toBe(5);
     });
 
     it("tells who came and who left, the name in <bdi>", () => {

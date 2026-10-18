@@ -589,35 +589,41 @@ var renderCityMembers = function() {
 };
 
 
-// A member's new role is sent once the player stopped changing it
-var roleTimers = {};
+// A member's new role is sent once the player stopped changing it, or at once when the card closes
+var roleChanges = new LobbyData.Waiting(ROLE_DELAY);
+
+// Sends the role chosen in select, if it changed; at: where the outcome is told ({note, error}: the city's card, or
+// the lobby once the card closed)
+var sendRole = function(member, select, at) {
+  var role = select.val();
+  if (role === member.role || LobbyData.INVITED_ROLES.indexOf(role) === -1)
+    return;
+
+  $(at.error).text('');
+  select.prop('disabled', true);
+  var id = cityId;
+  Api.post('/api/cities/' + encodeURIComponent(id) + '/members/' + encodeURIComponent(member.id),
+           {role: role}).then(function() {
+    select.prop('disabled', false);
+    member.role = role;
+    if (id === cityId)
+      setNote(at.note, I18n.t('The role of {name} is now: {role}.'),
+              {name: member.username, role: PlayersPanel.roleText(role)});
+    // Changed again meanwhile, in the card still open
+    if (select.val() !== role && city !== null)
+      roleChanged(member, select);
+  }, function(error) {
+    select.prop('disabled', false);
+    select.val(member.role);
+    failed(error, at.error);
+  });
+};
 
 var roleChanged = function(member, select) {
-  clearTimeout(roleTimers[member.id]);
-  roleTimers[member.id] = setTimeout(function() {
-    delete roleTimers[member.id];
-    var role = select.val();
-    if (role === member.role || LobbyData.INVITED_ROLES.indexOf(role) === -1)
-      return;
-
-    $('#cityError').text('');
-    select.prop('disabled', true);
-    var id = cityId;
-    Api.post('/api/cities/' + encodeURIComponent(id) + '/members/' + encodeURIComponent(member.id),
-             {role: role}).then(function() {
-      select.prop('disabled', false);
-      member.role = role;
-      if (id === cityId)
-        setNote('#cityNote', I18n.t('The role of {name} is now: {role}.'), {name: member.username, role: PlayersPanel.roleText(role)});
-      // Changed again meanwhile
-      if (select.val() !== role)
-        roleChanged(member, select);
-    }, function(error) {
-      select.prop('disabled', false);
-      select.val(member.role);
-      failed(error, '#cityError');
-    });
-  }, ROLE_DELAY);
+  roleChanges.later(member.id, function(closing) {
+    sendRole(member, select, closing ? {note: '#lobbyNote', error: '#lobbyError'} :
+                                       {note: '#cityNote', error: '#cityError'});
+  });
 };
 
 
@@ -813,8 +819,8 @@ var cityCard = {
   },
   close: function() {
     generations.city++;
-    Object.keys(roleTimers).forEach(function(id) { clearTimeout(roleTimers[id]); });
-    roleTimers = {};
+    // A role changed just before the card closed is not lost: it is sent now, and the lobby tells how it went
+    roleChanges.now();
     $('#cityCard').attr('aria-busy', null);
     city = null;
     reloadBelow();
@@ -889,7 +895,8 @@ var renderRegionMap = function() {
     } else {
       $('<span class="slotFree">').text(I18n.t('Free place')).appendTo(item);
       button(I18n.t('Build here'), 'primary', placeId, 'build-' + cell.x + '-' + cell.y).on('click', function() {
-        startCreation({region: {id: region.region.id, name: region.region.name}, x: cell.x, y: cell.y});
+        if (!refuseCreation('#regionError'))
+          startCreation({region: {id: region.region.id, name: region.region.name}, x: cell.x, y: cell.y});
       }).appendTo(controls);
     }
 
@@ -954,11 +961,23 @@ var renderRegion = function() {
 };
 
 
+// Takes the city shown in a place out of the region: the server takes nothing out if another city is there now (the
+// card is then shown again as the region is)
 var clearSlot = function(element, cell) {
+  var changed = false;
   act(element, '#regionCard', function() {
-    return Api.post('/api/regions/' + encodeURIComponent(regionId) + '/slots/' + cell.x + '/' + cell.y + '/clear', {});
+    return Api.post('/api/regions/' + encodeURIComponent(regionId) + '/slots/' + cell.x + '/' + cell.y + '/clear',
+                    {city: cell.city.id}).catch(function(error) {
+      if (!error || error.code !== 'conflict')
+        throw error;
+      changed = true;
+    });
   }, function() {
-    setNote('#regionNote', I18n.t('{city} left the region.'), {city: cell.city.name});
+    if (changed)
+      setNote('#regionNote', I18n.t('{city} is no longer in this place: nothing was taken out. Here is the region as it is now.'),
+              {city: cell.city.name});
+    else
+      setNote('#regionNote', I18n.t('{city} left the region.'), {city: cell.city.name});
     loadRegion().then(function() { focusList('#regionGrid', '#regionTitle'); });
   }, '#regionError');
 };
@@ -1160,6 +1179,20 @@ var cancelCreation = function() {
 };
 
 
+// Whether the player already owns as many shared cities as the server allows (as the lobby last listed them): then
+// errorAt says so, before a map is chosen for nothing
+var refuseCreation = function(errorAt) {
+  var most = Session.info().limits.ownedCities;
+  var owned = lobby === null ? 0 : lobby.cities.filter(function(entry) { return entry.role === 'owner'; }).length;
+  if (owned < most)
+    return false;
+
+  $(errorAt).text(I18n.t('You already own {count} shared cities, as many as you can: delete one of them to make another.',
+                         {count: most}));
+  return true;
+};
+
+
 // The title screen comes back to choose the start of a new shared city: in the place slot of a region ({region: {id,
 // name}, x, y}), or out of any region (null)
 var startCreation = function(slot) {
@@ -1206,7 +1239,8 @@ var boot = function() {
     loadLobby();
   });
   $('#lobbyNewCity').on('click', function() {
-    startCreation(null);
+    if (!refuseCreation('#lobbyError'))
+      startCreation(null);
   });
   $('#regionCreateForm').on('submit', submitRegion);
 

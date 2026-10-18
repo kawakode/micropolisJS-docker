@@ -172,6 +172,14 @@ var isEditable = function(element) {
 };
 
 
+// Takes the focus from element if it is a text field (or another control that keeps the keys): the game's shortcuts
+// work again
+InputStatus.leaveTextField = function(element) {
+  if (isEditable(element) && typeof(element.blur) === 'function')
+    element.blur();
+};
+
+
 var directionForKey = function(key) {
   switch (key) {
     case 'ArrowUp':
@@ -288,6 +296,10 @@ InputStatus.prototype._dragTileAt = function(coords) {
 var pointerDownHandler = function(e) {
   if (this.isBlocked())
     return;
+
+  // The press is the map's (its default, which would move the focus, is prevented below): the keys go back to the map
+  // from a text field (a shared city's chat, open beside it)
+  InputStatus.leaveTextField(document.activeElement);
 
   // A primary pointer is the first of its kind to go down: any pointer still tracked lost its pointerup (the browser
   // may swallow it, when another window takes the focus for example), and its gesture would block the tools

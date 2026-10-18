@@ -6,6 +6,7 @@
  */
 
 import { ERROR_TEXTS, TOOL_TEXTS } from './apiErrors.js';
+import { BudgetWindow } from './budgetWindow.js';
 import { DisasterWindow } from './disasterWindow.js';
 import { I18n } from './i18n.js';
 import { LocalController } from './localController.js';
@@ -45,6 +46,11 @@ var ROLES = Object.keys(RIGHTS);
 
 // How long the game shows a tool's placements while waiting for the server's answer, at most (milliseconds)
 var PENDING_TOOL_TIME = 5000;
+
+// The chat's limit (the server's: 5 messages at once, then 1 a second; here a little slower, as messages may reach
+// the server closer together than they left): a message beyond it would be refused, and lost
+var CHAT_BURST = 5;
+var CHAT_INTERVAL = 1200;
 
 var SPEEDS = [Simulation.SPEED_SLOW, Simulation.SPEED_MED, Simulation.SPEED_FAST];
 
@@ -129,6 +135,11 @@ function RemoteController(connection, city, welcome, options) {
   this._cursorSender = new PlayerCursors.Sender(function(message) {
     return connection.send(message);
   });
+
+  // The chat messages that may go now (see CHAT_BURST), and whether the player was told to wait
+  this._chatTokens = CHAT_BURST;
+  this._chatAt = null;
+  this._chatWaitTold = false;
 
   this._setPlayers(welcome.players, false);
 }
@@ -255,8 +266,12 @@ RemoteController.prototype._toolDone = function(toolName, error, reply) {
 };
 
 
-// The budget window was closed: the new rates, when they changed
-RemoteController.prototype.applyBudget = function(data) {
+var BUDGET_KEYS = ['roadPercent', 'firePercent', 'policePercent', 'taxPercent'];
+
+// The budget window was closed: the rates the player changed. shown: what the window showed when it opened (see
+// Game.handleBudgetRequest). Other players may have changed the budget meanwhile: a rate the player left as it was
+// keeps its value of now, and nothing is sent when nothing changes.
+RemoteController.prototype.applyBudget = function(data, shown) {
   if (data.cancelled || !this.can('budget'))
     return;
 
@@ -271,9 +286,15 @@ RemoteController.prototype.applyBudget = function(data) {
     return;
 
   var budget = this.city.simulation.budget;
-  if (values.roadPercent === Math.floor(budget.roadPercent * 100) &&
-      values.firePercent === Math.floor(budget.firePercent * 100) &&
-      values.policePercent === Math.floor(budget.policePercent * 100) && values.taxPercent === budget.cityTax)
+  var now = {roadPercent: BudgetWindow.rateOf(budget.roadPercent), firePercent: BudgetWindow.rateOf(budget.firePercent),
+             policePercent: BudgetWindow.rateOf(budget.policePercent), taxPercent: budget.cityTax};
+  var opened = isObject(shown) ? {roadPercent: shown.roadRate, firePercent: shown.fireRate,
+                                  policePercent: shown.policeRate, taxPercent: shown.taxRate} : now;
+  BUDGET_KEYS.forEach(function(key) {
+    if (values[key] === opened[key])
+      values[key] = now[key];
+  });
+  if (BUDGET_KEYS.every(function(key) { return values[key] === now[key]; }))
     return;
 
   this.game.recordBudgetChanges(values);
@@ -282,11 +303,14 @@ RemoteController.prototype.applyBudget = function(data) {
 };
 
 
-// The settings window was closed: the city's settings that changed go to the server (as the role allows), the
-// player's own (the view, the day and night, the language) are applied here
-RemoteController.prototype.applySettings = function(actions) {
+// The settings window was closed: the city's settings the player changed go to the server (as the role allows), the
+// player's own (the view, the day and night, the language) are applied here. shown: what the window showed when it
+// opened (see Game.handleSettingsRequest): other players may have changed the settings meanwhile, and what the player
+// left as it was is not sent back (a speed would also resume the city).
+RemoteController.prototype.applySettings = function(actions, shown) {
   var game = this.game;
   var simulation = this.city.simulation;
+  var opened = isObject(shown) ? shown : {};
   var settings = {};
   var changed = false;
   var speed = null;
@@ -296,25 +320,30 @@ RemoteController.prototype.applySettings = function(actions) {
     changed = true;
   };
 
+  // Whether the player chose another value than the window showed, and another than the city has now
+  var chose = function(key, value, current) {
+    return (!Object.prototype.hasOwnProperty.call(opened, key) || value !== opened[key]) && value !== current;
+  };
+
   actions.forEach(function(a) {
     switch (a.action) {
       case SettingsWindow.AUTOBUDGET:
-        if (this.can('settings') && !!a.data !== simulation.budget.autoBudget)
+        if (this.can('settings') && chose('autoBudget', !!a.data, simulation.budget.autoBudget))
           set('autoBudget', !!a.data);
         break;
 
       case SettingsWindow.AUTOBULLDOZE:
-        if (this.can('settings') && !!a.data !== this.city.autoBulldoze)
+        if (this.can('settings') && chose('autoBulldoze', !!a.data, this.city.autoBulldoze))
           set('autoBulldoze', !!a.data);
         break;
 
       case SettingsWindow.SPEED:
-        if (this.can('speed') && a.data - 0 !== this.city.speed)
+        if (this.can('speed') && chose('speed', a.data - 0, this.city.speed))
           speed = a.data - 0;
         break;
 
       case SettingsWindow.DISASTERS_CHANGED:
-        if (this.can('disasters') && !!a.data !== simulation.disasterManager.disastersEnabled) {
+        if (this.can('disasters') && chose('disasters', !!a.data, simulation.disasterManager.disastersEnabled)) {
           if (!a.data)
             game.tickerNews.record('disastersOff');
           set('disasters', !!a.data);
@@ -322,7 +351,7 @@ RemoteController.prototype.applySettings = function(actions) {
         break;
 
       case SettingsWindow.LEVEL:
-        if (this.can('settings') && a.data !== simulation.getLevel() &&
+        if (this.can('settings') && chose('level', a.data, simulation.getLevel()) &&
             (a.data === Simulation.LEVEL_EASY || a.data === Simulation.LEVEL_MED || a.data === Simulation.LEVEL_HARD)) {
           game.tickerNews.record(a.data > simulation.getLevel() ? 'harder' : 'easier');
           set('level', a.data);
@@ -414,11 +443,23 @@ RemoteController.prototype.save = function() {
 };
 
 
-// A chat message from the panel: returns whether it was sent
+// A chat message from the panel: returns whether it was sent (if not, the panel keeps it). Beyond the chat's limit it
+// waits, and the player is told once, in the chat.
 RemoteController.prototype.sendChat = function(text) {
   var cleaned = PlayersPanel.cleanChat(text);
   if (cleaned === '')
     return false;
+
+  var now = this._now();
+  if (this._chatAt !== null)
+    this._chatTokens = Math.min(CHAT_BURST, this._chatTokens + Math.max(0, now - this._chatAt) / CHAT_INTERVAL);
+  this._chatAt = now;
+  if (this._chatTokens < 1) {
+    if (!this._chatWaitTold && this.view !== null)
+      this.view.addNotice(I18n.t('Not sent yet: the chat takes about one message a second. Send it again in a moment.'));
+    this._chatWaitTold = true;
+    return false;
+  }
 
   if (!this.connection.send({t: 'chat', text: cleaned})) {
     if (this.game !== null)
@@ -426,6 +467,8 @@ RemoteController.prototype.sendChat = function(text) {
     return false;
   }
 
+  this._chatTokens -= 1;
+  this._chatWaitTold = false;
   return true;
 };
 

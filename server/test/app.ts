@@ -55,7 +55,7 @@ describe('GET /api/session', () => {
       publicUrl: 'http://localhost:8080',
       operator: null,
       build: 'test',
-      limits: {passwordMin: 12, passwordMax: 128, usernameMin: 3, usernameMax: 20, cityNameMax: 15},
+      limits: {passwordMin: 12, passwordMax: 128, usernameMin: 3, usernameMax: 20, cityNameMax: 15, ownedCities: 5},
     });
 
     // An account made by the admin commands makes logging in possible

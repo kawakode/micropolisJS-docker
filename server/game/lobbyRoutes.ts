@@ -43,13 +43,14 @@ import { prepareCity, SaveError } from './saveValidation';
 //   GET  /api/regions                                  {regions: [region]}
 //   POST /api/regions {name, width, height}            201 {region}
 //   GET  /api/regions/:id                              {region, slots: [{x, y, city: {id, name, ownerName,
-//                                                       population, role} | null}], members: [{id, username}],
-//                                                       invitations (owner only)}
+//                                                       population, role} | null}], members: [{id, username,
+//                                                       owner}], invitations (owner only)}
 //   PATCH /api/regions/:id {name}                      region owner: {region}
 //   POST /api/regions/:id/delete {}                    region owner: 204 (its cities stay, out of the region)
 //   POST /api/regions/:id/invitations {username}       region owner: 201 {ok: true}
 //   POST /api/regions/:id/members/:userId/remove {}    region owner, or the member (leaving): 204 (their cities leave)
-//   POST /api/regions/:id/slots/:x/:y/clear {}         the city's owner or the region's owner: 204
+//   POST /api/regions/:id/slots/:x/:y/clear {city}     the city's owner or the region's owner: 204; 409 conflict when
+//                                                       the city there is not that one
 //
 // city = {id, name, role, ownerName, population, year, online, region: {id, name, x, y} | null}
 // region = {id, name, ownerName, width, height, mine, cities}
@@ -571,7 +572,8 @@ export function registerLobbyRoutes(context: AppContext, lobby: Lobby): void {
     const result: Record<string, unknown> = {
       region: regionView(region, user.id),
       slots,
-      members: regions.members(region.id).map(member => ({id: member.public_id, username: member.username})),
+      members: regions.members(region.id).map(member => ({id: member.public_id, username: member.username,
+                                                          owner: member.user_id === region.owner_id})),
     };
     if (region.owner_id === user.id)
       result.invitations = db.all<{public_id: string; username: string; user_public_id: string; created_at: number}>(
@@ -661,15 +663,21 @@ export function registerLobbyRoutes(context: AppContext, lobby: Lobby): void {
     noContent(ctx.res);
   }, required);
 
+  // The body names the city to take out: the one the player saw there, which may have left meanwhile (and another taken
+  // its place, which cannot come back once out): 409 conflict when it is not the one there
   router.post('/api/regions/:id/slots/:x/:y/clear', ctx => {
     const user = signedInUser(ctx);
     const region = regions.forMember(ctx.params.id, user.id);
-    readEmpty(ctx.body);
+    const body = readFields(ctx.body, ['city']);
+    if (!isPublicId(body.city))
+      throw invalidInput({city: 'invalid'});
     const x = /^[0-3]$/.test(ctx.params.x) ? Number(ctx.params.x) : -1;
     const y = /^[0-3]$/.test(ctx.params.y) ? Number(ctx.params.y) : -1;
     const slot = x >= 0 && y >= 0 ? regions.cityAt(region.id, x, y) : null;
     if (!slot)
       throw notFound();
+    if (slot.city_public_id !== body.city)
+      throw new HttpError(409, 'conflict');
     if (slot.owner_id !== user.id && region.owner_id !== user.id)
       throw new HttpError(403, 'forbidden');
 

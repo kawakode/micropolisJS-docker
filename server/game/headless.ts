@@ -185,13 +185,20 @@ export interface EvaluationObject {
   [field: string]: unknown;
   cityPop: number;
   cityClass: string;
+  cityClassLast: string;
   cityScore: number;
   problemVotes: {index: number; voteCount: number}[];
   problemOrder: (number | null)[];
+  computePopulation(census: CensusObject): number;
+  classify(population: number): string;
 }
 
 export interface CensusObject {
   [field: string]: unknown;
+  resPop: number;
+  comPop: number;
+  indPop: number;
+  totalPop: number;
 }
 
 interface ValvesObject {
@@ -406,6 +413,19 @@ export class HeadlessCity {
     this.messages.push(data === undefined ? {subject} : {subject, data});
     if (this.messages.length > MAX_MESSAGES)
       this.messages.shift();
+  }
+
+  // The figures a save carries that its map decides: the population (the census's, and the evaluation's) and the
+  // city's class. A save the server is given may claim anything there (and a claimed population would be taxed): they
+  // are worked out again from the map, as the simulation counted it when the city opened (see Simulation.init), with
+  // the game's formulas (see Valves.setValves and Evaluation.getPopulation).
+  recount(): void {
+    const {_census: census, evaluation} = this.simulation;
+    census.totalPop = Math.round(census.resPop / 8 + census.comPop + census.indPop);
+    evaluation.cityPop = evaluation.computePopulation(census);
+    evaluation.cityClass = evaluation.cityClassLast = evaluation.classify(evaluation.cityPop);
+    this.hud.population = evaluation.cityPop;
+    this.hud.cityClass = evaluation.cityClass;
   }
 
   // The messages since the last call, oldest first

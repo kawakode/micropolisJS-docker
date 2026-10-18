@@ -15,7 +15,7 @@ import { Config, parseConfig } from './config';
 import { Database, migrate, MigrationResult } from './db/database';
 import { MIGRATIONS } from './db/migrations';
 import { loadStaticFiles, StaticFiles } from './http/static';
-import { createLogger, Logger } from './log';
+import { captureConsole, createLogger, Logger } from './log';
 import { createMailer } from './mail/mailer';
 
 // The server's entry point (bundled into build/server/main.cjs). The only module that reads the environment and the
@@ -255,6 +255,7 @@ async function main(argv: readonly string[], env: NodeJS.ProcessEnv): Promise<nu
     return runAdmin(argv, parsed.config);
 
   const log = createLogger({level: parsed.config.logLevel});
+  captureConsole(log);
   process.on('unhandledRejection', reason => log.error('process.unhandled_rejection', {err: reason}));
   process.on('uncaughtException', error => {
     log.error('process.uncaught_exception', {err: error});

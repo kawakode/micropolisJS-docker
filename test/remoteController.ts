@@ -300,6 +300,50 @@ describe("A shared city's commands", () => {
         expect(same.connection.requests).toEqual([]);
     });
 
+    it("leave as they are the budget and settings others changed while the window was open", () => {
+        const shownSettings = {autoBudget: true, autoBulldoze: true, speed: 2, disasters: true, dayNight: true, level: 0,
+                               language: "en", isometric: false};
+        const untouched = [{action: S.AUTOBUDGET, data: true}, {action: S.AUTOBULLDOZE, data: true},
+                           {action: S.SPEED, data: 2}, {action: S.DISASTERS_CHANGED, data: true},
+                           {action: S.VIEW, data: true}, {action: S.DAY_NIGHT, data: true},
+                           {action: S.LEVEL, data: 0}, {action: S.LANGUAGE, data: "en"}];
+        const {connection, controller, game, city} = setUp("owner");
+        // Meanwhile another player made it fast, then paused it, turned the automatic budget and bulldozer off, and the
+        // disasters, and made it harder
+        Object.assign(city, {speed: 3, paused: true, autoBulldoze: false});
+        city.simulation.budget.autoBudget = false;
+        city.simulation.disasterManager.disastersEnabled = false;
+        city.simulation.getLevel = () => 2;
+        controller.applySettings(untouched, shownSettings);
+        expect(connection.requests).toEqual([]);
+        expect(game.setIsometric.mock.calls).toEqual([[true]]);
+        // What the player did change goes
+        controller.applySettings(untouched.map(a => a.action === S.SPEED ? {action: S.SPEED, data: 1} : a), shownSettings);
+        expect(connection.messages()).toEqual([{t: "speed", speed: 1}]);
+
+        // The budget: another player set the roads to 80% and the tax to 9%
+        const shownBudget = {roadRate: 100, fireRate: 100, policeRate: 100, taxRate: 7};
+        const budget = city.simulation.budget;
+        Object.assign(budget, {roadPercent: 0.8, cityTax: 9});
+        controller.applyBudget({cancelled: false, roadPercent: "100", firePercent: "100", policePercent: "100",
+                                taxPercent: "7"}, shownBudget);
+        expect(connection.messages()).toHaveLength(1);
+        controller.applyBudget({cancelled: false, roadPercent: "100", firePercent: "100", policePercent: "90",
+                                taxPercent: "7"}, shownBudget);
+        expect(connection.messages()[1]).toEqual({t: "budget", roadPercent: 80, firePercent: 100, policePercent: 90,
+                                                  taxPercent: 9});
+
+        // A rate of 29% is 29, not 28 (0.29 * 100 is 28.999...)
+        Object.assign(budget, {roadPercent: 0.29, firePercent: 0.57, policePercent: 0.58, cityTax: 7});
+        controller.applyBudget({cancelled: false, roadPercent: "29", firePercent: "57", policePercent: "58",
+                                taxPercent: "7"}, {roadRate: 29, fireRate: 57, policeRate: 58, taxRate: 7});
+        expect(connection.messages()).toHaveLength(2);
+        controller.applyBudget({cancelled: false, roadPercent: "29", firePercent: "57", policePercent: "58",
+                                taxPercent: "8"}, {roadRate: 29, fireRate: 57, policeRate: 58, taxRate: 7});
+        expect(connection.messages()[2]).toEqual({t: "budget", roadPercent: 29, firePercent: 57, policePercent: 58,
+                                                  taxPercent: 8});
+    });
+
     it("send disasters (the owner's), deals, the speed and the pause", () => {
         const {connection, controller, game, city} = setUp("owner");
         controller.applyDisaster("None");
@@ -342,6 +386,25 @@ describe("A shared city's commands", () => {
         expect(controller.sendChat("lost")).toBe(false);
         expect(connection.sent).toEqual([{t: "chat", text: "ab"}]);
         expect(game.notify.mock.calls).toEqual([[I18n.t(ERROR_TEXTS.network), "bad"]]);
+    });
+
+    it("keep a chat message the server would refuse (5 at once, then about 1 a second), and say so once", () => {
+        const connection = makeConnection();
+        const view = makeView();
+        let clock = 0;
+        const controller = new R(connection, makeCity(), welcome("viewer"), {view, now: () => clock});
+        controller.attach(makeGame());
+        for (let i = 1; i <= 5; i++)
+            expect(controller.sendChat("message " + i)).toBe(true);
+        expect(controller.sendChat("message 6")).toBe(false);
+        expect(controller.sendChat("message 6")).toBe(false);
+        expect(view.addNotice.mock.calls).toEqual([[I18n.t("Not sent yet: the chat takes about one message a second. Send it again in a moment.")]]);
+        clock += 1300;
+        expect(controller.sendChat("message 6")).toBe(true);
+        expect(controller.sendChat("message 7")).toBe(false);
+        expect(view.addNotice).toHaveBeenCalledTimes(2);
+        expect(connection.sent.map((m: any) => m.text)).toEqual(["message 1", "message 2", "message 3", "message 4",
+                                                                  "message 5", "message 6"]);
     });
 
     it("tell the server where our pointer is, each frame, at most ten times a second", () => {

@@ -138,7 +138,8 @@ const deleteUser: AdminCommand = {
     }
 
     // As the server does it (see game/accounts.ts), but this process has no room open: the cities beside the
-    // account's cities, and those in its regions, are changed in their stored saves
+    // account's cities, and those in its regions, are changed in their stored saves (a running server's open rooms
+    // read them again before they save, see RoomManager.recheck)
     const cities = new CityStore(db);
     const link = new RegionLink(db, cities, context.clock, {get: () => undefined});
     db.transaction(() => {

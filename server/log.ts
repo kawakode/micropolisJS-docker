@@ -156,3 +156,17 @@ export function createLogger(options: LoggerOptions = {}): Logger {
     flush,
   };
 }
+
+
+// The console of the server's process, sent to the log: the game's code, which the server runs for the shared cities,
+// warns on the console (a tile asked for off the map...). Each line becomes a repeatable event, game.console, logged at
+// most once a minute per message (its first argument, without the values after it), never straight to stderr.
+export function captureConsole(log: Logger, target: Pick<Console, 'warn' | 'error'> = console): void {
+  const capture = (level: LogLevel) => (...args: unknown[]) => {
+    const text = args.map(arg => arg instanceof Error ? arg.message : typeof arg === 'string' ? arg : String(arg))
+      .join(' ').slice(0, 500);
+    log.security('game.console', String(args[0]).slice(0, 200), {message: text}, level);
+  };
+  target.warn = capture('warn');
+  target.error = capture('error');
+}

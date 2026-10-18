@@ -5,7 +5,9 @@
  *
  */
 
-import { CITY_LIMITS, decodeState } from '../game/cityStore';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { CITY_LIMITS, decodeState, PALETTE } from '../game/cityStore';
 import { validateSave } from '../game/saveValidation';
 import { freshCitySave, sampleCity } from '../gameTesting';
 import { addMember, addPlayer, createCity, join, Player } from '../multiplayerTesting';
@@ -170,8 +172,8 @@ describe('Shared cities', () => {
     const view = (await alice.get(`/api/cities/${city.id}`)).json;
     expect(view.city).toMatchObject({id: city.id, name: 'Seen', role: 'owner', ownerName: 'Alice'});
     expect(view.members).toEqual([
-      {id: alice.publicId, username: 'Alice', role: 'owner', colour: '#e6194b', online: false},
-      {id: bob.publicId, username: 'Bob', role: 'viewer', colour: '#3cb44b', online: false},
+      {id: alice.publicId, username: 'Alice', role: 'owner', colour: '#ff8899', online: false},
+      {id: bob.publicId, username: 'Bob', role: 'viewer', colour: '#33ddff', online: false},
     ]);
     expect(view.invitations).toEqual([{id: expect.any(String), username: 'Carol', userId: carol.publicId,
                                        role: 'player', createdAt: t.clock.now()}]);
@@ -363,5 +365,52 @@ describe('Shared cities', () => {
     expect(bobs.invitations.received).toEqual([expect.objectContaining({kind: 'region', username: 'Alice',
                                                                         target: {id: region.id, name: 'Valley'}})]);
     expect(JSON.stringify(exported)).not.toMatch(/"(owner_id|user_id|city_id)"/);
+  });
+});
+
+
+describe('The players\' colours', () => {
+  // WCAG's contrast ratio, and the distance between two colours in CIELAB (CIE76)
+  const channels = (colour: string) => [1, 3, 5].map(i => parseInt(colour.slice(i, i + 2), 16) / 255);
+  const linear = (c: number) => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  const luminance = (colour: string) => {
+    const [r, g, b] = channels(colour).map(linear);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const contrast = (a: string, b: string) => {
+    const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (high + 0.05) / (low + 0.05);
+  };
+  const lab = (colour: string) => {
+    const [r, g, b] = channels(colour).map(linear);
+    const f = (t: number) => t > 216 / 24389 ? Math.cbrt(t) : (24389 / 27 * t + 16) / 116;
+    const x = f((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047);
+    const y = f(0.2126 * r + 0.7152 * g + 0.0722 * b);
+    const z = f((0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883);
+    return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+  };
+  const distance = (a: string, b: string) => Math.hypot(...lab(a).map((v, i) => v - lab(b)[i]));
+
+  // The map: the average colours of land, trees and water in images/tiles.png (tiles 0, 40 and 2). The game's windows:
+  // the chat's background, where the names are written in the players' colours, and the panel around it (style.css).
+  const MAP = {land: '#519541', trees: '#337334', water: '#2e64b6'};
+  const css = readFileSync(path.join(__dirname, '..', '..', 'css', 'style.css'), 'utf8');
+  const variable = (name: string) => new RegExp(`--${name}:\\s*(#[0-9a-f]{6});`, 'i').exec(css)![1];
+
+  test('can be read on the map and in the game\'s windows, and told apart', () => {
+    expect(PALETTE).toHaveLength(CITY_LIMITS.members);
+    for (const colour of PALETTE) {
+      // A name in the chat is text: 4.5 to 1 at least
+      expect([colour, contrast(colour, variable('win-inset')) >= 4.5]).toEqual([colour, true]);
+      expect([colour, contrast(colour, variable('win-top')) >= 3]).toEqual([colour, true]);
+      // A pointer on the map: lighter or darker than what is under it, and of another colour
+      for (const [ground, under] of Object.entries(MAP))
+        expect([colour, ground, contrast(colour, under) >= 1.5 && distance(colour, under) >= 40])
+          .toEqual([colour, ground, true]);
+    }
+    for (let i = 0; i < PALETTE.length; i++) {
+      for (let j = i + 1; j < PALETTE.length; j++)
+        expect([PALETTE[i], PALETTE[j], distance(PALETTE[i], PALETTE[j]) >= 15]).toEqual([PALETTE[i], PALETTE[j], true]);
+    }
   });
 });

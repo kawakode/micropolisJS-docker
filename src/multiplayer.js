@@ -43,6 +43,10 @@ var WELCOME_TIMEOUT = 15000;
 // After this many failed attempts in a row, the game checks that the player is still logged in
 var SESSION_CHECK_AFTER = 2;
 
+// After this many attempts in a row refused before the connection opened (the browser cannot tell why: too many
+// connections of the player, a full server, a server that is down), the game says it cannot reach the city
+var REFUSED_AFTER = 3;
+
 // The errors in answer to join that trying again would not change
 var FATAL_JOIN_ERRORS = ['not_found', 'forbidden', 'unauthenticated', 'invalid_input'];
 
@@ -84,6 +88,8 @@ var defaultTimers = {
 // - onWelcome(welcome): each welcome (the first, and each after reconnecting)
 // - onMessage(message): the server's other messages for the game (not the answers to commands: see request)
 // - onStatus(status): 'connecting' (before the first welcome), 'online', 'reconnecting', or 'ended'
+// - onTrouble(code): why the game is trying again: an answer to join (a key of ERROR_TEXTS, server_busy for instance),
+//   or 'refused' after REFUSED_AFTER attempts that did not even connect
 // - onEnd(kind, code): the connection ended for good: kind 'kicked' (code: a key of KICK_TEXTS) or 'failed' (code: a
 //   key of ERROR_TEXTS, the answer to join)
 // - checkSession(callback): optional, asks the server whether the player is still logged in, and calls back with
@@ -96,12 +102,16 @@ function Connection(options) {
   this._onWelcome = options.onWelcome || function() {};
   this._onMessage = options.onMessage || function() {};
   this._onStatus = options.onStatus || function() {};
+  this._onTrouble = options.onTrouble || function() {};
   this._onEnd = options.onEnd || function() {};
   this._checkSession = options.checkSession || null;
   this._timers = options.timers || defaultTimers;
   this._random = options.random || Math.random;
 
   this._socket = null;
+  this._opened = false;
+  // Attempts in a row that did not connect
+  this._refused = 0;
   this._welcomed = false;
   this._everWelcomed = false;
   this._ended = false;
@@ -144,6 +154,7 @@ Connection.prototype._open = function() {
   }
 
   this._socket = socket;
+  this._opened = false;
   this._welcomed = false;
   var self = this;
 
@@ -151,6 +162,8 @@ Connection.prototype._open = function() {
     if (self._socket !== socket)
       return;
 
+    self._opened = true;
+    self._refused = 0;
     socket.send(JSON.stringify({t: 'join', city: self._city}));
 
     // A server that never welcomes us is tried again
@@ -204,6 +217,7 @@ Connection.prototype._receive = function(socket, data) {
       this._welcomed = true;
       this._everWelcomed = true;
       this._attempt = 0;
+      this._refused = 0;
       this.lastError = null;
       if (this._welcomeTimer !== null) {
         this._timers.clearTimeout(this._welcomeTimer);
@@ -239,6 +253,8 @@ Connection.prototype._receive = function(socket, data) {
         this.lastError = code;
         if (FATAL_JOIN_ERRORS.indexOf(code) !== -1)
           this._end('failed', code);
+        else
+          this._onTrouble(code);
         return;
       }
 
@@ -287,8 +303,12 @@ Connection.prototype._closed = function(socket) {
   }
   this._failPending('network');
 
-  if (!this._ended)
-    this._retry();
+  if (this._ended)
+    return;
+  // The server refuses some connections before they open (with an HTTP status the page does not see)
+  if (!this._opened && ++this._refused >= REFUSED_AFTER && this.lastError === null)
+    this._onTrouble('refused');
+  this._retry();
 };
 
 
@@ -442,6 +462,19 @@ var hideCard = function() {
 };
 
 
+// A key pressed in the card (inCard) or in the reconnecting banner: it is theirs, not one of the game's shortcuts
+// (Space would pause the city, and the focused button would not be pressed). The card holds the focus: Tab stays on
+// its button. Returns whether the focus goes back to the card's button.
+var ownKey = function(e, inCard) {
+  e.stopPropagation();
+  if (!inCard || e.key !== 'Tab')
+    return false;
+
+  e.preventDefault();
+  return true;
+};
+
+
 // The banner over the map while the connection is down
 var showReconnecting = function(shown) {
   $('#mpReconnecting').toggleClass('hidden', !shown);
@@ -557,17 +590,23 @@ var onMessage = function(message) {
 
 
 var onStatus = function(status) {
-  if (status === 'ended')
+  if (status === 'ended' || current.game === null)
     return;
-
-  if (current.game === null) {
-    if (status === 'connecting' && current.connection.lastError !== null)
-      $('#mpCardText').text(errorText(current.connection.lastError));
-    return;
-  }
 
   current.controller.setStatus(status);
   showReconnecting(status === 'reconnecting');
+};
+
+
+// Why the game is still joining the city, on its card (the game tries again meanwhile)
+var onTrouble = function(code) {
+  if (current.game !== null)
+    return;
+
+  if (code === 'refused')
+    $('#mpCardText').text(I18n.t('The city cannot be reached for now. Shared cities may be open in too many tabs (3 at most), or the server may be busy or stopped. The game keeps trying.'));
+  else
+    $('#mpCardText').text(errorText(code));
 };
 
 
@@ -610,6 +649,13 @@ var play = function(cityId) {
     e.preventDefault();
     backToLobby();
   });
+  $('#mpScreen').off('keydown').on('keydown', function(e) {
+    if (ownKey(e, true))
+      $('#mpCardLobby').trigger('focus');
+  });
+  $('#mpReconnecting').off('keydown').on('keydown', function(e) {
+    ownKey(e, false);
+  });
 
   showCard(I18n.t('Shared city'), I18n.t('Joining the city…'), I18n.t('Back to the lobby'));
 
@@ -626,6 +672,7 @@ var play = function(cityId) {
     onWelcome: onWelcome,
     onMessage: onMessage,
     onStatus: onStatus,
+    onTrouble: onTrouble,
     onEnd: onEnd,
     checkSession: checkSession
   });
@@ -646,9 +693,11 @@ var Multiplayer = {
   REPLY_TIMEOUT: REPLY_TIMEOUT,
   WELCOME_TIMEOUT: WELCOME_TIMEOUT,
   SESSION_CHECK_AFTER: SESSION_CHECK_AFTER,
+  REFUSED_AFTER: REFUSED_AFTER,
   FATAL_JOIN_ERRORS: FATAL_JOIN_ERRORS,
   Connection: Connection,
   backoff: backoff,
+  ownKey: ownKey,
   socketURL: socketURL,
   setAssets: setAssets,
   play: play,

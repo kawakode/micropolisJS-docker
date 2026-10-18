@@ -10,7 +10,7 @@ import { rejectUpgrade, type AppContext, type UpgradeRequest } from '../app';
 import { revokes, type SessionRevocation } from '../auth/sessions';
 import type { Logger } from '../log';
 import type { CityStore } from './cityStore';
-import { CLOSE, ErrorCode, KickReason, parseClientMessage, seqOf } from './protocol';
+import { CLOSE, CommandMessage, ErrorCode, KickReason, parseClientMessage, seqOf } from './protocol';
 import { TOOL_BUCKETS, type Room, type RoomClient } from './room';
 import { RoomManager, RoomRefusal } from './roomManager';
 import { TokenBucket } from './tokenBucket';
@@ -21,17 +21,23 @@ import { TokenBucket } from './tokenBucket';
 //   - the session cookie: 401 without a valid session
 //   - MAX_WS_CONNECTIONS in all: 503; 3 per user and 50 per IP key (times IP_LIMIT_FACTOR): 429
 // A connection must join a city within 10 s, with its first message (else it is closed, 1008). Its messages are
-// counted (30 a second, bursts of 60; chat 1 a second, bursts of 5; cursors 10 a second, the others dropped; tools in
-// placements, see room.ts): 20 invalid messages close it (1008). A connection that does not keep up is skipped the
-// sprites and cursors above 256 KiB waiting to be sent, and closed above 2 MiB (1013: the game connects again and gets
-// a fresh welcome). Every 25 s each connection is pinged (no answer since the last ping: closed) and its session looked
-// at again (ended: kicked, reason session). A session ended early (logout, password change...) closes its connections
-// at once.
+// counted (30 a second, bursts of 60, cursors included; chat 1 a second, bursts of 5; cursors 10 a second, the others
+// dropped; tools in placements, see room.ts): 20 invalid messages close it (1008), and so does a message longer than
+// any the game sends (4 KiB), refused unread. A connection that does not keep up is skipped the sprites and cursors
+// above 256 KiB waiting to be sent, and closed above 2 MiB (1013: the game connects again and gets a fresh welcome);
+// the pings it sends are answered only while it keeps up, 2 a second at most (more: closed, 1008). Every 25 s each
+// connection is pinged (no answer since the last ping: closed), what waits to be sent looked at (above 2 MiB: closed,
+// 1013), its session looked at again (ended: kicked, reason session), and what its player did: nothing for 15 minutes
+// (no command, no chat, no cursor that moved) and it is kicked (reason idle), so that a connection left open does not
+// keep a city running, and its room taken, for good. A session ended early (logout, password change...) closes its
+// connections at once.
 
 export const WS_PATH = '/api/ws';
 
 export const WS_LIMITS = Object.freeze({
   maxPayload: 64 * 1024,
+  // The longest message the game sends (a chat line of 300 characters is at most 1.2 KiB): longer ones are not read
+  maxMessage: 4 * 1024,
   upgradesPerMinute: 10,
   perUser: 3,
   perIpKey: 50,
@@ -40,28 +46,31 @@ export const WS_LIMITS = Object.freeze({
   closeBuffered: 2 * 1024 * 1024,
 });
 
-// Messages per connection: [burst, per second]
+// Messages per connection: [burst, per second]. Pings are control frames: the game's browser never sends any.
 const MESSAGE_BUCKETS = Object.freeze({
   overall: [60, 30],
   chat: [5, 1],
   cursor: [10, 10],
+  ping: [10, 2],
 } as const);
 
 export interface WsOptions {
   joinTimeoutMs: number;
   pingIntervalMs: number;
+  idleTimeoutMs: number;
 }
 
 export const DEFAULT_WS_OPTIONS: WsOptions = {
   joinTimeoutMs: 10 * 1000,
   pingIntervalMs: 25 * 1000,
+  idleTimeoutMs: 15 * 60 * 1000,
 };
 
 const MINUTE = 60 * 1000;
 
 // A message's bytes, as ws gives them
-const textOf = (data: RawData): string =>
-  (Buffer.isBuffer(data) ? data : Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data)).toString('utf8');
+const bytesOf = (data: RawData): Buffer =>
+  Buffer.isBuffer(data) ? data : Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
 
 // One live connection
 export class Connection implements RoomClient {
@@ -75,25 +84,56 @@ export class Connection implements RoomClient {
   readonly overall = new TokenBucket(...MESSAGE_BUCKETS.overall);
   readonly chat = new TokenBucket(...MESSAGE_BUCKETS.chat);
   readonly cursor = new TokenBucket(...MESSAGE_BUCKETS.cursor);
+  readonly ping = new TokenBucket(...MESSAGE_BUCKETS.ping);
+  // When its player last did something (see acted), by the server's clock
+  active: number;
+  private cursorAt = '';
 
   constructor(readonly ws: WebSocket, readonly userId: number, readonly userPublicId: string,
               readonly tokenHash: string, readonly ipKey: string, userTools: TokenBucket,
-              private readonly log: Logger | null = null) {
+              private readonly log: Logger | null = null, now = 0) {
     this.toolBuckets = [new TokenBucket(TOOL_BUCKETS.connection.burst, TOOL_BUCKETS.connection.perSecond), userTools];
+    this.active = now;
+  }
+
+  // A message of its player: a command, a chat line, or a cursor, which counts only when it moved
+  acted(message: CommandMessage, now: number): void {
+    if (message.t === 'cursor') {
+      const at = [message.x, message.y, message.tool, message.ax, message.ay].join();
+      if (at === this.cursorAt)
+        return;
+      this.cursorAt = at;
+    }
+    this.active = now;
+  }
+
+  // Whether the connection still keeps up with what it is sent: closed (1013) when it is too far behind
+  keepsUp(): boolean {
+    if (this.ws.bufferedAmount <= WS_LIMITS.closeBuffered)
+      return true;
+    this.close(CLOSE.tryAgain);
+    return false;
   }
 
   sendText(text: string, skippable = false): void {
-    if (this.closing || this.ws.readyState !== WebSocket.OPEN)
+    if (this.closing || this.ws.readyState !== WebSocket.OPEN || !this.keepsUp())
       return;
-
-    const buffered = this.ws.bufferedAmount;
-    if (buffered > WS_LIMITS.closeBuffered) {
-      this.close(CLOSE.tryAgain);
-      return;
-    }
-    if (skippable && buffered > WS_LIMITS.skipBuffered)
+    if (skippable && this.ws.bufferedAmount > WS_LIMITS.skipBuffered)
       return;
     this.ws.send(text);
+  }
+
+  // A ping from the other side (ws does not answer it by itself): answered while the connection keeps up, a few a
+  // second at most (more closes it)
+  pinged(data: Buffer, now: number): void {
+    if (this.closing || this.ws.readyState !== WebSocket.OPEN)
+      return;
+    if (!this.ping.take(1, now)) {
+      this.close(CLOSE.policy);
+      return;
+    }
+    if (this.keepsUp() && this.ws.bufferedAmount <= WS_LIMITS.skipBuffered)
+      this.ws.pong(data);
   }
 
   send(message: object): void {
@@ -141,6 +181,8 @@ export class GameSocketServer {
       noServer: true,
       clientTracking: false,
       maxPayload: WS_LIMITS.maxPayload,
+      // The pings are answered by the connection, which keeps an eye on what waits to be sent (see Connection.pinged)
+      autoPong: false,
       perMessageDeflate: {
         threshold: 1024,
         serverNoContextTakeover: true,
@@ -213,7 +255,8 @@ export class GameSocketServer {
       this.userTools.set(userId, tools);
     }
 
-    const connection = new Connection(ws, userId, userPublicId, tokenHash, ipKey, tools, this.context.log);
+    const connection = new Connection(ws, userId, userPublicId, tokenHash, ipKey, tools, this.context.log,
+                                      this.context.clock.now());
     this.connections.add(connection);
     let mine = this.byUser.get(userId);
     if (!mine) {
@@ -230,6 +273,7 @@ export class GameSocketServer {
     }, this.options.joinTimeoutMs);
 
     ws.on('message', (data, isBinary) => this.receive(connection, data, isBinary));
+    ws.on('ping', data => connection.pinged(data, this.context.clock.now()));
     ws.on('pong', () => { connection.alive = true; });
     ws.on('error', () => { /* the connection closes: see 'close' */ });
     ws.on('close', () => this.closed(connection));
@@ -272,7 +316,16 @@ export class GameSocketServer {
       return;
 
     const now = this.context.clock.now();
-    const text = isBinary ? null : textOf(data);
+    const bytes = bytesOf(data);
+    // Longer than any message of the game: not read
+    if (bytes.length > WS_LIMITS.maxMessage) {
+      if (connection.joined)
+        this.invalid(connection);
+      else
+        connection.close(CLOSE.policy);
+      return;
+    }
+    const text = isBinary ? null : bytes.toString('utf8');
     const message = text === null ? null : parseClientMessage(text);
 
     if (!connection.joined) {
@@ -291,14 +344,14 @@ export class GameSocketServer {
     }
 
     const seq = 'seq' in message ? message.seq : null;
-    if (message.t === 'cursor') {
-      // Too many cursor messages are dropped, without a word
-      if (!connection.cursor.take(1, now) || !connection.overall.take(1, now))
-        return;
-    } else if (!connection.overall.take(1, now)) {
+    if (!connection.overall.take(1, now)) {
       this.invalid(connection, 'rate_limited', seq);
       return;
     }
+    connection.acted(message, now);
+    // Cursor messages beyond theirs are dropped, without a word (they count all the same, above)
+    if (message.t === 'cursor' && !connection.cursor.take(1, now))
+      return;
 
     if (message.t === 'chat' && !connection.chat.take(1, now)) {
       connection.error('rate_limited', seq);
@@ -336,6 +389,7 @@ export class GameSocketServer {
       connection.joinTimer = null;
     }
     connection.room = room;
+    connection.active = now;
     this.cities.setPlayed(city.id, now);
     this.rooms.join(room, connection);
   }
@@ -348,11 +402,14 @@ export class GameSocketServer {
       this.userTools.delete(userId);
   }
 
-  // Every 25 s: connections that did not answer the last ping are closed; sessions that ended are told
+  // Every 25 s: connections that did not answer the last ping are closed, so are those that do not read what they are
+  // sent (a quiet city sends them nothing that would show it); sessions that ended are told, and players who did
+  // nothing for a long while
   heartbeat(): void {
     for (const userId of [...this.userTools.keys()])
       this.forgetToolBudget(userId);
 
+    const now = this.context.clock.now();
     for (const connection of [...this.connections]) {
       if (connection.closing || connection.ws.readyState !== WebSocket.OPEN)
         continue;
@@ -360,11 +417,15 @@ export class GameSocketServer {
         connection.ws.terminate();
         continue;
       }
+      if (!connection.keepsUp())
+        continue;
       connection.alive = false;
       connection.ws.ping();
 
       if (!this.context.auth.sessions.resolveHash(connection.tokenHash))
         this.kick(connection, 'session');
+      else if (connection.joined && now - connection.active >= this.options.idleTimeoutMs)
+        this.kick(connection, 'idle');
     }
   }
 

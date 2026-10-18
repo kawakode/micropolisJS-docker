@@ -3061,14 +3061,28 @@ kbd {
   overflow-wrap: anywhere;
 }
 
-/* The facts of a line, one after the other, each kept on one line where it fits (the dots are not read out) */
+/* The facts of a line, one after the other, each kept on one line where it fits, with a dot between two facts of the
+   same line (not read out). The dot before the first fact of a line falls in the gap left of the line, outside the
+   box, which hides it: a line never starts with one. */
+.lobbyItemFacts, #regionFacts {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1.1em;
+  overflow: hidden;
+}
+
 .lobbyFact {
-  display: inline-block;
+  position: relative;
+  min-width: 0;
 }
 
 .lobbyFact + .lobbyFact::before {
-  content: '\00A0\00B7\00A0';
-  content: '\00A0\00B7\00A0' / '';
+  content: '\00B7';
+  content: '\00B7' / '';
+  position: absolute;
+  right: 100%;
+  width: 1.1em;
+  text-align: center;
 }
 
 .lobbyItemButtons, .slotButtons, .lobbyConfirmButtons {

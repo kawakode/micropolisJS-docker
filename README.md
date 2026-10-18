@@ -14,29 +14,40 @@ curl -O https://raw.githubusercontent.com/kawakode/micropolisJS-docker/main/dock
 docker compose up -d
 ```
 
-Then open <http://localhost:8080>. The settings are in [docker-compose.yml](docker-compose.yml), or in a `.env` file next to it ([.env.example](.env.example) lists them all, with their defaults):
+Then open <http://localhost:8080>. The settings are in [docker-compose.yml](docker-compose.yml), or in a `.env` file next to it for those that docker-compose.yml passes on to the server: `PUBLIC_URL`, `TRUST_PROXY`, `TRUSTED_PROXIES`, `IP_LIMIT_FACTOR`, `ALLOW_INSECURE_HTTP`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_REQUIRE_TLS`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM`, `REGISTRATION`, `OPERATOR_CONTACT`, `MAX_ROOMS` and `LOG_LEVEL`, and `KAWACITY_VERSION` and `KAWACITY_PORT` for Compose itself. [.env.example](.env.example) lists every setting with its default: to use another one, first add it to the `environment:` of docker-compose.yml, as its comment shows. In `.env`, put a value that holds a `$` in single quotes (`SMTP_PASSWORD='pa$word'`), or Compose reads it as a variable.
 
 - **PUBLIC_URL**: the address players open, such as `https://kawacity.example.com`, without a path. Mails link to it, and only pages from it may post to the server or join multiplayer: at any other address (a LAN address, another port) the game only links to it. Plain `http` is refused except for `localhost`, unless `ALLOW_INSECURE_HTTP=1`.
-- **Mail** (`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD` or `SMTP_PASSWORD_FILE`, `MAIL_FROM`): players need it to create accounts and reset their passwords. On port 587 STARTTLS is required; set `SMTP_SECURE=true` for port 465. `OPERATOR_CONTACT` (who runs the server and how to reach them) is shown in the privacy notice.
+- **Mail** (`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD` or `SMTP_PASSWORD_FILE` (a Docker secret: see the comment in docker-compose.yml), `MAIL_FROM`): players need it to create accounts and reset their passwords. On port 587 STARTTLS is required (`SMTP_REQUIRE_TLS=false` for a relay on your own network without it); set `SMTP_SECURE=true` for port 465. `OPERATOR_CONTACT` (who runs the server and how to reach them) is shown in the privacy notice.
 - **Without mail**, the game looks as it always did: nobody can sign up, and logging in is only offered once an account has been made with the admin commands below. `REGISTRATION=closed` keeps sign-ups closed with mail too.
 - **Shared addresses**: limits count requests per address (per /64 for IPv6). A class or an office behind one address can raise them with `IP_LIMIT_FACTOR` (such as `10`).
+- **Multiplayer**: the server runs the shared cities being played, on one CPU core for them all. A city takes about 1.5% of a core (a large one such as Kobe, at the slow or medium speed; about 6% at the fastest speed, less than 1% for a new city) and 2 MiB of memory. `MAX_ROOMS` cities can be open at once (10 by default, well within a core; about 30 at most): beyond, a city that nobody plays closes early to make room, or players are told the server is busy. When the cities take more than half of the core, they all run at the medium speed at most, and no other city opens.
 
 Commands:
 
-- **Update**: `docker compose pull && docker compose up -d`
-- **Stop**: `docker compose down` (the data stays in the `kawacity-data` volume)
-- **Without Compose**: `docker run -d -p 8080:8080 -v kawacity-data:/data -e PUBLIC_URL=http://localhost:8080 --log-opt max-size=10m --log-opt max-file=3 --restart unless-stopped ghcr.io/kawakode/kawacity` (the `--log-opt` settings rotate the log, as `docker-compose.yml` does: without them Docker keeps it for as long as the container lives)
+- **Update**: `docker compose pull && docker compose up -d` (the newest 2.x: a new major version, which may change the settings, comes only once `KAWACITY_VERSION` names it)
+- **Stop**: `docker compose down` (the data stays in a volume named after the directory of docker-compose.yml, such as `kawacity_kawacity-data`: see `docker volume ls`)
+- **Without Compose**: `docker run -d -p 8080:8080 -v kawacity-data:/data -e PUBLIC_URL=http://localhost:8080 --log-opt max-size=10m --log-opt max-file=3 --restart unless-stopped ghcr.io/kawakode/kawacity:2` (the `--log-opt` settings rotate the log, as `docker-compose.yml` does: without them Docker keeps it for as long as the container lives). The data then goes to the volume `kawacity-data`, not to the one Compose makes.
 - **Accounts**, made and repaired by hand (the links printed are valid 24 h for a new account, 1 h for a reset; give them to their owners yourself):
 
   ```sh
   docker compose exec kawacity node server/main.cjs user add alice alice@example.com   # prints a link to choose a password (add fr for French emails)
   docker compose exec kawacity node server/main.cjs user reset alice                   # or her email address
   docker compose exec kawacity node server/main.cjs user list
-  docker compose exec kawacity node server/main.cjs user delete alice
+  docker compose exec kawacity node server/main.cjs user delete alice                  # with her cities and regions
   docker compose exec kawacity node server/main.cjs mail-test you@example.com          # checks the mail settings
   ```
 
-- **Backup**: `docker compose exec kawacity node server/main.cjs backup` copies the database to `/data/backups/kawacity-<time>.db`, safely while the game is played, and `docker compose cp kawacity:/data/backups .` takes the copies out. The server also makes a copy there before it upgrades the database to a new version. Copies keep the accounts they hold, deleted ones included, until you delete them.
+  These work while the server runs: the cities open on it notice a deleted account within a few seconds (its cities close, the cities beside them in a region end their deals with them).
+
+- **Backup**: `docker compose exec kawacity node server/main.cjs backup` copies the database to `/data/backups/kawacity-<time>.db`, safely while the game is played, and `docker compose cp kawacity:/data/backups .` takes the copies out. The server also makes a copy there before it upgrades the database to a new version. Copies keep the accounts they hold, deleted ones included, until you delete them. From cron, run it in the directory of docker-compose.yml with `-T` (no terminal), take the copies to another machine, and delete the old ones, so that deleted accounts do not stay in them for good; every night, for example:
+
+  ```sh
+  cd /srv/kawacity && docker compose exec -T kawacity node server/main.cjs backup \
+    && docker compose cp kawacity:/data/backups . \
+    && docker compose exec -T kawacity find /data/backups -name 'kawacity-*.db' -mtime +30 -delete
+  ```
+
+  then copy `./backups` elsewhere, and delete its old copies there too.
 - **Restore**: stop the server, put the copy in place of `kawacity.db` and delete `kawacity.db-wal` and `kawacity.db-shm`, then start it again:
 
   ```sh
@@ -56,9 +67,9 @@ kawacity.example.com {
 }
 ```
 
-With nginx, see [docker/nginx.example.conf](docker/nginx.example.conf): multiplayer needs the WebSocket upgrade it passes on.
+Multiplayer goes through a WebSocket at `/api/ws`: the proxy must pass its upgrade on (Caddy does it by itself), and keep a quiet connection open for more than 25 s (the game pings every 25 s). With nginx, see [docker/nginx.example.conf](docker/nginx.example.conf), which also lets through the 1 MiB a city sent to share it can take.
 
-**Upgrading from 1.x**: version 2 listens on port 8080 instead of 80, and keeps accounts and cities in a volume. Download the new docker-compose.yml (or change `"8080:80"` to `"8080:8080"`, and add `PUBLIC_URL` and the `kawacity-data:/data` volume), and point a reverse proxy that used port 80 to 8080.
+**Upgrading from 1.x**: version 2 listens on port 8080 instead of 80, and keeps accounts and cities in a volume. Replace your docker-compose.yml with the new one rather than editing it: it also declares the volume, rotates the log and gives the server time to save. Set `PUBLIC_URL`, and change a version pinned to 1 to 2. Behind a reverse proxy: point it to port 8080, make it pass WebSocket upgrades on (see above), set `TRUST_PROXY=1` and `PUBLIC_URL=https://…`, and publish the port on 127.0.0.1 only. Without Compose: `docker rm -f` the old container, and start the new one with the command above.
 
 **Without the server**: `npm run build` also makes the game a static site in `dist/`, which any web server can host. Single player works the same there; accounts and multiplayer need the image.
 
@@ -105,7 +116,8 @@ git push origin v1.2.3
 - **Sessions**: a random token in an `HttpOnly`, `SameSite=Strict` cookie (`__Host-` and `Secure` with https), stored hashed. A session ends after 7 days unused or 30 days in any case (`SESSION_IDLE_DAYS`, `SESSION_MAX_DAYS`): a deliberate choice for a game (NIST 800-63B AAL1), as changing the password or the email address and deleting the account always ask for the password. Changing or resetting the password ends the other sessions; "Log out everywhere" ends them all.
 - **Emails**: sign-up is email-first (an account exists only once its address was confirmed), links in emails work once and expire (24 h to sign up or confirm an address, 1 h to reset a password), and an address gets at most 3 emails with a link an hour and 10 a day (`MAIL_MAX_PER_HOUR` emails with a link in all); an account can ask for 10 new addresses an hour. The notices that tell an account's owner about a change (password or address changed, account locked) have limits of their own, and do not count against `MAIL_MAX_PER_HOUR`, so that links anyone can ask for cannot silence them. A mail that cannot be sent is logged without its address, nor anything made from it (`node server/main.cjs mail-test <address>` shows the whole error). With SMTP, STARTTLS with a valid certificate is required unless `SMTP_SECURE=true` or `SMTP_REQUIRE_TLS=false`.
 - **Requests**: changes are only accepted from the page at `PUBLIC_URL` (`Origin` checked, JSON only, no CORS); limits per address on every route; strict security headers and Content-Security-Policy.
-- **Privacy**: the server keeps the username, email address, password hash, sessions and cities of each account, and its log keeps addresses and account ids (never passwords, tokens, email addresses or what was typed to log in) for as long as its rotation allows (set it up with `--log-opt` without Compose). Players can download what is kept about them and delete their account from the game: it is then overwritten in the database at once, but the backups keep it until you delete them.
+- **Multiplayer**: the server runs the shared cities, and the game only sends it commands, each checked against the player's role before anything changes (a viewer only chats and looks); someone who is not a member is told a city or a region does not exist. A city file sent to share it is checked value by value (types, ranges, every zone and building whole on the map, its population counted from the map) and run for a step before it is kept. The WebSocket needs a session and the page's `Origin`; the session is checked again every 25 s, and logging out or deleting the account ends the game's connections at once. Limits per player: 3 connections, 10 a minute, 5 cities opened a minute, 30 messages a second (chat 1, pointers 10), the tiles built per second, 5 owned cities, 3 regions, 20 invitations sent an hour; 16 members per city; `MAX_ROOMS`, `MAX_CITIES` and `MAX_WS_CONNECTIONS` for the whole server. A connection that does not read what it is sent is closed, before it holds much of the server's memory, and a player who does nothing for 15 minutes is disconnected, so that a forgotten tab does not keep a city open.
+- **Privacy**: the server keeps the username, email address, password hash, email language and sessions of each account, when it was created, changed and last used, its failed logins and lock (see Logging in above), and a new email address waiting for confirmation; its shared cities and regions, those it is a member of and its invitations; the chat only in memory (the last 50 messages of a city, while it is open). Its log keeps addresses and account ids (never passwords, tokens, email addresses or what was typed to log in) for as long as its rotation allows (set it up with `--log-opt` without Compose). Players can download what is kept about them and delete their account from the game: it is then overwritten in the database at once, but the backups keep it until you delete them.
 
 ## Playing ##
 
@@ -117,6 +129,27 @@ git push origin v1.2.3
 - **News**: the ticker along the bottom of the screen tells how the city is doing (at least one item in three: disasters, what needs fixing), between jokes about what the mayor has been doing.
 - **Controls**: click to build, drag for roads, lines and areas. Right-drag, arrows or WASD to move; wheel, pinch or `+`/`-` to zoom.
 - **Shortcuts**: `1`–`9` tools, `B` bulldozer (again for the next size), `Q` query, `Space` pause, `Esc` cancel.
+
+### Accounts ###
+
+An account is only needed to play with others, on a server that offers accounts; alone, you play without one.
+
+- **Signing up**: **Create an account** on the title screen asks for your email address, and mails you a link to choose your username (the other players see it) and your password.
+- **The captcha** guards signing up, logging in and resetting a password: your browser solves a small puzzle while you type, with no third party and no tracking.
+- **Your account**: your name on the title screen opens it, to change your password or email address, download what the server keeps about you, log out everywhere, or delete the account with everything it owns.
+- **Privacy**, on the sign-up and account screens, says what the server keeps, and why.
+
+### Multiplayer ###
+
+**Multiplayer** on the title screen opens the lobby: the invitations you received, your shared cities and your regions.
+
+- **A shared city** lives on the server, and its members play it together, at the same time. **New shared city** brings back the title screen: choose a map (a new one, a sample city or a city file), a name and a difficulty, as for a city of your own. You can own 5 shared cities.
+- **Roles**: the **owner** may do everything, and alone unleashes disasters, renames the city, invites and removes members, and deletes it. A **player** builds, sets the budget, the speed and the settings, and signs the deals with the neighbours. A **viewer** watches, chats and looks with the query tool. A city has 16 members at most.
+- **Invitations**: in the city's card (**Manage**), invite a player by username, as a player or a viewer. The invitation waits at the top of their lobby, to accept or decline. Members may leave; the owner changes their roles, or removes them.
+- **Players**: in the game, the **Players** button opens the list of the city's players, with their role and colour, and the chat (its unread messages counted on the button). Each player's pointer shows on the map in their colour, around the tool they hold.
+- **When nobody has it open**, the city waits: its time stands still. It is saved every minute while it is played, when its last player leaves and when the server stops; after a restart, the game connects again by itself. A player who does nothing in the city for 15 minutes (no tool, no setting, no chat, no pointer moved over the map) is disconnected, and can open it again from the lobby.
+- **Download a copy**: every member can save the city as a `.kawacity` file, from its card or in the game, to play it alone or share it again.
+- **Regions**: a grid of 2×2 to 4×4 places, where members' cities lie side by side. Its owner (3 regions each) invites members by username; a member builds a new city on a free place with **Build here**. The cities beside yours become its neighbours on those sides, with their own name, mayor and population. A deal with a player's city is in force once both mayors signed it (trade with trade, twinning with twinning, buying power with selling it), and, as with other neighbours, trade needs a road or a railway, and power a line, at the edge the two cities share, on both sides; the seller must have power to spare. A city taken out of its region ends its deals there, and cannot come back to its place.
 
 ## Credits ##
 - [micropolisJS](https://github.com/graememcc/micropolisJS): Copyright (C) Graeme McCutcheon, 2013, and [contributors](https://github.com/graememcc/micropolisJS/graphs/contributors).

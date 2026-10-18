@@ -62,7 +62,8 @@ var KICK_TEXTS = {
   removed: 'You are no longer a member of this city.',
   session: 'You were logged out. Please log in again.',
   error: 'Something went wrong with this city on the server. Please try again later.',
-  shutdown: 'The server is shutting down. The city was saved: please come back in a moment.'
+  shutdown: 'The server is shutting down. The city was saved: please come back in a moment.',
+  idle: 'You were away for a long while, so you were disconnected from this city. You can open it again from the lobby.'
 };
 
 // Why a tool could not be used everywhere it was dragged (the first two as in a city played alone, see Text)

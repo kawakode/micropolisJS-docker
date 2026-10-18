@@ -8,6 +8,7 @@
 import { gunzipSync, gzipSync } from 'node:zlib';
 import type { Database } from '../db/database';
 import { HttpError } from '../http/response';
+import { LIMITS } from '../limits';
 import { isPublicId, newPublicId } from '../security/tokens';
 import type { CitySave, EdgeState } from './headless';
 
@@ -28,19 +29,21 @@ export const isInvitedRole = (value: unknown): value is InvitedRole =>
   typeof value === 'string' && (INVITED_ROLES as readonly string[]).includes(value);
 
 export const CITY_LIMITS = Object.freeze({
-  // Cities a player owns, those of regions included
-  ownedCities: 5,
+  // Cities a player owns, those of regions included (the game is told, see GET /api/session)
+  ownedCities: LIMITS.ownedCities,
   // Members of a city, its owner included
   members: 16,
   // Invitations a player may hold, to cities and regions together: beyond, new ones are not made (silently)
   pendingInvitations: 20,
 });
 
-// The colours of the members of a city, as the game draws their cursors: easy to tell apart and to read on the map.
-// Each member of a city keeps theirs (city_members.colour, an index in this list).
+// The colours of the members of a city, as the game draws their pointers on the map and their names in the chat: easy
+// to tell apart, and to read both on the map (land, trees, water) and on the game's dark windows. So they are light
+// (see the tests: server/test/lobby.ts), the most distinct first. Each member of a city keeps theirs
+// (city_members.colour, an index in this list).
 export const PALETTE: readonly string[] = [
-  '#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45',
-  '#fabed4', '#469990', '#dcbeff', '#9a6324', '#ffe119', '#800000', '#aaffc3', '#000075',
+  '#ff8899', '#33ddff', '#ffcc00', '#dd99ff', '#33ffcc', '#ff8833', '#bbff33', '#ffddee',
+  '#ccddff', '#eeee99', '#dd9911', '#ccaa99', '#bbeedd', '#cc99bb', '#ddddcc', '#aaaabb',
 ];
 
 export const STATE_FORMAT_GZIP_JSON = 1;
@@ -242,10 +245,6 @@ export class CityStore {
   replaceState(id: number, state: Uint8Array, edgeState: Record<string, EdgeState>, now: number): void {
     this.db.run('UPDATE cities SET state = ?, edge_state = ?, updated_at = ? WHERE id = ?', state,
                 JSON.stringify(edgeState), now, id);
-  }
-
-  setEdgeState(id: number, edgeState: Record<string, EdgeState>): boolean {
-    return this.db.run('UPDATE cities SET edge_state = ? WHERE id = ?', JSON.stringify(edgeState), id).changes === 1;
   }
 
   setPlayed(id: number, now: number): void {

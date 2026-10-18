@@ -7,12 +7,14 @@
 
 import path from 'node:path';
 import { RemoteCity } from '../../src/remoteCity.js';
+import { AdminContext, runAdminCommand } from '../admin/commands';
 import type { Env } from '../config';
 import { Database, migrate } from '../db/database';
 import { MIGRATIONS } from '../db/migrations';
 import { decodeState } from '../game/cityStore';
-import { sampleCity } from '../gameTesting';
+import { freshCitySave, sampleCity } from '../gameTesting';
 import type { Room } from '../game/room';
+import { WS_LIMITS } from '../game/wsServer';
 import { addMember, addPlayer, connect, createCity, flushSockets, join, Player, runFrames, sync, TestSocket, until,
          upgradeStatus } from '../multiplayerTesting';
 import { cleanUp, startTestApp, temporaryDirectory, TestApp } from '../testing';
@@ -184,6 +186,29 @@ describe('Connecting', () => {
     expect((await socket.closed).code).toBe(1008);
     await t.close();
   });
+
+  test('Too many cursor messages count too; a message longer than any of the game\'s is not read', async () => {
+    const t = await startTestApp(MANY);
+    const alice = addPlayer(t);
+    const city = await createCity(alice);
+    const a = await join(t, alice, city.id);
+    // Padded to just under 64 KiB (WebSocket compression sends it in about 100 bytes)
+    const padded = '{"t": "cursor",' + ' '.repeat(60 * 1024) + '"x": 1, "y": 1}';
+    a.socket.send(padded);
+    expect(await a.socket.waitFor(m => m.t === 'error')).toEqual({t: 'error', code: 'invalid_input'});
+    a.socket.send('{"t": "chat", "seq": 4, "text": "' + 'x'.repeat(WS_LIMITS.maxMessage) + '"}');
+    expect(await a.socket.waitFor(m => m.t === 'error' && m !== a.socket.ofType('error')[0]))
+      .toEqual({t: 'error', code: 'invalid_input'});
+
+    // Beyond the overall limit, cursor messages are refused and counted as the others are: the connection closes
+    const b = await join(t, alice, city.id);
+    for (let i = 0; i < 100; i++)
+      b.socket.send({t: 'cursor', x: i % 120, y: 1});
+    expect((await b.socket.closed).code).toBe(1008);
+    expect(b.socket.ofType('error').length).toBe(WS_LIMITS.invalidMessages - 1);
+    await a.socket.close();
+    await t.close();
+  });
 });
 
 describe('Playing together', () => {
@@ -209,12 +234,12 @@ describe('Playing together', () => {
     expect(Object.keys(welcome).sort()).toEqual(['build', 'chat', 'city', 'maps', 'players', 'save', 'sprites', 'state',
                                                  'stats', 't', 'you'].sort());
     expect(welcome.build).toBe('test');
-    expect(welcome.you).toEqual({id: bob.publicId, username: 'Bob', role: 'player', colour: '#3cb44b'});
+    expect(welcome.you).toEqual({id: bob.publicId, username: 'Bob', role: 'player', colour: '#33ddff'});
     expect(welcome.city).toEqual({id: cityId, name: 'Together', ownerName: 'Alice', region: null});
     expect(welcome.players).toEqual([
-      {id: alice.publicId, username: 'Alice', role: 'owner', colour: '#e6194b', online: false},
-      {id: bob.publicId, username: 'Bob', role: 'player', colour: '#3cb44b', online: true},
-      {id: carol.publicId, username: 'Carol', role: 'viewer', colour: '#4363d8', online: false},
+      {id: alice.publicId, username: 'Alice', role: 'owner', colour: '#ff8899', online: false},
+      {id: bob.publicId, username: 'Bob', role: 'player', colour: '#33ddff', online: true},
+      {id: carol.publicId, username: 'Carol', role: 'viewer', colour: '#ffcc00', online: false},
     ]);
     expect(welcome.chat).toEqual([]);
     expect(welcome.save.map.length).toBe(12000);
@@ -313,8 +338,9 @@ describe('Playing together', () => {
     expect(await answer(b.socket, {t: 'deal', seq: 15, side: 'east', kind: 'trade', signed: true}))
       .toEqual({t: 'ok', seq: 15});
     expect(room.edge.east.signed.trade).toBe(true);
+    // Stored with the city's next save, not before
     expect(JSON.parse(t.db.get<{edge_state: string}>('SELECT edge_state FROM cities')!.edge_state).east.signed.trade)
-      .toBe(true);
+      .toBe(false);
 
     // The owner unleashes disasters and turns them off
     expect(await answer(a.socket, {t: 'settings', seq: 20, disasters: false})).toEqual({t: 'ok', seq: 20});
@@ -382,7 +408,7 @@ describe('Playing together', () => {
     const c = await join(t, carol, cityId);
     a.socket.send({t: 'chat', text: '  Hello‮ \u0007there​  '});
     expect(await c.socket.waitFor(m => m.t === 'chat')).toEqual({
-      t: 'chat', from: {id: alice.publicId, username: 'Alice', colour: '#e6194b'}, text: 'Hello there', at: t.clock.now(),
+      t: 'chat', from: {id: alice.publicId, username: 'Alice', colour: '#ff8899'}, text: 'Hello there', at: t.clock.now(),
     });
 
     a.socket.send({t: 'chat', seq: 3, text: 'x'.repeat(301)});
@@ -542,6 +568,33 @@ describe('Playing together', () => {
     expect((await c.socket.closed).code).toBe(1006);
   });
 
+  test('Pings: answered a few a second at most, and only while the connection keeps up', async () => {
+    const c = await join(t, carol, cityId);
+    const pongs: string[] = [];
+    c.socket.ws.on('pong', data => pongs.push(data.toString()));
+    c.socket.ws.ping('one');
+    await until(() => pongs.length === 1);
+    expect(pongs).toEqual(['one']);
+
+    // A connection that does not read what it is sent gets no answer (the answers would pile up on the server), and the
+    // heartbeat closes it even when its city sends it nothing
+    const [connection] = [...t.app.game.sockets.connections];
+    let buffered = WS_LIMITS.skipBuffered + 1;
+    Object.defineProperty(connection.ws, 'bufferedAmount', {get: () => buffered});
+    c.socket.ws.ping('two');
+    await flushSockets(50);
+    expect(pongs).toEqual(['one']);
+    buffered = WS_LIMITS.closeBuffered + 1;
+    t.app.game.sockets.heartbeat();
+    expect((await c.socket.closed).code).toBe(1013);
+
+    // Too many pings close the connection
+    const d = await join(t, carol, cityId);
+    for (let i = 0; i < 12; i++)
+      d.socket.ws.ping();
+    expect((await d.socket.closed).code).toBe(1008);
+  });
+
   test('Deleting an account: its cities close, their players told', async () => {
     const b = await join(t, bob, cityId);
     const {auth} = t.app.context;
@@ -624,6 +677,42 @@ describe('Rooms', () => {
     await t.close();
   });
 
+  test('The admin command user delete beside a running server: the rooms see it within seconds', async () => {
+    const t = await startTestApp(MANY);
+    const alice = addPlayer(t, 'Alice');
+    const bob = addPlayer(t, 'Bob');
+    const city = await createCity(alice);
+    const theirs = await createCity(bob);
+    await addMember(alice, city.id, bob, 'viewer');
+    await addMember(bob, theirs.id, alice, 'player');
+    // Alice's city is paused, saved and left: nothing changes in it while Bob watches
+    const a = await join(t, alice, city.id);
+    await a.socket.waitFor(m => m.t === 'welcome');
+    a.socket.send({t: 'pause', seq: 1, paused: true});
+    await a.socket.waitFor(m => m.seq === 1);
+    await a.socket.close();
+    await until(() => roomOf(t, city.id).clients.size === 0);
+    expect(roomOf(t, city.id).dirty).toBe(false);
+    const b = await join(t, bob, city.id);
+    const own = await join(t, bob, theirs.id);
+    const alongside = await join(t, alice, theirs.id);
+
+    const lines: string[] = [];
+    const context: AdminContext = {config: t.config, clock: t.clock, databaseFile: ':memory:', openDatabase: () => t.db,
+                                   out: line => { lines.push(line); }, err: line => { lines.push(line); }};
+    expect(await runAdminCommand(['user', 'delete', 'Alice'], context)).toBe(0);
+    runFrames(t, 2500);
+    // Her city's room closes, though it had nothing to save; in Bob's city, she is no longer a member
+    expect(await b.socket.waitFor(m => m.t === 'kicked')).toEqual({t: 'kicked', reason: 'deleted'});
+    expect((await b.socket.closed).code).toBe(1000);
+    expect(await alongside.socket.waitFor(m => m.t === 'kicked')).toEqual({t: 'kicked', reason: 'removed'});
+    const players = await own.socket.waitFor(m => m.t === 'players' && m.list.length === 1);
+    expect(players.list).toEqual([expect.objectContaining({username: 'Bob', online: true})]);
+    expect(t.app.game.rooms.rooms.size).toBe(1);
+    await own.socket.close();
+    await t.close();
+  });
+
   test('A room whose city throws closes without saving; its players are told', async () => {
     const t = await startTestApp(MANY);
     const alice = addPlayer(t);
@@ -687,6 +776,86 @@ describe('Rooms', () => {
     await u.close();
   });
 
+  test('A full server closes the room no one is connected to since the longest for a city to open', async () => {
+    const t = await startTestApp({...MANY, MAX_ROOMS: '3'});
+    const alice = addPlayer(t);
+    const bob = addPlayer(t);
+    const carol = addPlayer(t);
+    const held = await createCity(alice);
+    const first = await createCity(alice);
+    const second = await createCity(alice);
+    // Alice plays one city, and keeps the others open by joining them now and then
+    const a = await join(t, alice, held.id);
+    for (const city of [first, second]) {
+      const {socket} = await join(t, alice, city.id);
+      socket.send({t: 'tool', seq: 1, tool: 'road', from: {x: 30, y: 30}, to: {x: 35, y: 30}});
+      await socket.waitFor(m => m.t === 'toolResult');
+      await socket.close();
+      await until(() => roomOf(t, city.id).clients.size === 0);
+      runFrames(t, 1000, 100);
+    }
+    expect(t.app.game.rooms.rooms.size).toBe(3);
+
+    // Bob's city opens: the room left the longest ago closes, saved
+    const theirs = await createCity(bob);
+    const b = await join(t, bob, theirs.id);
+    expect(b.welcome.t).toBe('welcome');
+    expect(t.app.game.rooms.rooms.size).toBe(3);
+    expect(t.app.game.rooms.get(t.app.game.cities.byPublicId(first.id)!.id)).toBeUndefined();
+    const saved = decodeState(t.db.get<{state: Uint8Array}>('SELECT state FROM cities WHERE public_id = ?', first.id)!
+      .state);
+    expect((saved.map as {value: number}[])[30 * 120 + 32].value & 0x7ff).toBeGreaterThanOrEqual(64);
+    expect(t.logs.some(line => line.event === 'room.close' && line.city === first.id && line.reason === 'full'))
+      .toBe(true);
+
+    // Carol's too; then every room has a player: the next city is refused
+    const hers = await createCity(carol);
+    const c = await join(t, carol, hers.id);
+    expect(c.welcome.t).toBe('welcome');
+    const refused = await join(t, alice, first.id);
+    expect(refused.welcome).toEqual({t: 'error', code: 'server_busy'});
+    expect((await refused.socket.closed).code).toBe(1013);
+    await Promise.all([a.socket.close(), b.socket.close(), c.socket.close()]);
+    await t.close();
+  });
+
+  test('A player who does nothing for 15 minutes is disconnected: their room can then go to another city', async () => {
+    const t = await startTestApp({...MANY, MAX_ROOMS: '2'}, {game: {rooms: {frameLoop: false}}});
+    const alice = addPlayer(t);
+    const bob = addPlayer(t);
+    const carol = addPlayer(t);
+    const a = await join(t, alice, (await createCity(alice)).id);
+    const b = await join(t, bob, (await createCity(bob)).id);
+    const hers = await createCity(carol);
+    expect((await join(t, carol, hers.id)).welcome).toEqual({t: 'error', code: 'server_busy'});
+
+    // Alice's cursor rests on the map (only a cursor that moves counts); Bob moves his
+    a.socket.send({t: 'cursor', x: 10, y: 10});
+    await flushSockets(20);
+    for (let minute = 1; minute <= 15; minute++) {
+      t.clock.advance(60 * 1000);
+      a.socket.send({t: 'cursor', x: 10, y: 10});
+      b.socket.send({t: 'cursor', x: minute, y: 10});
+      await flushSockets(20);
+      t.app.game.sockets.heartbeat();
+      if (minute === 14) {
+        await flushSockets(20);
+        expect(a.socket.closeCode).toBeNull();
+      }
+    }
+    expect(await a.socket.waitFor(m => m.t === 'kicked')).toEqual({t: 'kicked', reason: 'idle'});
+    expect((await a.socket.closed).code).toBe(1000);
+    expect(b.socket.closeCode).toBeNull();
+    expect(t.logs.some(line => line.event === 'ws.kick' && line.reason === 'idle')).toBe(true);
+
+    // Alice's room has no one left: Carol's city opens in its place
+    const c = await join(t, carol, hers.id);
+    expect(c.welcome.t).toBe('welcome');
+    expect(t.app.game.rooms.rooms.size).toBe(2);
+    await Promise.all([b.socket.close(), c.socket.close()]);
+    await t.close();
+  });
+
   test('The yearly budget is confirmed at once, and the players (not the viewers) are told', async () => {
     const t = await startTestApp(MANY);
     const alice = addPlayer(t);
@@ -723,7 +892,8 @@ describe('Rooms', () => {
 
     const t = await startTestApp(MANY, {db: open()});
     const alice = addPlayer(t);
-    const city = await createCity(alice, {name: 'Lasting'});
+    // A map with land where the road goes, whatever the cities made before
+    const city = await createCity(alice, {name: 'Lasting', save: freshCitySave('Fresh', 0, 1)});
     const {socket} = await join(t, alice, city.id);
     socket.send({t: 'tool', seq: 1, tool: 'road', from: {x: 60, y: 0}, to: {x: 60, y: 10}});
     socket.send({t: 'deal', seq: 2, side: 'north', kind: 'trade', signed: true});

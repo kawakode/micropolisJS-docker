@@ -10,7 +10,8 @@ import { decodeState } from '../game/cityStore';
 import { freshCitySave, sampleCity } from '../gameTesting';
 import { REGION_LIMITS } from '../game/regionStore';
 import type { Room } from '../game/room';
-import { addPlayer, createCity, flushSockets, join, Player, runFrames, sync, TestSocket } from '../multiplayerTesting';
+import { addPlayer, createCity, flushSockets, join, Player, runFrames, sync, TestSocket,
+         until } from '../multiplayerTesting';
 import { cleanUp, startTestApp, TestApp } from '../testing';
 
 // Regions: grids of slots where the players' cities are side by side, neighbours of one another
@@ -93,7 +94,7 @@ describe('Regions in the lobby', () => {
       expect((await stranger.get(path)).status).toBe(404);
     for (const [path, body] of [[`/api/regions/${id}/delete`, {}], [`/api/regions/${id}/invitations`, {username: 'Ruth'}],
                                 [`/api/regions/${id}/members/${member.publicId}/remove`, {}],
-                                [`/api/regions/${id}/slots/0/0/clear`, {}]] as const)
+                                [`/api/regions/${id}/slots/0/0/clear`, {city: id}]] as const)
       expect([path, (await stranger.post(path, body)).status]).toEqual([path, 404]);
     expect((await stranger.patch(`/api/regions/${id}`, {name: 'Mine'})).status).toBe(404);
     expect((await stranger.post('/api/cities', {name: 'Squat', level: 0,
@@ -116,7 +117,8 @@ describe('Regions in the lobby', () => {
       {x: 0, y: 1, city: null},
       {x: 1, y: 1, city: null},
     ]);
-    expect(view.members).toEqual([{id: owner.publicId, username: 'Ruth'}, {id: member.publicId, username: 'Max'}]);
+    expect(view.members).toEqual([{id: owner.publicId, username: 'Ruth', owner: true},
+                                  {id: member.publicId, username: 'Max', owner: false}]);
     expect(view.invitations).toEqual([]);
     expect((await member.get(`/api/regions/${id}`)).json.slots[1].city.role).toBe('owner');
     expect((await member.get('/api/regions')).json.regions).toEqual([{id, name: 'Riverlands', ownerName: 'Ruth',
@@ -160,13 +162,24 @@ describe('Regions in the lobby', () => {
     const invitation = (await third.get('/api/cities')).json.invitations[0];
     await third.post(`/api/invitations/${invitation.id}/accept`);
 
-    await createCity(member, {region: {id, x: 0, y: 0}});
-    await createCity(third, {region: {id, x: 1, y: 0}});
-    expect((await member.post(`/api/regions/${id}/slots/1/0/clear`)).status).toBe(403);
-    expect((await member.post(`/api/regions/${id}/slots/0/1/clear`)).status).toBe(404);
-    expect((await member.post(`/api/regions/${id}/slots/9/0/clear`)).status).toBe(404);
-    expect((await member.post(`/api/regions/${id}/slots/0/0/clear`)).status).toBe(204);
-    expect((await owner.post(`/api/regions/${id}/slots/1/0/clear`)).status).toBe(204);
+    const mine = await createCity(member, {region: {id, x: 0, y: 0}});
+    const theirs = await createCity(third, {region: {id, x: 1, y: 0}});
+    expect((await member.post(`/api/regions/${id}/slots/1/0/clear`, {city: theirs.id})).status).toBe(403);
+    expect((await member.post(`/api/regions/${id}/slots/0/1/clear`, {city: mine.id})).status).toBe(404);
+    expect((await member.post(`/api/regions/${id}/slots/9/0/clear`, {city: mine.id})).status).toBe(404);
+    // The city taken out is named: the one the player saw there
+    expect((await member.post(`/api/regions/${id}/slots/0/0/clear`)).status).toBe(400);
+    expect((await member.post(`/api/regions/${id}/slots/0/0/clear`, {city: 'nope'})).status).toBe(400);
+    expect((await member.post(`/api/regions/${id}/slots/0/0/clear`, {city: mine.id})).status).toBe(204);
+
+    // The region's owner, from a card shown before Tess's city left and another took its place: nothing is done
+    expect((await third.post(`/api/regions/${id}/slots/1/0/clear`, {city: theirs.id})).status).toBe(204);
+    const newcomer = await createCity(member, {name: 'Newcomer', region: {id, x: 1, y: 0}});
+    expect((await owner.post(`/api/regions/${id}/slots/1/0/clear`, {city: theirs.id})).json)
+      .toEqual({error: {code: 'conflict'}});
+    expect((await member.get('/api/cities')).json.cities.find((c: any) => c.id === newcomer.id).region)
+      .toMatchObject({id, x: 1, y: 0});
+    expect((await owner.post(`/api/regions/${id}/slots/1/0/clear`, {city: newcomer.id})).status).toBe(204);
     expect((await owner.get(`/api/regions/${id}`)).json.region.cities).toBe(0);
   });
 });
@@ -247,10 +260,51 @@ describe('Neighbours in a region', () => {
     expect(stats.stats.neighbours.find((n: any) => n.side === 'east').deals.find((d: any) => d.kind === 'trade'))
       .toMatchObject({signed: true, state: 'active', theirs: true});
 
-    // Stored for the cities that are not running
-    expect(JSON.parse(t.db.get<{edge_state: string}>('SELECT edge_state FROM cities WHERE public_id = ?', east.id)!
-      .edge_state).west).toMatchObject({transport: true, signed: {trade: true, twinning: true}});
-    await Promise.all([w.socket.close(), e.socket.close()]);
+    // Stored with the city's save, for when it is not running
+    const storedEdge = () => JSON.parse(t.db.get<{edge_state: string}>(
+      'SELECT edge_state FROM cities WHERE public_id = ?', east.id)!.edge_state).west;
+    expect(storedEdge().signed.trade).toBe(false);
+    await e.socket.close();
+    await until(() => eastRoom.clients.size === 0);
+    expect(storedEdge()).toMatchObject({transport: true, signed: {trade: true, twinning: true}});
+    expect(storedNeighbour(t, east.id, 'west').neighbour.deals).toMatchObject({trade: true, twinning: true});
+    await w.socket.close();
+  });
+
+  test('A room closed without a save leaves the edges of its last save: no deal its city did not keep', async () => {
+    const {owner, member, id} = await region(t);
+    const west = await createCity(member, {name: 'Westby', region: {id, x: 0, y: 0}});
+    const east = await createCity(owner, {name: 'Eastby', region: {id, x: 1, y: 0}});
+    const w = await join(t, member, west.id);
+    const e = await join(t, owner, east.id);
+    await command(e.socket, {t: 'deal', seq: 1, side: 'west', kind: 'twinning', signed: true});
+    await command(w.socket, {t: 'deal', seq: 2, side: 'east', kind: 'twinning', signed: true});
+    const westRoom = roomOf(t, west.id);
+    expect(deal(westRoom, 'east', 'twinning')).toMatchObject({state: 'active', theirs: true});
+
+    // The east city's room throws before it saved its tick
+    roomOf(t, east.id).city.step = () => { throw new Error('broken'); };
+    runFrames(t, 100);
+    expect(await e.socket.waitFor(m => m.t === 'kicked')).toEqual({t: 'kicked', reason: 'error'});
+    expect(storedNeighbour(t, east.id, 'west').neighbour.deals.twinning).toBe(false);
+    expect(storedNeighbour(t, east.id, 'west').edge.signed.twinning).toBe(false);
+    runFrames(t, 3000, 100);
+    expect(deal(westRoom, 'east', 'twinning')).toMatchObject({signed: true, state: 'proposed', theirs: false});
+
+    // The other way: a city leaves its slot while the city beside is open, which then closes without a save: it does
+    // not come back with the deal, now with the neighbour of its save
+    const e2 = await join(t, owner, east.id);
+    await command(e2.socket, {t: 'deal', seq: 3, side: 'west', kind: 'twinning', signed: true});
+    runFrames(t, 62 * 1000, 500);
+    expect(storedNeighbour(t, west.id, 'east').neighbour.deals.twinning).toBe(true);
+    expect((await owner.post(`/api/regions/${id}/slots/1/0/clear`, {city: east.id})).status).toBe(204);
+    expect(storedNeighbour(t, west.id, 'east').neighbour.deals.twinning).toBe(false);
+    westRoom.city.step = () => { throw new Error('broken'); };
+    runFrames(t, 100);
+    expect(await w.socket.waitFor(m => m.t === 'kicked')).toEqual({t: 'kicked', reason: 'error'});
+    const again = await join(t, member, west.id);
+    expect(deal(roomOf(t, west.id), 'east', 'twinning')).toMatchObject({signed: false});
+    await Promise.all([again.socket.close(), e2.socket.close()]);
   });
 
   test('A city leaving its slot ends its deals with the cities beside it, open or not', async () => {
@@ -275,7 +329,7 @@ describe('Neighbours in a region', () => {
     expect(storedNeighbour(t, east.id, 'west').edge.signed.twinning).toBe(true);
 
     // The middle city leaves: no deal left on either side
-    expect((await owner.post(`/api/regions/${id}/slots/1/0/clear`)).status).toBe(204);
+    expect((await owner.post(`/api/regions/${id}/slots/1/0/clear`, {city: middle.id})).status).toBe(204);
     const westRoom = roomOf(t, west.id);
     const middleRoom = roomOf(t, middle.id);
     expect(deal(westRoom, 'east', 'twinning')).toMatchObject({signed: false});
@@ -371,4 +425,63 @@ describe('Neighbours in a region', () => {
     expect(neighbour(roomOf(t, west.id), 'east').player).toBeUndefined();
     await again.socket.close();
   });
+
+  test('The admin command user delete beside open rooms: their deals with its cities end, and stay ended', async () => {
+    const adminContext = (): AdminContext => ({config: t.config, clock: t.clock, databaseFile: ':memory:',
+                                               openDatabase: () => t.db, out: () => {}, err: () => {}});
+    const twinning = (room: Room, side: string) => ({player: !!neighbour(room, side).player,
+                                                     signed: deal(room, side, 'twinning').signed});
+
+    // The region's owner deletes their account: the member's city leaves the region, its twinning with them ends
+    const {owner, member, id} = await region(t, 3, 2);
+    const west = await createCity(member, {name: 'Westby', region: {id, x: 0, y: 0}});
+    const east = await createCity(owner, {name: 'Eastby', region: {id, x: 1, y: 0}});
+    const w = await join(t, member, west.id);
+    const e = await join(t, owner, east.id);
+    await command(w.socket, {t: 'deal', seq: 1, side: 'east', kind: 'twinning', signed: true});
+    await command(e.socket, {t: 'deal', seq: 2, side: 'west', kind: 'twinning', signed: true});
+    expect(deal(roomOf(t, west.id), 'east', 'twinning').state).toBe('active');
+    await e.socket.close();
+
+    expect(await runAdminCommand(['user', 'delete', 'Ruth'], adminContext())).toBe(0);
+    runFrames(t, 3000, 100);
+    const westRoom = roomOf(t, west.id);
+    expect(westRoom.placement).toBeNull();
+    expect(twinning(westRoom, 'east')).toEqual({player: false, signed: false});
+    // Its saves no longer bring the deal back, nor does closing it
+    runFrames(t, 62 * 1000, 500);
+    expect(storedNeighbour(t, west.id, 'east').neighbour.deals.twinning).toBe(false);
+    expect(storedNeighbour(t, west.id, 'east').edge.signed.twinning).toBe(false);
+    await w.socket.close();
+    runFrames(t, 62 * 1000, 1000);
+    expect(t.app.game.rooms.rooms.size).toBe(0);
+    expect(storedNeighbour(t, west.id, 'east').neighbour.deals.twinning).toBe(false);
+    expect(storedNeighbour(t, west.id, 'east').neighbour.months.twinning).toBe(0);
+
+    // A member who only owned the city beside: the region stays, the twinning with that city ends
+    const zed = addPlayer(t, 'Zed');
+    const made = await zed.post('/api/regions', {name: 'Valley', width: 2, height: 2});
+    const valley = made.json.region.id;
+    const carol = addPlayer(t, 'Carol');
+    for (const invitee of [member, carol]) {
+      expect((await zed.post(`/api/regions/${valley}/invitations`, {username: invitee.username})).status).toBe(201);
+      const invitation = (await invitee.get('/api/cities')).json.invitations.find((i: any) => i.kind === 'region');
+      expect((await invitee.post(`/api/invitations/${invitation.id}/accept`)).status).toBe(200);
+    }
+    const left = await createCity(member, {name: 'Leftby', region: {id: valley, x: 0, y: 0}});
+    const right = await createCity(carol, {name: 'Rightby', region: {id: valley, x: 1, y: 0}});
+    const l = await join(t, member, left.id);
+    const r = await join(t, carol, right.id);
+    await command(l.socket, {t: 'deal', seq: 3, side: 'east', kind: 'twinning', signed: true});
+    await command(r.socket, {t: 'deal', seq: 4, side: 'west', kind: 'twinning', signed: true});
+    expect(await runAdminCommand(['user', 'delete', 'Carol'], adminContext())).toBe(0);
+    runFrames(t, 3000, 100);
+    expect(await r.socket.waitFor(m => m.t === 'kicked')).toEqual({t: 'kicked', reason: 'deleted'});
+    const leftRoom = roomOf(t, left.id);
+    expect(leftRoom.placement).toMatchObject({x: 0, y: 0});
+    expect(twinning(leftRoom, 'east')).toEqual({player: false, signed: false});
+    await l.socket.close();
+    runFrames(t, 62 * 1000, 1000);
+    expect(storedNeighbour(t, left.id, 'east').neighbour.deals.twinning).toBe(false);
+  }, 30 * 1000);
 });

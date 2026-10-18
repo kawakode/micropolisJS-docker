@@ -19,7 +19,7 @@ describe("The errors of the server", () => {
     it("have a text for every reason a field, a connection or a tool fails", () => {
         expect(FIELD_REASONS).toEqual(["required", "invalid", "too_short", "too_long", "common", "contains_username",
                                        "contains_email", "too_simple", "reserved"]);
-        expect(KICK_REASONS).toEqual(["deleted", "removed", "session", "error", "shutdown"]);
+        expect(KICK_REASONS).toEqual(["deleted", "removed", "session", "error", "shutdown", "idle"]);
         expect(TOOL_REASONS).toEqual(["no_money", "needs_bulldoze", "failed"]);
         expect(Object.keys(FIELD_TEXTS)).toEqual(FIELD_REASONS);
         expect(Object.keys(KICK_TEXTS)).toEqual(KICK_REASONS);

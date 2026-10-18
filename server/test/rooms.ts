@@ -182,11 +182,23 @@ describe('Frames', () => {
     expect([monitor.overloaded, monitor.refuseLoads]).toEqual([false, false]);
   });
 
-  test('A late event loop refuses new rooms', async () => {
-    const city = await createCity(alice);
-    t.app.game.rooms.monitor.refuseLoads = true;
-    const row = t.app.game.cities.byPublicId(city.id)!;
-    expect(() => t.app.game.rooms.open(row, alice.id)).toThrow('server_busy');
+  test('A late event loop refuses new rooms; once the last room closed, what the monitor saw no longer counts', async () => {
+    const {rooms, cities} = t.app.game;
+    const first = cities.byPublicId((await createCity(alice)).id)!;
+    const second = cities.byPublicId((await createCity(alice)).id)!;
+    const room = rooms.open(first, alice.id);
+    rooms.monitor.refuseLoads = true;
+    expect(() => rooms.open(second, alice.id)).toThrow('server_busy');
+    rooms.monitor.refuseLoads = false;
+    rooms.monitor.overloaded = true;
+    expect(() => rooms.open(second, alice.id)).toThrow('server_busy');
+
+    // The last room closes while the server is late: its loop stops, and nothing would ever clear the monitor
+    rooms.monitor.refuseLoads = true;
+    rooms.drop(room, 'error', 1011);
+    expect(rooms.rooms.size).toBe(0);
+    expect(rooms.open(second, alice.id).id).toBe(second.id);
+    expect([rooms.monitor.overloaded, rooms.monitor.refuseLoads]).toEqual([false, false]);
   });
 });
 

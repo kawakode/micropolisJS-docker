@@ -7,8 +7,11 @@
 
 import { Evaluation } from '../../src/evaluation.js';
 import { Neighbours } from '../../src/neighbours.js';
-import { BIT_MASK, fromClassicValue } from '../../src/tileFlags';
-import { KAWALAST } from '../../src/tileValues';
+import { BIT_MASK, fromClassicValue, ZONEBIT } from '../../src/tileFlags';
+import { AIRPORT, BIGPARK, CHURCH, CHURCH1, CHURCH2, CHURCH3, CHURCH4, CHURCH5, CHURCH6, CHURCH7, FIRESTATION,
+         FULLSTADIUM, GASPLANT, HOSPITAL, KAWALAST, NUCLEAR, POLICESTATION, PORT, POWERPLANT, SCHOOL, SOLARPLANT, STADIUM,
+         UNIVERSITY, WINDTURBINE } from '../../src/tileValues';
+import { ZoneUtils } from '../../src/zoneUtils.js';
 import { CITY_HEIGHT, CITY_WIDTH, CitySave, createHeadlessCity, EdgeState, MILESTONE_KEYS,
          SAVE_VERSION } from './headless';
 import { checkText, NEIGHBOUR_NAME_MAX } from './names';
@@ -175,8 +178,33 @@ function checkScalar(field: string, value: unknown, rule: Rule): unknown {
   }
 }
 
-// The tiles: 12000 objects {value}, each value a tile of the game (its number, and the flags it may have). Saves of
-// versions 1 to 3 have the tiles of the original game, brought to the new ones.
+const zoneSize = (ZoneUtils as unknown as {getZoneSize(tile: number): number}).getZoneSize;
+
+// Whether the zone (or building) whose centre is the tile at index i lies on the map: the zone's code looks at every
+// tile of it (from one tile above and left of the centre, see GameMap.putZone), and fails off the map. The game's
+// tools never place one across the edge; a tile marked as a zone's centre must also be one.
+function zoneFits(i: number, raw: number): boolean {
+  const size = zoneSize(raw & BIT_MASK);
+  if (size === 0)
+    return false;
+  if (size === 1)
+    return true;
+
+  const x = i % CITY_WIDTH;
+  const y = Math.floor(i / CITY_WIDTH);
+  return x >= 1 && y >= 1 && x - 1 + size <= CITY_WIDTH && y - 1 + size <= CITY_HEIGHT;
+}
+
+// The centres of the buildings that the simulation acts on by their value alone, whether the tile is marked as a zone's
+// centre or not (the values given to MapScanner.addAction and RepairManager.addAction): a stadium starts its game, a
+// nuclear plant may melt down, an airport turns its radar... over its whole building, which must then be on the map.
+const BUILDING_CENTRES: ReadonlySet<number> = new Set([
+  HOSPITAL, CHURCH, CHURCH1, CHURCH2, CHURCH3, CHURCH4, CHURCH5, CHURCH6, CHURCH7, PORT, AIRPORT, POWERPLANT,
+  FIRESTATION, POLICESTATION, STADIUM, FULLSTADIUM, NUCLEAR, WINDTURBINE, GASPLANT, SOLARPLANT, SCHOOL, UNIVERSITY,
+  BIGPARK]);
+
+// The tiles: 12000 objects {value}, each value a tile of the game (its number, and the flags it may have), each zone
+// and building whole on the map. Saves of versions 1 to 3 have the tiles of the original game, brought to the new ones.
 function checkMap(value: unknown, classic: boolean): {value: number}[] {
   check(Array.isArray(value) && value.length === TILES, 'map');
   const tiles = value as unknown[];
@@ -190,6 +218,8 @@ function checkMap(value: unknown, classic: boolean): {value: number}[] {
     if (classic)
       raw = fromClassicValue(raw as number);
     check(((raw as number) & BIT_MASK) <= KAWALAST, 'map');
+    const centre = ((raw as number) & ZONEBIT) !== 0 || BUILDING_CENTRES.has((raw as number) & BIT_MASK);
+    check(!centre || zoneFits(i, raw as number), 'map');
     result[i] = {value: raw as number};
   }
 
@@ -330,8 +360,9 @@ export interface PrepareOptions {
 }
 
 // Checks a save (see validateSave), names the city, sets its level, then opens it as the server opens a city and keeps
-// the save that city writes (the game fills in what the save left out, as when it opens a city). That save is opened
-// again and run for one step: a save the simulation cannot run is refused. Throws SaveError.
+// the save that city writes (the game fills in what the save left out, as when it opens a city), its population
+// counted from its map (see HeadlessCity.recount). That save is opened again and run for one step: a save the
+// simulation cannot run is refused. Throws SaveError.
 export function prepareCity(input: unknown, options: PrepareOptions): PreparedCity {
   const save = validateSave(input);
   save.name = options.name;
@@ -339,6 +370,7 @@ export function prepareCity(input: unknown, options: PrepareOptions): PreparedCi
 
   try {
     const city = createHeadlessCity(save);
+    city.recount();
     const saveText = city.saveText();
     const prepared = {saveText, population: city.population, cityTime: city.cityTime, paused: city.paused,
                       edgeState: city.edgeState()};

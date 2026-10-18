@@ -399,6 +399,43 @@ describe("The connection to a shared city", () => {
         expect(connection.lastError).toBe(null);
     });
 
+    it("tells why it keeps trying: the server's answer to join, or connections refused before they open", () => {
+        const troubles: string[] = [];
+        const {connection, last, timers} = setUp({onTrouble: (code: string) => troubles.push(code)});
+        connection.start();
+        // Each time the server is full, the page is told (its card shows why)
+        for (let i = 0; i < 3; i++) {
+            last().open();
+            last().receive({t: "error", code: "server_busy"});
+            last().drop();
+            timers.advance(30000);
+        }
+        expect(troubles).toEqual(["server_busy", "server_busy", "server_busy"]);
+        last().open();
+        last().receive({t: "welcome", n: 1});
+        expect(connection.lastError).toBe(null);
+
+        // Refused before opening (too many connections of the player: an HTTP status the page cannot read), from the
+        // third time in a row
+        const refused = setUp({onTrouble: (code: string) => troubles.push(code)});
+        troubles.length = 0;
+        refused.connection.start();
+        refused.last().drop();
+        refused.timers.advance(30000);
+        refused.last().drop();
+        expect(troubles).toEqual([]);
+        refused.timers.advance(30000);
+        refused.last().drop();
+        expect(troubles).toEqual(["refused"]);
+        // Once one opens, the count starts again
+        refused.timers.advance(30000);
+        refused.last().open();
+        refused.last().drop();
+        refused.timers.advance(30000);
+        refused.last().drop();
+        expect(troubles).toEqual(["refused"]);
+    });
+
     it("checks the session when attempts keep failing, and stops if it is over", () => {
         let asked = 0;
         let answer: boolean | null = true;
@@ -437,5 +474,27 @@ describe("The connection to a shared city", () => {
         timers.advance(60000);
         expect(sockets.length).toBe(1);
         expect(connection.send({t: "chat", text: "hi"})).toBe(false);
+    });
+});
+
+
+describe("The card over the page, and the reconnecting banner", () => {
+    const key = (name: string) => ({key: name, stopPropagation: jest.fn(), preventDefault: jest.fn()});
+
+    it("keep their keys from the game's shortcuts (Space presses their button), and the card the focus", () => {
+        const space = key(" ");
+        expect(M.ownKey(space, true)).toBe(false);
+        expect(space.stopPropagation).toHaveBeenCalled();
+        expect(space.preventDefault).not.toHaveBeenCalled();
+
+        const tab = key("Tab");
+        expect(M.ownKey(tab, true)).toBe(true);
+        expect(tab.preventDefault).toHaveBeenCalled();
+
+        // The banner sits over the game, which goes on: Tab leaves it
+        const fromBanner = key("Tab");
+        expect(M.ownKey(fromBanner, false)).toBe(false);
+        expect(fromBanner.stopPropagation).toHaveBeenCalled();
+        expect(fromBanner.preventDefault).not.toHaveBeenCalled();
     });
 });

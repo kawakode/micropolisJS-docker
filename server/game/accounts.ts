@@ -14,7 +14,8 @@ import type { RegionStore } from './regionStore';
 // the cities beside its cities end their deals with them, and the other players' cities in its regions leave them
 // (ending their deals with the cities beside them). Used by the server (POST /api/account/delete, see gameRoutes.ts)
 // and by the admin command `user delete`, which runs in a process of its own: its RegionLink has no room open, so it
-// changes the stored saves only (a city open on a running server keeps its deals until its room closes).
+// changes the stored saves only. The rooms open on a running server then see it within seconds, before they save
+// anything (see RoomManager.recheck): the deleted cities' rooms close, and the others end their deals with them.
 //
 // evict(ids) is called with the ids of the account's cities, once their neighbours are done with (the server closes
 // their rooms without saving them). Returns the ids of the cities whose neighbours changed, and of those the account

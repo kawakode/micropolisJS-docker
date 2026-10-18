@@ -17,7 +17,7 @@ import { Room, RoomClient } from './room';
 // The open shared cities (DESIGN §5.5). One loop, about 60 frames a second, serves every room in turn, starting from
 // a different room at each frame, with at most 8 ms of their work per frame: when that is used up, the other rooms
 // wait for the next frame (their cities run slower). Rooms step only while players are connected; a room no one is
-// connected to is saved, and closed after a minute.
+// connected to is saved, and closed after a minute (at once when MAX_ROOMS are open and another city is to open).
 //
 // The server watches its own load: when the event loop is late (p99 of its delay above 100 ms over the last second),
 // no new city is opened (server_busy); when the rooms took more than half of the last second, every city runs at the
@@ -27,6 +27,13 @@ import { Room, RoomClient } from './room';
 // players are told (kicked, reason error). Cities are saved every minute when they changed, when the last player
 // leaves, when they close and when the server stops; a save that finds no row (the city was deleted meanwhile, by
 // another process) closes the room.
+//
+// Another process may change the database under an open room: the admin command user delete deletes an account with
+// its cities, takes the cities of its regions out of them and ends their deals with its cities, in the stored saves
+// only. So every 2 s, and before each save, a room is checked against the database (see recheck): a city that is gone
+// closes its room (kicked, reason deleted), its members are read again (those removed are kicked), and the cities
+// beside it are looked at again (a side whose city changed ends its deals, see Room.setRemotes). What the room then
+// saves is what the database says, not what it held before.
 
 export const FRAME_MS = 16;
 export const FRAME_BUDGET_MS = 8;
@@ -157,11 +164,18 @@ export class RoomManager {
     if (existing)
       return existing;
 
-    if (this.stopped || this.rooms.size >= this.options.maxRooms || this.monitor.refuseLoads ||
-        this.monitor.overloaded)
+    // Without rooms, their loop stopped and the monitor with it: what it last saw does not count (see startLoop)
+    if (this.rooms.size === 0)
+      this.monitor.reset(performance.now());
+    // A full server closes the room no one is connected to since the longest, if there is one
+    const spare = this.rooms.size >= this.options.maxRooms ? this.longestEmpty() : null;
+    if (this.stopped || this.monitor.refuseLoads || this.monitor.overloaded ||
+        (this.rooms.size >= this.options.maxRooms && spare === null))
       throw new RoomRefusal('server_busy');
     if (!this.deps.loads.hit(String(userId)).allowed)
       throw new RoomRefusal('rate_limited');
+    if (spare !== null)
+      this.unload(spare, this.deps.clock.now(), 'full');
 
     const {cities, clock, log} = this.deps;
     let room: Room;
@@ -173,7 +187,7 @@ export class RoomManager {
         cities,
         buildId: this.deps.buildId,
         onEdgeChanged: changed => this.deps.link().edgeChanged(changed),
-        refreshNeighbours: target => this.deps.link().refresh(target),
+        recheck: target => this.recheck(target),
       }, {
         row,
         save: decodeState(state),
@@ -248,9 +262,24 @@ export class RoomManager {
     this.stopLoopIfIdle();
   }
 
-  // Saves a room's city; a city that is gone closes its room
+  // A room checked against the database, which another process may have changed: a city that is gone closes its room
+  // (without a save); the members and the cities beside it are read again. Returns whether the room is still open.
+  private recheck(room: Room): boolean {
+    const {cities, clock, log} = this.deps;
+    if (cities.byId(room.id) === null) {
+      log.info('room.gone', {city: room.publicId});
+      this.drop(room, 'deleted', CLOSE.normal);
+      return false;
+    }
+
+    room.checkMembers(cities.members(room.id), clock.now());
+    this.deps.link().refresh(room);
+    return this.isOpen(room);
+  }
+
+  // Saves a room's city, once checked against the database; a city that is gone closes its room
   private save(room: Room, now: number): void {
-    if (!room.save(now)) {
+    if (this.recheck(room) && !room.save(now)) {
       this.deps.log.info('room.gone', {city: room.publicId});
       this.drop(room, 'deleted', CLOSE.normal);
     }
@@ -327,14 +356,27 @@ export class RoomManager {
     }
   }
 
-  private unload(room: Room, now: number): void {
+  // The room no one is connected to since the longest, or null. When the server is full, it closes for a city to open,
+  // rather than at the end of its minute: such rooms only spare their players a load when they come back, and a player
+  // could otherwise hold many cities open, joining each of them now and then.
+  private longestEmpty(): Room | null {
+    let oldest: Room | null = null;
+    for (const room of this.rooms.values()) {
+      if (room.clients.size === 0 && room.emptySince !== null &&
+          (oldest === null || room.emptySince < (oldest.emptySince as number)))
+        oldest = room;
+    }
+    return oldest;
+  }
+
+  private unload(room: Room, now: number, reason = 'idle'): void {
     this.guard(room, () => {
-      if (room.dirty)
+      if (room.dirty && this.recheck(room))
         room.save(now);
     });
     if (this.rooms.get(room.id) === room) {
       this.rooms.delete(room.id);
-      this.deps.log.info('room.close', {city: room.publicId, reason: 'idle', rooms: this.rooms.size});
+      this.deps.log.info('room.close', {city: room.publicId, reason, rooms: this.rooms.size});
     }
     this.stopLoopIfIdle();
   }
@@ -360,7 +402,8 @@ export class RoomManager {
     const now = this.deps.clock.now();
     for (const room of [...this.rooms.values()]) {
       try {
-        room.save(now);
+        if (this.recheck(room))
+          room.save(now);
       } catch (error) {
         this.deps.log.error('room.save_error', {city: room.publicId, err: error});
       }

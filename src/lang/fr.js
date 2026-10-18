@@ -709,6 +709,8 @@ var strings = {
     'Quelque chose s\'est mal passé avec cette ville sur le serveur. Réessayez plus tard.',
   'The server is shutting down. The city was saved: please come back in a moment.':
     'Le serveur s\'arrête. La ville a été sauvegardée : revenez dans un moment.',
+  'You were away for a long while, so you were disconnected from this city. You can open it again from the lobby.':
+    'Vous étiez absent depuis longtemps : vous avez été déconnecté de cette ville. Vous pouvez la rouvrir depuis le salon.',
   'That cannot be built there': 'Impossible de construire ça ici',
 
   // The accounts (see AccountScreens)
@@ -789,15 +791,15 @@ var strings = {
   'An account is only needed to play with others. Alone, you play without one, and your cities stay in your browser.':
     'Un compte ne sert qu\'à jouer avec d\'autres. Seul, vous jouez sans compte, et vos villes restent dans votre navigateur.',
   'What the server keeps': 'Ce que le serveur conserve',
-  'Your username, your email address, your password (in a form that cannot be read back), and the sessions of the devices where you are logged in. If you play with others: your shared cities and regions, and who belongs to them. Chat messages are only kept in memory while a city is played.':
-    'Votre nom d\'utilisateur, votre adresse e-mail, votre mot de passe (sous une forme qui ne permet pas de le relire) et les sessions des appareils où vous êtes connecté. Si vous jouez avec d\'autres : vos villes et régions partagées, et qui en fait partie. Les messages du chat ne sont gardés qu\'en mémoire, pendant qu\'une ville est jouée.',
+  'Your username, your email address, your password (in a form that cannot be read back), the language of your emails, the sessions of the devices where you are logged in, when your account was created, changed and last used, its failed logins (to protect it), and a new email address until you confirm it. If you play with others: your shared cities and regions, the ones you are a member of, and the invitations you send and receive. The chat is never stored: the server keeps the last 50 messages of a city in memory while it is open, and forgets them when it closes, at most a minute after its last player leaves.':
+    'Votre nom d\'utilisateur, votre adresse e-mail, votre mot de passe (sous une forme qui ne permet pas de le relire), la langue de vos e-mails, les sessions des appareils où vous êtes connecté, les dates de création, de modification et de dernière connexion de votre compte, ses tentatives de connexion manquées (pour le protéger), et une nouvelle adresse e-mail tant que vous ne l\'avez pas confirmée. Si vous jouez avec d\'autres : vos villes et régions partagées, celles dont vous êtes membre, et les invitations que vous envoyez et recevez. La discussion n\'est jamais enregistrée : le serveur garde en mémoire les 50 derniers messages d\'une ville tant qu\'elle est ouverte, et les oublie quand elle se ferme, au plus une minute après le départ de son dernier joueur.',
   'The server\'s logs record the IP addresses and the accounts behind requests, to protect it against abuse. Old logs are deleted as new ones are written, by the log rotation that the people who run this server set up.':
     'Les journaux du serveur notent les adresses IP et les comptes à l\'origine des requêtes, pour le protéger des abus. Les anciens journaux sont effacés à mesure que de nouveaux s\'écrivent, par la rotation des journaux que les responsables de ce serveur mettent en place.',
   'Backups of the server\'s data, made by the people who run it, keep what they hold until they delete them.':
     'Les sauvegardes des données du serveur, faites par ses responsables, gardent ce qu\'elles contiennent jusqu\'à ce qu\'ils les effacent.',
   'Why': 'Pourquoi',
   'Only to run your account and the cities you play with others: nothing is sold or shared, and there is no advertising and no tracking.':
-    'Uniquement pour faire fonctionner votre compte et les villes que vous jouez avec d\'autres : rien n\'est vendu ni partagé, et il n\'y a ni publicité ni pistage.',
+    'Uniquement pour faire fonctionner votre compte et les villes auxquelles vous jouez avec d\'autres : rien n\'est vendu ni partagé, et il n\'y a ni publicité ni pistage.',
   'Cookies': 'Cookies',
   'A single cookie keeps you logged in. It is strictly necessary, so the game does not ask for your consent. Your browser also remembers your language, your view and your saved city, without sending them anywhere.':
     'Un seul cookie vous garde connecté. Il est strictement nécessaire : le jeu ne demande donc pas votre consentement. Votre navigateur retient aussi votre langue, votre vue et votre ville sauvée, sans les envoyer nulle part.',
@@ -837,10 +839,14 @@ var strings = {
   'Your role in this city is now: {role}.': 'Votre rôle dans cette ville est désormais : {role}.',
   '{name} joined the city.': '{name} a rejoint la ville.',
   '{name} left the city.': '{name} a quitté la ville.',
+  'Not sent yet: the chat takes about one message a second. Send it again in a moment.':
+    'Pas encore envoyé : la discussion prend environ un message par seconde. Renvoyez-le dans un instant.',
   'The city is now called {name}.': 'La ville s\'appelle désormais {name}.',
   'The yearly budget was applied with the current rates.': 'Le budget annuel a été appliqué avec les taux actuels.',
   'Shared city': 'Ville partagée',
   'Joining the city…': 'Connexion à la ville…',
+  'The city cannot be reached for now. Shared cities may be open in too many tabs (3 at most), or the server may be busy or stopped. The game keeps trying.':
+    'La ville est injoignable pour l\'instant. Des villes partagées sont peut-être ouvertes dans trop d\'onglets (3 au plus), ou le serveur est peut-être occupé ou arrêté. Le jeu réessaie.',
   'The game was updated on the server. Please reload the page.':
     'Le jeu a été mis à jour sur le serveur. Rechargez la page.',
   'Download a copy': 'Télécharger une copie',
@@ -934,10 +940,10 @@ var strings = {
   'The city {city} was deleted.': 'La ville {city} a été supprimée.',
   'The copy of the city was saved in the file {file}.': 'La copie de la ville a été enregistrée dans le fichier {file}.',
   'Row {row}, column {column}': 'Ligne {row}, colonne {column}',
-  'Take out of the region': 'Sortir de la région',
+  'Take out of the region': 'Retirer de la région',
   'Take {city} out of the region? It cannot come back to this place.':
-    'Sortir {city} de la région ? Elle ne pourra pas revenir à cette place.',
-  'Take it out': 'La sortir',
+    'Retirer {city} de la région ? Elle ne pourra pas revenir à cette place.',
+  'Take it out': 'La retirer',
   'Free place': 'Place libre',
   'Build here': 'Bâtir ici',
   'Remove {name} from the region? Their cities leave it.': 'Retirer {name} de la région ? Ses villes la quittent.',
@@ -950,6 +956,10 @@ var strings = {
     'Le serveur n\'a pas pu ouvrir cette ville. Choisissez une autre carte ou une autre ville.',
   'You own as many shared cities as you can: delete one of them to make another.':
     'Vous possédez déjà autant de villes partagées que possible : supprimez-en une pour en fonder une autre.',
+  'You already own {count} shared cities, as many as you can: delete one of them to make another.':
+    'Vous possédez déjà {count} villes partagées, autant que possible : supprimez-en une pour en fonder une autre.',
+  '{city} is no longer in this place: nothing was taken out. Here is the region as it is now.':
+    '{city} n\'est plus à cette place : rien n\'a été retiré. Voici la région telle qu\'elle est maintenant.',
   'Another city was built on this place meanwhile. Choose another place.':
     'Une autre ville a été bâtie sur cette place entre-temps. Choisissez-en une autre.',
   'The city {city} was created.': 'La ville {city} a été fondée.',

@@ -5,13 +5,15 @@
  *
  */
 
-// Lengths the game's forms check as the server does (sent to the game by GET /api/session), in Unicode code points
+// What the game's forms check as the server does (sent to the game by GET /api/session): lengths, in Unicode code
+// points, and how many shared cities a player may own (those of regions included)
 export const LIMITS = Object.freeze({
   passwordMin: 12,
   passwordMax: 128,
   usernameMin: 3,
   usernameMax: 20,
   cityNameMax: 15,
+  ownedCities: 5,
 });
 
 // Request body sizes

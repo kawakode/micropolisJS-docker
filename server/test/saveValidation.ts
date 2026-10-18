@@ -8,7 +8,10 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { Storage } from '../../src/storage.js';
-import { fromClassicValue } from '../../src/tileFlags';
+import { BULLBIT, BURNBIT, CONDBIT, fromClassicValue, POWERBIT, ZONEBIT } from '../../src/tileFlags';
+import { AIRPORT, FIRESTATION, FULLSTADIUM, HOSPITAL, IZB, NUCLEAR, POLICESTATION, POWERPLANT, ROADS, STADIUM,
+         UNIVERSITY, WINDTURBINE } from '../../src/tileValues';
+import { ZoneUtils } from '../../src/zoneUtils.js';
 import { createHeadlessCity } from '../game/headless';
 import { checkText, cleanText } from '../game/names';
 import { prepareCity, SaveError, validateSave } from '../game/saveValidation';
@@ -203,8 +206,65 @@ describe('Crafted saves are refused', () => {
     expect(variant(save => { save.map[5] = [2]; })).toBe('map');
     expect(variant(save => { save.map[5] = null; })).toBe('map');
     expect(variant(save => { save.map[5] = {}; })).toBe('map');
-    // The flags of a tile with power, a zone's centre... are all fine
-    expect(variant(save => { save.map[5] = {value: 0x1FFFF & ~0x7FF | 2}; })).toBeNull();
+    // The flags of a tile with power, that burns, conducts... are all fine (a zone's centre: see below)
+    expect(variant(save => { save.map[5] = {value: 0x1FFFF & ~0x7FF & ~ZONEBIT | 2}; })).toBeNull();
+  });
+
+  test('Zones: a tile marked as a zone\'s centre is one, with its whole zone on the map', () => {
+    const flags = ZONEBIT | BULLBIT | CONDBIT | BURNBIT;
+    const at = (x: number, y: number) => y * 120 + x;
+    const zone = (x: number, y: number, centre: number) =>
+      variant(save => { save.map[at(x, y)] = {value: centre | flags}; });
+    // On the first or last row or column, the zone would reach beyond the map (the game's code then fails)
+    expect(zone(10, 0, HOSPITAL)).toBe('map');
+    expect(zone(10, 99, POLICESTATION)).toBe('map');
+    expect(zone(0, 50, FIRESTATION)).toBe('map');
+    expect(zone(119, 50, IZB + 36)).toBe('map');
+    expect(variant(save => { save.map[at(12, 0)] = {value: 60053}; })).toBe('map');
+    expect(zone(1, 1, HOSPITAL)).toBeNull();
+    expect(zone(118, 98, POLICESTATION)).toBeNull();
+    // Bigger buildings: 4x4 and 6x6 from one tile above and left of the centre; a wind turbine is its own tile
+    expect(zone(118, 50, POWERPLANT)).toBe('map');
+    expect(zone(117, 97, POWERPLANT)).toBeNull();
+    expect(zone(115, 95, AIRPORT)).toBeNull();
+    expect(zone(116, 50, AIRPORT)).toBe('map');
+    expect(zone(0, 0, WINDTURBINE)).toBeNull();
+    // A road, water, a part of a zone that is not its centre: not a zone's centre
+    expect(zone(50, 50, ROADS)).toBe('map');
+    expect(zone(50, 50, 2)).toBe('map');
+    expect(zone(50, 50, UNIVERSITY + 1)).toBe('map');
+  });
+
+  test('Buildings: a centre the simulation acts on by its value has its whole building on the map, marked or not', () => {
+    const flags = BULLBIT | CONDBIT | BURNBIT | POWERBIT;
+    const at = (x: number, y: number) => y * 120 + x;
+    const unmarked = (x: number, y: number, centre: number) =>
+      variant(save => { save.map[at(x, y)] = {value: centre | flags}; });
+    // A stadium's game, or its end, rebuilds it whole; a nuclear plant may melt down around it
+    expect(unmarked(60, 99, FULLSTADIUM)).toBe('map');
+    expect(unmarked(0, 50, FULLSTADIUM)).toBe('map');
+    expect(unmarked(60, 0, STADIUM)).toBe('map');
+    expect(unmarked(0, 0, NUCLEAR)).toBe('map');
+    expect(unmarked(1, 1, STADIUM)).toBeNull();
+    expect(unmarked(117, 97, NUCLEAR)).toBeNull();
+    expect(unmarked(0, 0, WINDTURBINE)).toBeNull();
+
+    // Every value the simulation's map scanner and repair manager act on, of a building bigger than its centre
+    type Actions = {_actions: {criterion: unknown}[]};
+    const simulation = createHeadlessCity(freshCitySave('Newtown', 0, 1)).simulation as unknown as
+      {_mapScanner: Actions; _repairManager: Actions};
+    const values = [...simulation._mapScanner._actions, ...simulation._repairManager._actions]
+      .map(action => action.criterion).filter((criterion): criterion is number => typeof criterion === 'number')
+      .filter(value => (ZoneUtils as unknown as {getZoneSize(v: number): number}).getZoneSize(value) > 1);
+    expect(values.length).toBeGreaterThanOrEqual(20);
+    for (const value of values)
+      expect([value, unmarked(119, 99, value)]).toEqual([value, 'map']);
+  });
+
+  test('A stadium on the edge of the map is refused before its city is kept', () => {
+    const save = sampleCity('kobe');
+    (save.map as {value: number}[])[99 * 120 + 60] = {value: FULLSTADIUM | BULLBIT | CONDBIT | BURNBIT | POWERBIT};
+    expect(() => prepareCity(save, {name: 'Edge', level: 0})).toThrow(new SaveError('map'));
   });
 
   test('Keys the game does not write, prototype keys included', () => {
@@ -253,6 +313,31 @@ describe('Crafted saves are refused', () => {
     expect(Object.keys(prepared.edgeState)).toEqual(['north', 'east', 'south', 'west']);
     expect(() => prepareCity({}, {name: 'X', level: 0})).toThrow(SaveError);
   });
+
+  test('The population is counted from the map, whatever the save claims; a claimed one is never taxed', () => {
+    const ghost = Object.assign(freshCitySave('Ghost', 0, 2), {cityPop: 2147483647, cityClass: 'MEGALOPOLIS',
+                                                               totalPop: 0, _speed: 0});
+    const prepared = prepareCity(ghost, {name: 'Ghost', level: 0});
+    expect(prepared.population).toBe(0);
+    expect(JSON.parse(prepared.saveText)).toMatchObject({cityPop: 0, cityClass: 'VILLAGE', totalPop: 0});
+
+    // A real city keeps the population of its map
+    const kobe = prepareCity(Object.assign(sampleCity('kobe'), {cityPop: 1, resPop: 0, comPop: 0}),
+                             {name: 'Kobe', level: 0});
+    expect(kobe.population).toBeGreaterThan(10000);
+    expect(prepareCity(sampleCity('kobe'), {name: 'Kobe', level: 0}).population).toBe(kobe.population);
+
+    // A claimed census taxed at the first year's end, in a city with little money
+    const rich = Object.assign(sampleCity('kowloon'), {totalPop: 2147483647, cityTax: 20, _cityTime: 47,
+                                                       totalFunds: 1000});
+    const city = createHeadlessCity(JSON.parse(prepareCity(rich, {name: 'Rich', level: 0}).saveText),
+                                    {random: seededRandom(1), paused: false});
+    for (let i = 0; i < 20; i++)
+      city.step();
+    expect(city.simulation.budget.totalFunds).toBeLessThan(1000000);
+    // Its own copy can be shared again
+    expect(prepareCity(city.save(), {name: 'Rich', level: 0}).population).toBeGreaterThan(0);
+  });
 });
 
 describe('Names', () => {
@@ -264,5 +349,18 @@ describe('Names', () => {
     expect(checkText(' ​ ', 3)).toEqual({ok: false, reason: 'required'});
     expect(checkText(12, 3)).toEqual({ok: false, reason: 'invalid'});
     expect(checkText('x'.repeat(100), 15)).toEqual({ok: false, reason: 'too_long'});
+  });
+
+  test('A name or a chat line must show something: characters that show nothing are left out, or refused alone', () => {
+    // Hangul fillers, the braille blank, the combining grapheme joiner, a Khmer and a Mongolian invisible, marks alone
+    for (const text of ['\u3164', '\uFFA0', '\u115F\u1160', '\u2800\u2800', '\u034F', '\u17B4', '\u180B',
+                        '\u0301\u0301', ' \u3164 ', '\u2800 \u3164'])
+      expect([text, checkText(text, 30)]).toEqual([text, {ok: false, reason: 'required'}]);
+    expect(checkText('Bob\u3164town', 15)).toEqual({ok: true, text: 'Bobtown'});
+    expect(checkText('\u0301Ville', 15)).toEqual({ok: true, text: 'Ville'});
+    expect(checkText('\u2800x', 15)).toEqual({ok: true, text: '\u2800x'});
+    // Variation selectors stay, with what they belong to
+    expect(checkText('\u00c9t\u00e9 \u2764\uFE0F', 15)).toEqual({ok: true, text: '\u00c9t\u00e9 \u2764\uFE0F'});
+    expect(checkText('.', 15)).toEqual({ok: true, text: '.'});
   });
 });

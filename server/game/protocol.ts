@@ -34,7 +34,7 @@ export type KickReason = keyof typeof KICK_TEXTS;
 
 // The WebSocket close codes the server uses
 export const CLOSE = Object.freeze({
-  // Kicked: the city was deleted, the player removed from it, or logged out
+  // Kicked: the city was deleted, the player removed from it, logged out, or away too long
   normal: 1000,
   // The server stops
   goingAway: 1001,

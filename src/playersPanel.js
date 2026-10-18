@@ -8,6 +8,7 @@
 import $ from "jquery";
 
 import { I18n } from './i18n.js';
+import { TextRules } from './textRules.js';
 
 // The panel of a shared city's players, opened from the heads-up display's Players button: who belongs to the city
 // (name, role, colour, online or not), the chat, the state of the connection, and the way back to the lobby. It is
@@ -33,18 +34,15 @@ var isObject = function(value) {
 };
 
 
-// A chat message as the server takes it: in NFC, without control and format characters, trimmed, at most MAX_CHAT
-// characters. '' when nothing is left.
+// A chat message as the server takes it (see TextRules): in NFC, without control and format characters nor others that
+// show nothing, trimmed, at most MAX_CHAT characters. '' when nothing that shows is left.
 var cleanChat = function(text) {
-  if (typeof(text) !== 'string')
-    return '';
-
-  var cleaned = text.normalize('NFC').replace(/[\p{Cc}\p{Cf}]/gu, '').trim();
+  var cleaned = TextRules.clean(text);
   var characters = Array.from(cleaned);
   if (characters.length > MAX_CHAT)
     cleaned = characters.slice(0, MAX_CHAT).join('').trim();
 
-  return cleaned;
+  return TextRules.shows(cleaned) ? cleaned : '';
 };
 
 
@@ -262,21 +260,19 @@ PlayersPanel.prototype._renderPlayers = function() {
 };
 
 
-// The chat of a welcome: the log starts again with it. Only the messages after the newest one already seen count as
-// unread.
+// The chat of a welcome. The first fills the log; after a reconnection, only the messages after the newest one already
+// shown are added (the log is read out as it grows: what it said is not said again, nor are its notices lost), and
+// they count as unread.
 PlayersPanel.prototype.setChat = function(messages, ownId) {
   this._ownId = ownId;
   var newest = this._newest;
-  $('#chatLog').empty();
-  this._lines = 0;
 
   (Array.isArray(messages) ? messages : []).forEach(function(message) {
     var entry = chatEntry(message);
-    if (entry === null)
+    if (entry === null || (newest !== null && (entry.at === null || entry.at <= newest)))
       return;
 
-    var unread = newest !== null && entry.at !== null && entry.at > newest;
-    this._addLine(entry, unread);
+    this._addLine(entry, newest !== null);
   }, this);
 };
 

@@ -46,6 +46,8 @@ Evaluation.prototype.cityEvaluation = function(simData) {
   } else {
     this.evalInit();
     this.cityYes = 50;
+    // KawaCity: the score went back to its start, and the display follows
+    this._emitEvent(SCORE_UPDATED, this.cityScore);
   }
 };
 

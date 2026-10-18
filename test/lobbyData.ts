@@ -80,6 +80,11 @@ describe("The lobby's names", () => {
         expect(LobbyData.checkName("\u{1F3D9}".repeat(15), 15).reason).toBeNull();
         expect(LobbyData.checkName("r".repeat(30), LobbyData.REGION_NAME_MAX).reason).toBeNull();
         expect(LobbyData.checkName(42, 15).reason).toBe("required");
+        // Something must show: Hangul fillers, the braille blank, the combining grapheme joiner, marks alone do not
+        ["\u3164", "\uFFA0", "\u115F\u1160", "\u2800\u2800", "\u034F", "\u17B4", "\u180B", "\u0301\u0301"]
+            .forEach(name => expect([name, LobbyData.checkName(name, 15).reason]).toEqual([name, "required"]));
+        expect(LobbyData.checkName("Bob\u3164town", 15)).toEqual({text: "Bobtown", reason: null});
+        expect(LobbyData.checkName("\u0301Ville", 15)).toEqual({text: "Ville", reason: null});
     });
 
     it("of players to invite are trimmed, and not too long", () => {
@@ -202,7 +207,9 @@ describe("The lobby's answers from the server", () => {
                 {x: 3, y: 0, city: {id: D(4), name: "Out", ownerName: "x", population: 1, role: "owner"}},
                 {x: 1, y: 0, city: {id: "bad"}}
             ],
-            members: [{id: D(5), username: "bob"}, {id: D(6), username: "alice"}, {id: "x", username: "y"}],
+            // The owner is the one the server says (a flag that is not true is not one)
+            members: [{id: D(5), username: "bob", owner: "yes"}, {id: D(6), username: "alice", owner: true},
+                      {id: "x", username: "y", owner: true}],
             invitations: [{id: D(7), username: "carol", userId: D(8), createdAt: 2}]
         };
         const detail = LobbyData.regionDetail(answer) as any;
@@ -341,5 +348,33 @@ describe("A new shared city", () => {
         expect(LobbyData.creationRequest("Springfield", 1, save, {region: {id: ID, name: "Valley"}, x: 2, y: 3}))
             .toEqual({name: "Springfield", level: 1, save, region: {id: ID, x: 2, y: 3}});
         expect(LobbyData.creationRequest("S", 5, save, null).level).toBe(0);
+    });
+});
+
+
+describe("Changes sent once the player stops making them", () => {
+
+    afterEach(() => jest.useRealTimers());
+
+    it("wait, start again when changed meanwhile, and are all sent at once when what shows them closes", () => {
+        jest.useFakeTimers();
+        const sent: [string, boolean][] = [];
+        const waiting = new LobbyData.Waiting(600);
+        waiting.later("bob", (closing: boolean) => sent.push(["bob viewer", closing]));
+        jest.advanceTimersByTime(500);
+        waiting.later("bob", (closing: boolean) => sent.push(["bob player", closing]));
+        jest.advanceTimersByTime(500);
+        expect(sent).toEqual([]);
+        jest.advanceTimersByTime(100);
+        expect(sent).toEqual([["bob player", false]]);
+
+        // The card closes within the wait: the change is sent then, once
+        waiting.later("carol", (closing: boolean) => sent.push(["carol viewer", closing]));
+        jest.advanceTimersByTime(100);
+        waiting.now();
+        jest.advanceTimersByTime(1000);
+        expect(sent).toEqual([["bob player", false], ["carol viewer", true]]);
+        waiting.now();
+        expect(sent).toHaveLength(2);
     });
 });

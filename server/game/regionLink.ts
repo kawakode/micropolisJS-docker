@@ -18,11 +18,11 @@ import type { RemoteInfo, Room, RoomPlacement } from './room';
 // they have at the edge facing this city (edge_state: their links, whether they send power, the deals they signed).
 // Facing sides: north and south, east and west.
 //
-// A room stores its city's edges after each scan of the power grid and each deal (see Room.updateEdge): the rooms
-// beside it then look at their neighbours again, and send them in their stats. When a city enters or leaves a slot
-// (a city made there, a slot cleared, a member removed, the region deleted), the deals between it and the cities
-// beside it end, in the same transaction, on both sides: in the room if it is open, else in the stored save, and in
-// edge_state.
+// A room works its city's edges out again after each scan of the power grid and each deal (see Room.updateEdge): the
+// rooms beside it then look at their neighbours again, and send them in their stats. The edges are stored with the
+// city's save. When a city enters or leaves a slot (a city made there, a slot cleared, a member removed, the region
+// deleted), the deals between it and the cities beside it end, in the same transaction, on both sides: in the room if
+// it is open (saved at once), else in the stored save, and in edge_state.
 
 export const FACING: Readonly<Record<string, string>> = {north: 'south', south: 'north', east: 'west', west: 'east'};
 
@@ -164,8 +164,9 @@ export class RegionLink {
     }
   }
 
-  // Ends the deals of a city with the neighbours of these sides: in its room if it is open, else in its stored save
-  // and edges
+  // Ends the deals of a city with the neighbours of these sides: in its room if it is open (which saves it at once, in
+  // the transaction that moves the cities: a room that closed without saving later cannot bring the deals back), else
+  // in its stored save and edges
   clearSides(cityId: number, sides: readonly string[]): void {
     if (sides.length === 0)
       return;
@@ -173,6 +174,7 @@ export class RegionLink {
     const room = this.rooms.get(cityId);
     if (room) {
       room.clearDeals(sides);
+      room.save(this.clock.now());
       return;
     }
 

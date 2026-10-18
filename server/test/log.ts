@@ -6,7 +6,7 @@
  */
 
 import { FakeClock } from '../clock';
-import { createLogger, LogLevel } from '../log';
+import { captureConsole, createLogger, LogLevel } from '../log';
 
 const capture = (level: LogLevel = 'info') => {
   const clock = new FakeClock(Date.UTC(2026, 9, 18, 12, 0, 0));
@@ -124,5 +124,25 @@ describe('Log', () => {
                                                                              windowStart: '2026-10-18T12:00:00.000Z'});
     log.security('rate_limited', 'key 18999');
     expect(lines.length).toBe(1 + 19000 + 1);
+  });
+
+  test('The console goes to the log: the game\'s warnings, once a minute per message, never on stderr', () => {
+    const {clock, lines, log} = capture();
+    const target = {warn: (..._args: unknown[]) => { throw new Error('not captured'); },
+                    error: (..._args: unknown[]) => { throw new Error('not captured'); }};
+    captureConsole(log, target);
+    for (let y = 0; y < 1000; y++)
+      target.warn('getTile called with bad bounds', 5, y - 1);
+    target.error('Unable to read saved game', new Error('bad'));
+    expect(lines).toEqual([
+      expect.objectContaining({level: 'warn', event: 'game.console', message: 'getTile called with bad bounds 5 -1'}),
+      expect.objectContaining({level: 'error', event: 'game.console', message: 'Unable to read saved game bad'}),
+    ]);
+    clock.advance(61 * 1000);
+    target.warn('getTile called with bad bounds', 1, 1);
+    expect(lines.slice(2)).toEqual([
+      expect.objectContaining({event: 'game.console', suppressed: 999}),
+      expect.objectContaining({event: 'game.console', message: 'getTile called with bad bounds 1 1'}),
+    ]);
   });
 });

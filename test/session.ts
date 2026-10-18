@@ -6,7 +6,7 @@ const SESSION = {
     publicUrl: "https://kawacity.example.org",
     operator: "Jane <jane@example.org>",
     build: "abc123",
-    limits: {passwordMin: 12, passwordMax: 128, usernameMin: 3, usernameMax: 20, cityNameMax: 15}
+    limits: {passwordMin: 12, passwordMax: 128, usernameMin: 3, usernameMax: 20, cityNameMax: 15, ownedCities: 5}
 };
 
 const ALICE = {id: "AAAAAAAAAAAAAAAAAAAAAA", username: "alice", email: "alice@example.org", locale: "en", createdAt: 1};
@@ -59,8 +59,9 @@ describe("The session", () => {
 
     it("keeps the server's limits, or the usual ones", () => {
         const {Session} = page();
-        expect(Session.parse({...SESSION, limits: {passwordMin: 16, usernameMax: "20", cityNameMax: -1}}).limits)
-            .toEqual({...SESSION.limits, passwordMin: 16});
+        expect(Session.parse({...SESSION, limits: {passwordMin: 16, usernameMax: "20", cityNameMax: -1,
+                                                   ownedCities: 3}}).limits)
+            .toEqual({...SESSION.limits, passwordMin: 16, ownedCities: 3});
         expect(Session.parse({...SESSION, limits: undefined}).limits).toEqual(Session.DEFAULT_LIMITS);
     });
 
