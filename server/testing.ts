@@ -5,6 +5,7 @@
  *
  */
 
+import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import http, { IncomingHttpHeaders, OutgoingHttpHeaders } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -17,6 +18,7 @@ import { Database, migrate } from './db/database';
 import { MIGRATIONS } from './db/migrations';
 import { loadStaticFiles } from './http/static';
 import { createLogger } from './log';
+import { Mailer, MemoryTransport, NO_SENDER } from './mail/mailer';
 
 // Helpers for the server's tests (server/test/): a configuration, a game directory, a database, and an app listening
 // on a free port of 127.0.0.1. Nothing reaches the network.
@@ -146,25 +148,34 @@ export interface TestApp {
   config: Config;
   // The log's lines, parsed
   logs: any[];
+  // The mails sent, when mail is configured (SMTP_HOST or MAIL_TRANSPORT=log: tests send to memory instead)
+  mailbox: MemoryTransport;
+  mailer: Mailer | null;
+  // Waits for the work done after answers (context.defer) and for the mails queued
+  settle(): Promise<void>;
   request(rawPath: string, options?: TestRequest): Promise<TestResponse>;
   // A POST from the game's page: Origin and Content-Type set
   post(rawPath: string, body: unknown, headers?: OutgoingHttpHeaders): Promise<TestResponse>;
   close(): Promise<void>;
 }
 
-// The app's log is kept in memory, every level of it
+// The app's log is kept in memory, every level of it; so are its mails, when mail is configured
 export async function startTestApp(env: Env = {}, deps: Partial<AppDeps> = {}): Promise<TestApp> {
   const config = testConfig({LOG_LEVEL: 'debug', ...env});
   const clock = new FakeClock();
   const db = deps.db ?? testDatabase();
   const logs: any[] = [];
   const log = createLogger({level: config.logLevel, clock, write: line => logs.push(JSON.parse(line))});
+  const mailbox = new MemoryTransport();
+  const mailer = deps.mailer !== undefined ? deps.mailer : config.mailTransport === 'none' ? null :
+    new Mailer({transport: mailbox, from: config.mailFrom ?? NO_SENDER, clock, log, maxPerHour: config.mailMaxPerHour});
   const app = createApp(config, {
     clock,
     db,
     log,
     staticFiles: deps.staticFiles ?? loadStaticFiles(makeStaticDirectory()),
-    mailer: deps.mailer,
+    mailer,
+    defer: deps.defer,
   });
 
   await new Promise<void>(resolve => app.server.listen(0, '127.0.0.1', () => resolve()));
@@ -177,6 +188,12 @@ export async function startTestApp(env: Env = {}, deps: Partial<AppDeps> = {}): 
     db,
     config,
     logs,
+    mailbox,
+    mailer,
+    settle: async () => {
+      await new Promise(resolve => setImmediate(resolve));
+      await mailer?.idle();
+    },
     request: (rawPath, options) => request(url, rawPath, options),
     post: (rawPath, body, headers = {}) => request(url, rawPath, {
       method: 'POST',
@@ -191,4 +208,29 @@ export async function startTestApp(env: Env = {}, deps: Partial<AppDeps> = {}): 
   };
   openApps.add(testApp);
   return testApp;
+}
+
+// The number that solves a captcha challenge (as the game's worker finds it)
+export function solveCaptcha(challenge: {salt: string; challenge: string; maxnumber: number}): number {
+  for (let n = 0; n <= challenge.maxnumber; n++) {
+    if (createHash('sha256').update(challenge.salt + n).digest('hex') === challenge.challenge)
+      return n;
+  }
+  throw new Error('captcha not solvable');
+}
+
+// A solved captcha for a form, as the game sends it
+export async function solvedCaptcha(t: TestApp, action: string, headers: OutgoingHttpHeaders = {}) {
+  const response = await t.request('/api/captcha?action=' + action, {headers});
+  if (response.status !== 200)
+    throw new Error(`captcha: ${response.status} ${response.text}`);
+  const {salt, challenge, maxnumber, signature} = response.json;
+  return {salt, challenge, maxnumber, number: solveCaptcha(response.json), signature};
+}
+
+// The session cookie a response sets ('name=value'), or null
+export function sessionCookie(response: TestResponse): string | null {
+  const header = response.headers['set-cookie'];
+  const cookie = (header ?? []).find(line => /^(__Host-)?kc_session=[^;]+/.test(line));
+  return cookie ? cookie.split(';')[0] : null;
 }

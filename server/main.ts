@@ -16,6 +16,7 @@ import { Database, migrate, MigrationResult } from './db/database';
 import { MIGRATIONS } from './db/migrations';
 import { loadStaticFiles, StaticFiles } from './http/static';
 import { createLogger, Logger } from './log';
+import { createMailer } from './mail/mailer';
 
 // The server's entry point (bundled into build/server/main.cjs). The only module that reads the environment and the
 // command line: with arguments, it runs an admin command (see admin/commands.ts); without, it starts the server.
@@ -88,8 +89,8 @@ function warnAboutConfig(config: Config, log: Logger): void {
                                       'unencrypted. Use https (behind a reverse proxy) when others play here.'});
 
   if (config.mailTransport === 'log')
-    log.warn('mail.log', {message: 'MAIL_TRANSPORT=log: mails, and the links in them, are written to this log ' +
-                                   'instead of being sent. For development only.'});
+    log.warn('config.mail_log', {message: 'MAIL_TRANSPORT=log: mails, and the links in them, are written to this ' +
+                                          'log instead of being sent. For development only.'});
   else if (config.mailTransport === 'none')
     log.info('mail.none', {message: 'SMTP_HOST is not set, so no mail is sent: players cannot create accounts or ' +
                                     'reset their passwords. Accounts can be made with the admin commands (see ' +
@@ -151,7 +152,8 @@ async function serve(config: Config, log: Logger): Promise<number> {
     return 1;
   }
 
-  const app = createApp(config, {clock, db, log, staticFiles});
+  const mailer = createMailer(config, {clock, log});
+  const app = createApp(config, {clock, db, log, staticFiles, mailer});
   app.runPurge();
 
   try {

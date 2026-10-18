@@ -10,9 +10,12 @@ import path from 'node:path';
 import type { Clock } from '../clock';
 import type { Config } from '../config';
 import { Database, fileTimestamp } from '../db/database';
+import { BAD_USAGE, FAILED, OK } from './exitCodes';
+import { USER_COMMANDS } from './userCommands';
 
 // Admin commands, run from the server's bundle instead of starting the server, for instance:
 //   docker compose exec kawacity node server/main.cjs backup
+// The account commands (user add, user reset, user delete, user list, mail-test) are in userCommands.ts.
 // They work next to a running server (SQLite takes care of the locking), and never open a port.
 //
 // A command is registered under the words that name it ('backup', 'user add'); the words that follow are its
@@ -37,10 +40,7 @@ export interface AdminCommand {
   run(args: readonly string[], context: AdminContext): number | Promise<number>;
 }
 
-// Exit codes
-export const OK = 0;
-export const FAILED = 1;
-export const BAD_USAGE = 2;
+export { BAD_USAGE, FAILED, OK } from './exitCodes';
 
 const commands = new Map<string, AdminCommand>();
 
@@ -127,3 +127,5 @@ registerCommand({
     return OK;
   },
 });
+
+USER_COMMANDS.forEach(registerCommand);

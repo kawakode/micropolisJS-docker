@@ -130,6 +130,16 @@
               <p class="splashHint" data-i18n>Drag to build roads and zones, right-drag or use the arrow keys to move around, and the mouse wheel to zoom.</p>
             </div>
           </div>
+          <div id="accountStrip" class="accountStrip">
+            <p id="accountStatus" class="accountStatus" role="status"></p>
+            <div id="accountButtons" class="accountButtons">
+              <button type="button" id="accountLogin" class="button small" data-i18n>Log in</button>
+              <button type="button" id="accountRegister" class="button small" data-i18n>Create an account</button>
+              <button type="button" id="accountOpen" class="button small accountOpen"><span class="srOnly" data-i18n>Your account:</span> <span id="accountOpenName"></span></button>
+            </div>
+            <p id="accountAdminOnly" class="accountNote" data-i18n>Accounts on this server are created by its administrator.</p>
+            <p id="accountElsewhere" class="accountNote"></p>
+          </div>
           <div class="credits">
             <p data-i18n-html="credits">KawaCity by <a href="https://github.com/kawakode" target="_blank" rel="noopener">kawakode</a>, based on <a href="https://github.com/graememcc/micropolisJS" target="_blank" rel="noopener">micropolisJS</a> by <a href="http://www.graememcc.co.uk" target="_blank" rel="noopener">Graeme McCutcheon</a> and <a href="https://github.com/graememcc/micropolisJS/graphs/contributors" target="_blank" rel="noopener">contributors</a>, a port of the open-source city simulator Micropolis. &middot; <a href="about.html" target="_blank" rel="noopener">About</a> &middot; <a href="https://github.com/kawakode/micropolisJS-docker" target="_blank" rel="noopener">GitHub</a></p>
             <p class="nameLicense">Micropolis is a registered trademark of <a href="https://www.micropolis.com" target="_blank" rel="noopener">Micropolis Corporation (Micropolis GmbH)</a> and is licensed here as a courtesy of the owner under the <a href="name_license.html" target="_blank" rel="noopener">Micropolis Public Name License</a>.</p>
@@ -175,6 +185,207 @@
             </div>
           </form>
         </div>
+
+        <!-- Accounts (see AccountScreens): only shown when the game's server offers them -->
+        <section id="loginCard" class="card centred accountCard" aria-labelledby="loginTitle">
+          <h2 id="loginTitle" class="cardTitle" tabindex="-1" data-i18n>Log in</h2>
+          <p id="loginNote" class="cardNote" role="status"></p>
+          <form id="loginForm" class="accountForm" novalidate>
+            <label for="loginName" class="fieldLabel" data-i18n>Username or email address</label>
+            <input id="loginName" name="login" type="text" required autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254">
+            <label for="loginPassword" class="fieldLabel" data-i18n>Password</label>
+            <div class="passwordField">
+              <input id="loginPassword" name="password" type="password" required autocomplete="current-password">
+              <button type="button" class="button small passwordToggle" aria-controls="loginPassword" aria-pressed="false" data-i18n>Show</button>
+            </div>
+            <p class="formLinks"><button type="button" id="loginForgot" class="linkButton" data-i18n>Forgot password?</button></p>
+            <p id="loginCaptcha" class="captchaStatus" role="status"></p>
+            <p class="formError splashError" role="alert"></p>
+            <div class="modalButtons">
+              <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+              <button type="submit" class="button primary accountSubmit" data-i18n>Log in</button>
+            </div>
+          </form>
+          <p id="loginRegister" class="cardFooter"><span data-i18n>No account yet?</span> <button type="button" id="loginRegisterButton" class="linkButton" data-i18n>Create an account</button></p>
+        </section>
+
+        <section id="registerCard" class="card centred accountCard" aria-labelledby="registerTitle">
+          <h2 id="registerTitle" class="cardTitle" tabindex="-1" data-i18n>Create an account</h2>
+          <form id="registerForm" class="accountForm" novalidate>
+            <p class="cardText" data-i18n>Enter your email address: we will send you a link to choose your username and password.</p>
+            <label for="registerEmail" class="fieldLabel" data-i18n>Email address</label>
+            <input id="registerEmail" name="email" type="email" required autocomplete="email" maxlength="254">
+            <div class="honeypot" aria-hidden="true">
+              <label for="registerWebsite">Website</label>
+              <input id="registerWebsite" name="website" type="text" tabindex="-1" autocomplete="off">
+            </div>
+            <p class="cardText smallPrint"><span data-i18n>Your address is only used for your account.</span> <button type="button" class="linkButton privacyLink" data-i18n>Privacy</button></p>
+            <p id="registerCaptcha" class="captchaStatus" role="status"></p>
+            <p class="formError splashError" role="alert"></p>
+            <div class="modalButtons">
+              <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+              <button type="submit" class="button primary accountSubmit" data-i18n>Send the link</button>
+            </div>
+          </form>
+          <div id="registerDone" class="accountDone">
+            <p id="registerDoneText" class="cardText" role="status"></p>
+            <div class="modalButtons">
+              <button type="button" class="button primary accountBack" data-i18n>OK</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="signupCard" class="card centred accountCard" aria-labelledby="signupTitle">
+          <h2 id="signupTitle" class="cardTitle" tabindex="-1" data-i18n>Finish creating your account</h2>
+          <form id="signupForm" class="accountForm" novalidate>
+            <p class="cardText" data-i18n>Choose your username and your password. Your username is public: the other players see it.</p>
+            <label for="signupUsername" class="fieldLabel" data-i18n>Username</label>
+            <input id="signupUsername" name="username" type="text" required autocomplete="username" autocapitalize="none" spellcheck="false" aria-describedby="signupUsernameHint">
+            <p id="signupUsernameHint" class="fieldHint usernameHint"></p>
+            <label for="signupPassword" class="fieldLabel" data-i18n>Password</label>
+            <div class="passwordField">
+              <input id="signupPassword" name="password" type="password" required autocomplete="new-password" aria-describedby="signupPasswordHint">
+              <button type="button" class="button small passwordToggle" aria-controls="signupPassword" aria-pressed="false" data-i18n>Show</button>
+            </div>
+            <p id="signupPasswordHint" class="fieldHint passwordHint" data-for="signupPassword"></p>
+            <p class="formError splashError" role="alert"></p>
+            <div class="modalButtons">
+              <button type="button" class="button cancel accountBack" data-i18n>Cancel</button>
+              <button type="submit" class="button primary accountSubmit" data-i18n>Create my account</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="forgotCard" class="card centred accountCard" aria-labelledby="forgotTitle">
+          <h2 id="forgotTitle" class="cardTitle" tabindex="-1" data-i18n>Forgot password?</h2>
+          <form id="forgotForm" class="accountForm" novalidate>
+            <p class="cardText" data-i18n>Enter the email address of your account: we will send you a link to choose a new password.</p>
+            <label for="forgotEmail" class="fieldLabel" data-i18n>Email address</label>
+            <input id="forgotEmail" name="email" type="email" required autocomplete="email" maxlength="254">
+            <div class="honeypot" aria-hidden="true">
+              <label for="forgotWebsite">Website</label>
+              <input id="forgotWebsite" name="website" type="text" tabindex="-1" autocomplete="off">
+            </div>
+            <p id="forgotCaptcha" class="captchaStatus" role="status"></p>
+            <p class="formError splashError" role="alert"></p>
+            <div class="modalButtons">
+              <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+              <button type="submit" class="button primary accountSubmit" data-i18n>Send the link</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="resetCard" class="card centred accountCard" aria-labelledby="resetTitle">
+          <h2 id="resetTitle" class="cardTitle" tabindex="-1" data-i18n>Choose a new password</h2>
+          <form id="resetForm" class="accountForm" novalidate>
+            <label for="resetPassword" class="fieldLabel" data-i18n>New password</label>
+            <div class="passwordField">
+              <input id="resetPassword" name="password" type="password" required autocomplete="new-password" aria-describedby="resetPasswordHint">
+              <button type="button" class="button small passwordToggle" aria-controls="resetPassword" aria-pressed="false" data-i18n>Show</button>
+            </div>
+            <p id="resetPasswordHint" class="fieldHint passwordHint" data-for="resetPassword"></p>
+            <p class="formError splashError" role="alert"></p>
+            <div class="modalButtons">
+              <button type="button" class="button cancel accountBack" data-i18n>Cancel</button>
+              <button type="submit" class="button primary accountSubmit" data-i18n>Change the password</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="accountCard" class="card centred accountCard" aria-labelledby="accountTitle">
+          <h2 id="accountTitle" class="cardTitle" tabindex="-1" data-i18n>Your account</h2>
+          <p id="accountNote" class="cardNote" role="status"></p>
+          <dl class="accountFacts">
+            <dt data-i18n>Username</dt>
+            <dd id="accountUsername"></dd>
+            <dt data-i18n>Email address</dt>
+            <dd id="accountEmail"></dd>
+            <dt data-i18n>Language of the emails</dt>
+            <dd><span id="accountLanguage"></span> <span class="factNote" data-i18n>(the game's language)</span></dd>
+          </dl>
+          <details id="passwordSection" class="accountSection">
+            <summary data-i18n>Change your password</summary>
+            <form id="passwordForm" class="accountForm" novalidate>
+              <label for="passwordCurrent" class="fieldLabel" data-i18n>Current password</label>
+              <div class="passwordField">
+                <input id="passwordCurrent" name="currentPassword" type="password" required autocomplete="current-password">
+                <button type="button" class="button small passwordToggle" aria-controls="passwordCurrent" aria-pressed="false" data-i18n>Show</button>
+              </div>
+              <label for="passwordNew" class="fieldLabel" data-i18n>New password</label>
+              <div class="passwordField">
+                <input id="passwordNew" name="newPassword" type="password" required autocomplete="new-password" aria-describedby="passwordNewHint">
+                <button type="button" class="button small passwordToggle" aria-controls="passwordNew" aria-pressed="false" data-i18n>Show</button>
+              </div>
+              <p id="passwordNewHint" class="fieldHint passwordHint" data-for="passwordNew"></p>
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button primary accountSubmit" data-i18n>Change the password</button>
+              </div>
+            </form>
+          </details>
+          <details id="emailSection" class="accountSection">
+            <summary data-i18n>Change your email address</summary>
+            <form id="emailForm" class="accountForm" novalidate>
+              <label for="emailNew" class="fieldLabel" data-i18n>New email address</label>
+              <input id="emailNew" name="newEmail" type="email" required autocomplete="email" maxlength="254">
+              <label for="emailCurrent" class="fieldLabel" data-i18n>Current password</label>
+              <div class="passwordField">
+                <input id="emailCurrent" name="currentPassword" type="password" required autocomplete="current-password">
+                <button type="button" class="button small passwordToggle" aria-controls="emailCurrent" aria-pressed="false" data-i18n>Show</button>
+              </div>
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button primary accountSubmit" data-i18n>Send a confirmation link</button>
+              </div>
+            </form>
+          </details>
+          <details id="deleteSection" class="accountSection">
+            <summary data-i18n>Delete your account</summary>
+            <form id="deleteForm" class="accountForm" novalidate>
+              <p class="cardText" data-i18n>This deletes your account and everything kept with it, at once and for good.</p>
+              <label for="deletePassword" class="fieldLabel" data-i18n>Password</label>
+              <div class="passwordField">
+                <input id="deletePassword" name="password" type="password" required autocomplete="current-password">
+                <button type="button" class="button small passwordToggle" aria-controls="deletePassword" aria-pressed="false" data-i18n>Show</button>
+              </div>
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button danger accountSubmit" data-i18n>Delete my account</button>
+              </div>
+            </form>
+          </details>
+          <div class="accountActions">
+            <button type="button" id="accountExport" class="button small" data-i18n>Download my data</button>
+            <button type="button" id="accountLogoutAll" class="button small" data-i18n>Log out everywhere</button>
+            <button type="button" class="button small privacyLink" data-i18n>Privacy</button>
+          </div>
+          <p id="accountError" class="splashError" role="alert"></p>
+          <div class="modalButtons">
+            <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+            <button type="button" id="accountLogout" class="button primary" data-i18n>Log out</button>
+          </div>
+        </section>
+
+        <section id="privacyCard" class="card centred accountCard" aria-labelledby="privacyTitle">
+          <h2 id="privacyTitle" class="cardTitle" tabindex="-1" data-i18n>Privacy</h2>
+          <div class="privacyText">
+            <p data-i18n>An account is only needed to play with others. Alone, you play without one, and your cities stay in your browser.</p>
+            <h3 data-i18n>What the server keeps</h3>
+            <p data-i18n>Your username, your email address, your password (in a form that cannot be read back), and the sessions of the devices where you are logged in. If you play with others: your shared cities and regions, and who belongs to them. Chat messages are only kept in memory while a city is played.</p>
+            <p data-i18n>The server's logs record the IP addresses and the accounts behind requests, to protect it against abuse. Old logs are deleted as new ones are written.</p>
+            <h3 data-i18n>Why</h3>
+            <p data-i18n>Only to run your account and the cities you play with others: nothing is sold or shared, and there is no advertising and no tracking.</p>
+            <h3 data-i18n>Cookies</h3>
+            <p data-i18n>A single cookie keeps you logged in. It is strictly necessary, so the game does not ask for your consent. Your browser also remembers your language, your view and your saved city, without sending them anywhere.</p>
+            <h3 data-i18n>Your data</h3>
+            <p data-i18n>On your account's screen, you can download everything kept about your account, change your email address and password, and delete the account with all it holds.</p>
+            <h3 data-i18n>Contact</h3>
+            <p id="privacyOperator"></p>
+          </div>
+          <div class="modalButtons">
+            <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+          </div>
+        </section>
 
         <div id="notifications" class="initialHidden neutral" role="status" aria-live="polite"></div>
 

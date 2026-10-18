@@ -23,6 +23,7 @@ export interface Features {
   // Logging in is offered: mail, or at least one account exists (made with the admin commands). A server without
   // mail and without accounts looks like the static game.
   accounts: boolean;
+  // Shared cities and regions: not yet (stage B turns it on with accounts)
   multiplayer: boolean;
 }
 
@@ -33,7 +34,7 @@ export function features(config: Config, db: Database): Features {
     mail,
     registration: mail && config.registration === 'open',
     accounts,
-    multiplayer: accounts,
+    multiplayer: false,
   };
 }
 

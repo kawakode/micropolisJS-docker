@@ -26,10 +26,10 @@ Commands:
 - **Update**: `docker compose pull && docker compose up -d`
 - **Stop**: `docker compose down` (the data stays in the `kawacity-data` volume)
 - **Without Compose**: `docker run -d -p 8080:8080 -v kawacity-data:/data -e PUBLIC_URL=http://localhost:8080 --restart unless-stopped ghcr.io/kawakode/kawacity`
-- **Accounts**, made and repaired by hand (the links printed are valid 24 h for a new account, 1 h for a reset):
+- **Accounts**, made and repaired by hand (the links printed are valid 24 h for a new account, 1 h for a reset; give them to their owners yourself):
 
   ```sh
-  docker compose exec kawacity node server/main.cjs user add alice alice@example.com   # prints a link to choose a password
+  docker compose exec kawacity node server/main.cjs user add alice alice@example.com   # prints a link to choose a password (add fr for French emails)
   docker compose exec kawacity node server/main.cjs user reset alice                   # or her email address
   docker compose exec kawacity node server/main.cjs user list
   docker compose exec kawacity node server/main.cjs user delete alice
@@ -98,6 +98,15 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
+## Security notes ##
+
+- **Passwords**: 12 to 128 characters, any characters, spaces included, and no rules about what they mix; common passwords (a list of 20,000), passwords with the username or the email address in them, and passwords of fewer than 4 different characters are refused. They are hashed with scrypt (N = 2^15 by default, `PASSWORD_HASH_COST`), and hashed again with new settings at the next login.
+- **Logging in**: after 5 failures in a row for one account from one address, that address waits (1 minute, then 2, 4... up to an hour); 100 failures in a day lock the account for a day, or until its password is reset, and its owner gets an email. Answers are the same whether an account exists or not, for logging in, signing up and resetting a password. A captcha, a proof of work computed by the browser (no third party, no tracking), guards signing up, logging in and resetting a password.
+- **Sessions**: a random token in an `HttpOnly`, `SameSite=Strict` cookie (`__Host-` and `Secure` with https), stored hashed. A session ends after 7 days unused or 30 days in any case (`SESSION_IDLE_DAYS`, `SESSION_MAX_DAYS`): a deliberate choice for a game (NIST 800-63B AAL1), as changing the password or the email address and deleting the account always ask for the password. Changing or resetting the password ends the other sessions; "Log out everywhere" ends them all.
+- **Emails**: sign-up is email-first (an account exists only once its address was confirmed), links in emails work once and expire (24 h to sign up or confirm an address, 1 h to reset a password), and an address gets at most 3 emails with a link an hour and 10 a day (`MAIL_MAX_PER_HOUR` in all). The notices that tell an account's owner about a change (password or address changed, account locked) have limits of their own, so that links anyone can ask for cannot silence them. With SMTP, STARTTLS with a valid certificate is required unless `SMTP_SECURE=true` or `SMTP_REQUIRE_TLS=false`.
+- **Requests**: changes are only accepted from the page at `PUBLIC_URL` (`Origin` checked, JSON only, no CORS); limits per address on every route; strict security headers and Content-Security-Policy.
+- **Privacy**: the server keeps the username, email address, password hash, sessions and cities of each account, and its log keeps addresses and account ids (never passwords, tokens or what was typed to log in). Players can download what is kept about them and delete their account from the game.
+
 ## Playing ##
 
 - **Start**: a new city, one of the eight scenarios of the original game, a sample city, or a saved file (`.kawacity`, or `.cty` from the original game).
@@ -114,6 +123,7 @@ git push origin v1.2.3
 - Micropolis: the open-source release of a city simulation game once sold by Electronic Arts.
 - KawaCity: renamed and modified from micropolisJS by [kawakode](https://github.com/kawakode) in 2026.
 - Scenarios and sample cities (`cities/`): from the Micropolis release, Copyright (C) 1989 - 2007 Electronic Arts Inc., under the GPLv3 with the additional terms in [LICENSE](LICENSE).
+- Common passwords (`server/security/commonPasswordList1.ts` and `2.ts`): from [SecLists](https://github.com/danielmiessler/SecLists) by Daniel Miessler and contributors, under the MIT License.
 - Fonts: [Press Start 2P](https://github.com/codeman38/PressStart2P) by Cody "CodeMan38" Boisclair and [DotGothic16](https://github.com/fontworks-fonts/DotGothic16) by Fontworks, under the SIL Open Font License (see `css/fonts/`).
 
 ## License ##

@@ -11,16 +11,19 @@ import { AdminContext, findCommand, helpText, registerCommand, runAdminCommand }
 import { FakeClock } from '../clock';
 import { Database, migrate } from '../db/database';
 import { MIGRATIONS } from '../db/migrations';
-import { cleanUp, temporaryDirectory, testConfig } from '../testing';
+import { Users } from '../auth/users';
+import type { Env } from '../config';
+import { sha256Hex } from '../security/tokens';
+import { cleanUp, startTestApp, temporaryDirectory, testConfig } from '../testing';
 
 afterAll(cleanUp);
 
-const adminContext = (dataDir: string) => {
+const adminContext = (dataDir: string, env: Env = {}) => {
   const out: string[] = [];
   const err: string[] = [];
   const opened: Database[] = [];
   const context: AdminContext = {
-    config: testConfig({DATA_DIR: dataDir}),
+    config: testConfig({DATA_DIR: dataDir, ...env}),
     clock: new FakeClock(Date.UTC(2026, 9, 18, 12, 0, 0)),
     databaseFile: path.join(dataDir, 'kawacity.db'),
     openDatabase(upgrade = true) {
@@ -93,5 +96,131 @@ describe('Admin commands', () => {
 
     expect(await runAdminCommand(['backup', 'a', 'b'], context)).toBe(2);
     close();
+  });
+});
+
+describe('Account commands', () => {
+  const linkToken = (line: string) => {
+    const match = /^http:\/\/localhost:8080\/#\/reset\/([A-Za-z0-9_-]{43})$/.exec(line);
+    expect(match).not.toBeNull();
+    return (match as RegExpExecArray)[1];
+  };
+
+  test('user add makes an account without a password, and prints a link to choose one', async () => {
+    const {context, out, err, close} = adminContext(temporaryDirectory());
+    expect(await runAdminCommand(['user', 'add', 'Alice', 'Alice@Example.com'], context)).toBe(0);
+    expect(out[0]).toBe('Made the account Alice <Alice@example.com>. To choose its password, its owner opens ' +
+                        'within 24 h:');
+    const token = linkToken(out[1]);
+    const db = context.openDatabase();
+    const alice = new Users(db).byUsernameKey('alice');
+    expect(alice).toMatchObject({email: 'Alice@example.com', email_key: 'alice@example.com', locale: 'en',
+                                 password_hash: '!', last_login_at: null});
+    expect(db.get('SELECT user_id, purpose, expires_at - created_at AS life FROM email_tokens WHERE token_hash = ?',
+                  sha256Hex(token))).toEqual({user_id: alice?.id, purpose: 'reset', life: 24 * 60 * 60 * 1000});
+
+    expect(await runAdminCommand(['user', 'add', 'Bruno', 'bruno@example.com', 'fr'], context)).toBe(0);
+    expect(new Users(db).byUsernameKey('bruno')?.locale).toBe('fr');
+
+    // Refused: taken, invalid, wrong usage
+    expect(await runAdminCommand(['user', 'add', 'ALICE', 'other@example.com'], context)).toBe(1);
+    expect(err.pop()).toBe('The username ALICE is taken');
+    expect(await runAdminCommand(['user', 'add', 'Alicia', 'alice@EXAMPLE.com'], context)).toBe(1);
+    expect(err.pop()).toBe('The address alice@example.com already has an account');
+    expect(await runAdminCommand(['user', 'add', 'admin', 'x@example.com'], context)).toBe(1);
+    expect(err.pop()).toMatch(/^The username "admin" cannot be used \(reserved\)/);
+    expect(await runAdminCommand(['user', 'add', 'Carol', 'x<v@e.com>'], context)).toBe(1);
+    expect(await runAdminCommand(['user', 'add', 'Carol', 'carol@example.com', 'de'], context)).toBe(1);
+    expect(await runAdminCommand(['user', 'add', 'Carol'], context)).toBe(2);
+    close();
+  });
+
+  test('The link of user add sets the password on the server', async () => {
+    const dataDir = temporaryDirectory();
+    const {context, out, close} = adminContext(dataDir);
+    await runAdminCommand(['user', 'add', 'Alice', 'alice@example.com'], context);
+    const token = linkToken(out[1]);
+
+    // The server sees the same database (here, a copy of it)
+    const db = context.openDatabase();
+    const t = await startTestApp({}, {db});
+    expect((await t.request('/api/session')).json.features).toMatchObject({accounts: true, registration: false});
+    const reset = await t.post('/api/auth/reset-password', {token, password: 'correct horse battery staple'});
+    expect(reset.status).toBe(200);
+    expect(new Users(db).byUsernameKey('alice')?.password_hash).toMatch(/^scrypt\$/);
+    await t.close();
+    close();
+  });
+
+  test('user reset prints a link for an hour, by username or address', async () => {
+    const {context, out, err, close} = adminContext(temporaryDirectory());
+    await runAdminCommand(['user', 'add', 'Alice', 'alice@example.com'], context);
+    for (const name of ['alice', 'ALICE@example.com']) {
+      out.length = 0;
+      expect(await runAdminCommand(['user', 'reset', name], context)).toBe(0);
+      expect(out[0]).toBe('To choose a new password for Alice <alice@example.com>, open within 1 h:');
+      const token = linkToken(out[1]);
+      expect(context.openDatabase().get('SELECT expires_at - created_at AS life FROM email_tokens WHERE token_hash = ?',
+                                        sha256Hex(token))).toEqual({life: 60 * 60 * 1000});
+    }
+    expect(await runAdminCommand(['user', 'reset', 'nobody'], context)).toBe(1);
+    expect(err.pop()).toBe('There is no account "nobody"');
+    expect(await runAdminCommand(['user', 'reset'], context)).toBe(2);
+    close();
+  });
+
+  test('user list and user delete', async () => {
+    const {context, out, err, close} = adminContext(temporaryDirectory());
+    expect(await runAdminCommand(['user', 'list'], context)).toBe(0);
+    expect(out.pop()).toBe('No accounts');
+
+    await runAdminCommand(['user', 'add', 'Bob', 'bob@example.com'], context);
+    await runAdminCommand(['user', 'add', 'alice', 'alice@example.com', 'fr'], context);
+    out.length = 0;
+    expect(await runAdminCommand(['user', 'list'], context)).toBe(0);
+    expect(out).toEqual([
+      'USERNAME  EMAIL              LOCALE  CREATED            LAST LOGIN  NOTE',
+      'alice     alice@example.com  fr      2026-10-18T12:00Z  -           no password yet',
+      'Bob       bob@example.com    en      2026-10-18T12:00Z  -           no password yet',
+      '2 accounts',
+    ]);
+
+    out.length = 0;
+    expect(await runAdminCommand(['user', 'delete', 'BOB'], context)).toBe(0);
+    expect(out).toEqual(['Deleted the account Bob <bob@example.com>']);
+    expect(new Users(context.openDatabase()).list().map(user => user.username)).toEqual(['alice']);
+    expect(context.openDatabase().get('SELECT count(*) AS n FROM email_tokens')).toEqual({n: 1});
+    expect(await runAdminCommand(['user', 'delete', 'bob'], context)).toBe(1);
+    expect(err.pop()).toBe('There is no account with the username "bob"');
+    expect(await runAdminCommand(['user', 'delete', 'alice@example.com'], context)).toBe(1);
+    close();
+  });
+
+  test('mail-test sends with the server\'s settings', async () => {
+    const none = adminContext(temporaryDirectory());
+    expect(await runAdminCommand(['mail-test', 'you@example.com'], none.context)).toBe(1);
+    expect(none.err[0]).toMatch(/^No mail can be sent: set SMTP_HOST/);
+
+    const log = adminContext(temporaryDirectory(), {MAIL_TRANSPORT: 'log'});
+    expect(await runAdminCommand(['mail-test', 'You@Example.com'], log.context)).toBe(0);
+    expect(log.out[0]).toBe('MAIL_TRANSPORT=log: the mail is printed instead of sent. To: You@example.com');
+    expect(log.out[1]).toBe('Subject: KawaCity mail test');
+    expect(log.out[2]).toContain('http://localhost:8080');
+    expect(log.out.pop()).toBe('Sent a test mail to You@example.com');
+    expect(await runAdminCommand(['mail-test', 'not an address'], log.context)).toBe(1);
+    expect(await runAdminCommand(['mail-test'], log.context)).toBe(2);
+
+    // An SMTP server that cannot be reached: the error is reported
+    const smtp = adminContext(temporaryDirectory(), {SMTP_HOST: '127.0.0.1', SMTP_PORT: '9',
+                                                     MAIL_FROM: 'k@example.com'});
+    expect(await runAdminCommand(['mail-test', 'you@example.com'], smtp.context)).toBe(1);
+    expect(smtp.err[0]).toMatch(/^The mail could not be sent: /);
+  });
+
+  test('The help lists them', () => {
+    const help = helpText().join('\n');
+    for (const name of ['user add <username> <email> [locale]', 'user reset <username|email>', 'user delete <username>',
+                        'user list', 'mail-test <address>'])
+      expect(help).toContain(name);
   });
 });

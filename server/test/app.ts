@@ -60,21 +60,21 @@ describe('GET /api/session', () => {
     // An account made by the admin commands makes logging in possible
     addUser(t.db);
     expect((await t.request('/api/session')).json.features).toEqual(
-      {mail: false, registration: false, accounts: true, multiplayer: true});
+      {mail: false, registration: false, accounts: true, multiplayer: false});
     await t.close();
   });
 
   test('With mail, registration is open unless closed', async () => {
     const open = await startTestApp({MAIL_TRANSPORT: 'log', OPERATOR_CONTACT: 'Jo, jo@example.com'});
     const session = (await open.request('/api/session')).json;
-    expect(session.features).toEqual({mail: true, registration: true, accounts: true, multiplayer: true});
+    expect(session.features).toEqual({mail: true, registration: true, accounts: true, multiplayer: false});
     expect(session.operator).toBe('Jo, jo@example.com');
     await open.close();
 
     const closed = await startTestApp({SMTP_HOST: 'smtp.example.com', MAIL_FROM: 'k@example.com',
                                        REGISTRATION: 'closed'});
     expect((await closed.request('/api/session')).json.features).toEqual(
-      {mail: true, registration: false, accounts: true, multiplayer: true});
+      {mail: true, registration: false, accounts: true, multiplayer: false});
     await closed.close();
   });
 

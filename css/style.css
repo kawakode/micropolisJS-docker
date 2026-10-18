@@ -270,7 +270,7 @@ button:disabled {
 
 /* The production build minifies the HTML, which drops type="text" (the default), so text fields are also matched by
    input:not([type]) */
-input[type="text"], input:not([type]), select {
+input[type="text"], input:not([type]), input[type="email"], input[type="password"], select {
   width: 100%;
   min-height: 40px;
   padding: 6px 10px;
@@ -287,12 +287,14 @@ select {
   cursor: pointer;
 }
 
-input[type="text"]:focus, input:not([type]):focus, select:focus {
+input[type="text"]:focus, input:not([type]):focus, input[type="email"]:focus, input[type="password"]:focus,
+select:focus {
   outline: 2px dashed var(--gold);
   outline-offset: 2px;
 }
 
-input[type="text"]::placeholder, input:not([type])::placeholder {
+input[type="text"]::placeholder, input:not([type])::placeholder, input[type="email"]::placeholder,
+input[type="password"]::placeholder {
   color: #7d88c8;
 }
 
@@ -2384,6 +2386,321 @@ kbd {
 
 .mapOption select {
   flex: 0 0 130px;
+}
+
+/* Title screen: accounts (only shown when the game's server offers them) */
+
+#accountStrip {
+  display: none;
+}
+
+.accountStrip {
+  margin-top: 18px;
+  text-align: center;
+}
+
+.accountButtons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* DotGothic16 is drawn on a 16 pixel grid: small buttons keep it at 16px */
+.accountButtons .button, .accountActions .button, .button.passwordToggle {
+  min-height: 34px;
+  padding: 2px 12px;
+  font-size: 16px;
+}
+
+.accountOpen {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountStatus, .cardNote {
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  border: 2px solid var(--win-outline);
+  background: var(--win-inset);
+  box-shadow: inset 2px 2px 0 #050820;
+  color: var(--gold-light);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.accountStatus:empty, .cardNote:empty {
+  display: none;
+}
+
+.accountNote {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.accountCard {
+  display: none;
+  width: 440px;
+}
+
+#accountCard {
+  width: 500px;
+}
+
+#privacyCard {
+  width: 580px;
+}
+
+.accountCard .cardTitle:focus {
+  outline: none;
+}
+
+.accountCard .modalButtons {
+  flex-wrap: wrap;
+}
+
+.cardText {
+  margin-bottom: 14px;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.cardText.smallPrint {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.accountForm .fieldLabel {
+  margin-top: 14px;
+}
+
+.accountForm .fieldLabel:first-of-type {
+  margin-top: 0;
+}
+
+.accountForm .cardText + .fieldLabel {
+  margin-top: 0;
+}
+
+.accountForm input[aria-invalid="true"] {
+  border-color: #ff8a7a;
+  box-shadow: inset 2px 2px 0 #050820, inset -2px -2px 0 #ff8a7a;
+}
+
+/* A password, and the button that shows it */
+.passwordField {
+  display: flex;
+  gap: 6px;
+}
+
+.passwordField input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.button.passwordToggle {
+  flex: none;
+  min-height: 40px;
+}
+
+.button.passwordToggle[aria-pressed="true"] {
+  background: var(--gold);
+  box-shadow: inset 2px 2px 0 var(--gold-light), inset -2px -2px 0 var(--gold-dark);
+  color: #2a1800;
+  text-shadow: none;
+}
+
+.fieldHint {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.fieldError {
+  margin-top: 4px;
+  color: #ff8a7a;
+  font-size: 14px;
+}
+
+.fieldError:empty {
+  display: none;
+}
+
+.accountForm .splashError {
+  margin-top: 12px;
+}
+
+/* A button that reads as a link */
+.linkButton {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--teal);
+  font-size: 15px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.linkButton:hover {
+  color: var(--gold);
+}
+
+.formLinks {
+  margin-top: 8px;
+}
+
+.cardFooter {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 2px dashed rgba(232, 236, 255, 0.25);
+  font-size: 15px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* The check that the player is not a robot: its progress underlines it */
+.captchaStatus {
+  margin-top: 12px;
+  padding-bottom: 3px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.captchaStatus[data-state="solving"] {
+  background: linear-gradient(var(--gold), var(--gold)) no-repeat left bottom / var(--progress, 0%) 2px;
+}
+
+.captchaStatus[data-state="ready"] {
+  color: var(--green);
+}
+
+.captchaStatus[data-state="ready"]::before {
+  content: '\2713\00A0';
+}
+
+.captchaStatus:empty {
+  display: none;
+}
+
+/* Bots fill in every field: this one is out of sight, and must stay empty */
+.honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.accountDone {
+  display: none;
+}
+
+.accountSubmit.busy, .button.busy {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.accountFacts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+
+.accountFacts dt {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+
+.accountFacts dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.factNote {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.accountSection {
+  margin-bottom: 8px;
+  border: 2px solid var(--win-outline);
+  background: var(--win-inset);
+  box-shadow: inset 2px 2px 0 #050820;
+  padding: 4px 12px;
+}
+
+.accountSection summary {
+  cursor: pointer;
+  font-weight: 700;
+  padding: 6px 0;
+}
+
+.accountSection[open] summary {
+  margin-bottom: 8px;
+}
+
+.accountSection form {
+  padding-bottom: 10px;
+}
+
+.accountSection .modalButtons {
+  margin-top: 14px;
+}
+
+.accountActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.accountCard > .splashError {
+  margin-top: 12px;
+}
+
+/* Long texts keep a system font, to remain legible */
+.privacyText p {
+  margin-bottom: 10px;
+  font-family: var(--text-font);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.privacyText h3 {
+  margin: 16px 0 6px;
+  font-size: 14px;
+  font-weight: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+
+#privacyOperator {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .accountCard {
+    padding: 16px;
+  }
+
+  .accountFacts {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .accountFacts dd + dt {
+    margin-top: 6px;
+  }
 }
 
 /* Tool bar: categories and their palettes */

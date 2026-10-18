@@ -13,6 +13,7 @@
 
 import $ from "jquery";
 
+import { AccountScreens } from './accountScreens.js';
 import { CityFile } from './cityFile.js';
 import { Config } from './config.js';
 import { Game } from './game.js';
@@ -94,6 +95,9 @@ function SplashScreen(tileSet, snowTileSet, spriteSheet) {
   $('.awaitGeneration').toggle();
   $('#splashPlay').focus();
 
+  // The accounts, when the game's server offers them
+  AccountScreens.start();
+
   // Playing a scenario again (see Game) comes back here with the scenario in the address
   var match = /^#scenario=([a-z]+)$/.exec(window.location.hash);
   if (match && Scenarios.get(match[1])) {
@@ -125,6 +129,8 @@ var mapOptions = function() {
 
 // Launches the game with the given saved game (from storage, a file, or a scenario). We won't return from here
 var launch = function(savedGame) {
+  AccountScreens.stop();
+
   // Remove installed event listeners
   $('#splashLoad, #splashGenerate, #splashPlay, #splashScenarios, #splashOpen, #pickerBack, #pickerPlay').off('click');
   $('#splashFile, #mapOptions select').off('change');
@@ -355,6 +361,7 @@ var acquireNameAndDifficulty = function(e) {
   e.preventDefault();
 
   // Remove the initial event listeners
+  AccountScreens.stop();
   $('#splashLoad, #splashGenerate, #splashPlay, #splashScenarios, #splashOpen, #pickerBack, #pickerPlay').off('click');
   $('#splashFile, #mapOptions select').off('change');
 

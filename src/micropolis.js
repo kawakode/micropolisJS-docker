@@ -13,6 +13,7 @@
 
 import $ from "jquery";
 
+import { AccountScreens } from './accountScreens.js';
 import { Config } from './config.js';
 import { I18n } from './i18n.js';
 import { PixelIcons } from './pixelIcons.js';
@@ -117,6 +118,9 @@ if (Config.debug)
 document.documentElement.lang = I18n.getLanguage();
 I18n.translateDocument();
 PixelIcons.decorate();
+
+// The accounts, if the game's server offers them: asked now, shown with the title screen (which does not wait)
+AccountScreens.boot();
 
 
 var tiles = $('#tiles')[0];

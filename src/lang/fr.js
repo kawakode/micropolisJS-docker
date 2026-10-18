@@ -691,6 +691,102 @@ var strings = {
     'Le serveur s\'arrête. La ville a été sauvegardée : revenez dans un moment.',
   'That cannot be built there': 'Impossible de construire ça ici',
 
+  // The accounts (see AccountScreens)
+  'Log in': 'Se connecter',
+  'Log out': 'Se déconnecter',
+  'Log out everywhere': 'Me déconnecter partout',
+  'Create an account': 'Créer un compte',
+  'Your account:': 'Votre compte :',
+  'Your account': 'Votre compte',
+  'Accounts on this server are created by its administrator.':
+    'Sur ce serveur, les comptes sont créés par son administrateur.',
+  'Accounts and multiplayer are at {url}': 'Les comptes et le multijoueur sont sur {url}',
+  'Username or email address': 'Nom d\'utilisateur ou adresse e-mail',
+  'Username': 'Nom d\'utilisateur',
+  'Email address': 'Adresse e-mail',
+  'New email address': 'Nouvelle adresse e-mail',
+  'Password': 'Mot de passe',
+  'Current password': 'Mot de passe actuel',
+  'New password': 'Nouveau mot de passe',
+  'Forgot password?': 'Mot de passe oublié ?',
+  'No account yet?': 'Pas encore de compte ?',
+  'OK': 'OK',
+  'Send the link': 'Envoyer le lien',
+  'Enter your email address: we will send you a link to choose your username and password.':
+    'Indiquez votre adresse e-mail : nous vous enverrons un lien pour choisir votre nom d\'utilisateur et votre mot de passe.',
+  'Your address is only used for your account.': 'Votre adresse ne sert qu\'à votre compte.',
+  'We sent an email to {email}. Open its link within 24 hours to choose your username and password. If it does not arrive, look in your spam folder.':
+    'Nous avons envoyé un e-mail à {email}. Ouvrez son lien dans les 24 heures pour choisir votre nom d\'utilisateur et votre mot de passe. S\'il n\'arrive pas, regardez dans vos courriers indésirables.',
+  'Finish creating your account': 'Terminez la création de votre compte',
+  'Choose your username and your password. Your username is public: the other players see it.':
+    'Choisissez votre nom d\'utilisateur et votre mot de passe. Votre nom d\'utilisateur est public : les autres joueurs le voient.',
+  'From {min} to {max} characters: letters, digits, and . _ - between them. The other players see it.':
+    'De {min} à {max} caractères : lettres, chiffres, et . _ - entre eux. Les autres joueurs le voient.',
+  'At least {min} characters ({count} so far). A few words make a good password, easy to remember.':
+    'Au moins {min} caractères ({count} pour l\'instant). Quelques mots font un bon mot de passe, facile à retenir.',
+  'Create my account': 'Créer mon compte',
+  'Welcome, {username}! Your account is ready.': 'Bienvenue, {username} ! Votre compte est prêt.',
+  'Welcome back, {username}!': 'Bon retour, {username} !',
+  'Enter the email address of your account: we will send you a link to choose a new password.':
+    'Indiquez l\'adresse e-mail de votre compte : nous vous enverrons un lien pour choisir un nouveau mot de passe.',
+  'If an account uses {email}, we sent it a link to choose a new password. It works for one hour.':
+    'Si un compte utilise {email}, nous lui avons envoyé un lien pour choisir un nouveau mot de passe. Il marche pendant une heure.',
+  'Choose a new password': 'Choisissez un nouveau mot de passe',
+  'Change the password': 'Changer le mot de passe',
+  'Your password was changed. Log in with your new password.':
+    'Votre mot de passe a été changé. Connectez-vous avec le nouveau.',
+  'Confirming your new email address…': 'Confirmation de votre nouvelle adresse e-mail…',
+  'Your email address was changed.': 'Votre adresse e-mail a été changée.',
+  'Your email address was changed. You can log in with it now.':
+    'Votre adresse e-mail a été changée. Vous pouvez désormais vous connecter avec.',
+  'You are no longer logged in. Please log in again.': 'Vous n\'êtes plus connecté. Reconnectez-vous.',
+  'Checking that you are not a robot…': 'Vérification que vous n\'êtes pas un robot…',
+  'Ready': 'Prêt',
+  'You can try again in {seconds} s.': 'Vous pourrez réessayer dans {seconds} s.',
+  'You can try again in {minutes} min.': 'Vous pourrez réessayer dans {minutes} min.',
+  'You can try again in {hours} h.': 'Vous pourrez réessayer dans {hours} h.',
+  'Language of the emails': 'Langue des e-mails',
+  '(the game\'s language)': '(celle du jeu)',
+  'Change your password': 'Changer votre mot de passe',
+  'Wrong password.': 'Mot de passe incorrect.',
+  'Your password was changed. Your other devices were logged out.':
+    'Votre mot de passe a été changé. Vos autres appareils ont été déconnectés.',
+  'Change your email address': 'Changer votre adresse e-mail',
+  'Send a confirmation link': 'Envoyer un lien de confirmation',
+  'This is already your email address.': 'C\'est déjà votre adresse e-mail.',
+  'We sent a link to {email}. Open it to confirm your new address: until then, your address stays the same.':
+    'Nous avons envoyé un lien à {email}. Ouvrez-le pour confirmer votre nouvelle adresse : d\'ici là, votre adresse ne change pas.',
+  'Delete your account': 'Supprimer votre compte',
+  'This deletes your account and everything kept with it, at once and for good.':
+    'Cela supprime votre compte et tout ce qui s\'y rattache, tout de suite et pour de bon.',
+  'Delete my account': 'Supprimer mon compte',
+  'Your account was deleted.': 'Votre compte a été supprimé.',
+  'Download my data': 'Télécharger mes données',
+  'Your data was saved in the file {file}.': 'Vos données ont été enregistrées dans le fichier {file}.',
+  'You are logged out.': 'Vous êtes déconnecté.',
+  'You are logged out on all your devices.': 'Vous êtes déconnecté sur tous vos appareils.',
+  'Privacy': 'Confidentialité',
+  'An account is only needed to play with others. Alone, you play without one, and your cities stay in your browser.':
+    'Un compte ne sert qu\'à jouer avec d\'autres. Seul, vous jouez sans compte, et vos villes restent dans votre navigateur.',
+  'What the server keeps': 'Ce que le serveur conserve',
+  'Your username, your email address, your password (in a form that cannot be read back), and the sessions of the devices where you are logged in. If you play with others: your shared cities and regions, and who belongs to them. Chat messages are only kept in memory while a city is played.':
+    'Votre nom d\'utilisateur, votre adresse e-mail, votre mot de passe (sous une forme qui ne permet pas de le relire) et les sessions des appareils où vous êtes connecté. Si vous jouez avec d\'autres : vos villes et régions partagées, et qui en fait partie. Les messages du chat ne sont gardés qu\'en mémoire, pendant qu\'une ville est jouée.',
+  'The server\'s logs record the IP addresses and the accounts behind requests, to protect it against abuse. Old logs are deleted as new ones are written.':
+    'Les journaux du serveur notent les adresses IP et les comptes à l\'origine des requêtes, pour le protéger des abus. Les anciens journaux sont effacés à mesure que de nouveaux s\'écrivent.',
+  'Why': 'Pourquoi',
+  'Only to run your account and the cities you play with others: nothing is sold or shared, and there is no advertising and no tracking.':
+    'Uniquement pour faire fonctionner votre compte et les villes que vous jouez avec d\'autres : rien n\'est vendu ni partagé, et il n\'y a ni publicité ni pistage.',
+  'Cookies': 'Cookies',
+  'A single cookie keeps you logged in. It is strictly necessary, so the game does not ask for your consent. Your browser also remembers your language, your view and your saved city, without sending them anywhere.':
+    'Un seul cookie vous garde connecté. Il est strictement nécessaire : le jeu ne demande donc pas votre consentement. Votre navigateur retient aussi votre langue, votre vue et votre ville sauvée, sans les envoyer nulle part.',
+  'Your data': 'Vos données',
+  'On your account\'s screen, you can download everything kept about your account, change your email address and password, and delete the account with all it holds.':
+    'Sur l\'écran de votre compte, vous pouvez télécharger tout ce qui est conservé sur votre compte, changer votre adresse e-mail et votre mot de passe, et supprimer le compte avec tout ce qu\'il contient.',
+  'Contact': 'Contact',
+  'The people who run this server can be reached at: {contact}': 'Pour joindre les responsables de ce serveur : {contact}',
+  'The people who run this server have not given a contact.':
+    'Les responsables de ce serveur n\'ont pas indiqué de contact.',
+
   // The emails' subjects (see emailTexts.js; their texts follow)
   'Finish creating your KawaCity account': 'Terminez la création de votre compte KawaCity',
   'You already have a KawaCity account': 'Vous avez déjà un compte KawaCity',

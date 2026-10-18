@@ -8,6 +8,8 @@
 import { randomBytes } from 'node:crypto';
 import http, { IncomingMessage, OutgoingHttpHeaders, ServerResponse } from 'node:http';
 import type { Duplex } from 'node:stream';
+import { registerAuthRoutes } from './auth/authRoutes';
+import { AuthServices, createAuthServices } from './auth/services';
 import type { Clock } from './clock';
 import type { Config } from './config';
 import { registerCoreRoutes } from './coreRoutes';
@@ -21,6 +23,7 @@ import { checkOrigin, isJsonContentType, NON_PAGE_CONTENT_SECURITY_POLICY, pageC
          securityHeaders, UNSAFE_METHODS } from './http/security';
 import { findStaticFile, loadStaticFiles, serveStaticFile, StaticFiles } from './http/static';
 import { createLogger, Logger } from './log';
+import type { Mailer } from './mail/mailer';
 import { IpRateLimiter, RateLimitDecision, RateLimiter } from './security/rateLimit';
 
 // The HTTP server: the game's files, the JSON API under /api/, and WebSocket upgrades. Every request gets the security
@@ -35,18 +38,16 @@ import { IpRateLimiter, RateLimitDecision, RateLimiter } from './security/rateLi
 //   8. the JSON body, up to the route's size: 413 payload_too_large, 400 invalid_input
 //   9. the handler, which validates the body and answers (HttpError for errors, anything else is a 500 internal)
 
-// The mail sender (mail/mailer.ts): routes reach it through the context
-export interface Mailer {
-  close?(): void | Promise<void>;
-}
-
 export interface AppDeps {
   clock: Clock;
   db: Database;
   log?: Logger;
+  // The mail sender (mail/mailer.ts): none, no mail
   mailer?: Mailer | null;
   // The game's files: loaded from config.staticDir when not given
   staticFiles?: StaticFiles;
+  // Runs work after the answer was written (setImmediate by default; tests may hold it)
+  defer?: (task: () => void) => void;
 }
 
 export interface ResolvedSession {
@@ -79,6 +80,11 @@ export interface AppContext {
   readonly log: Logger;
   readonly mailer: Mailer | null;
   readonly router: Router;
+  // Accounts: users, sessions, passwords, captcha, the account emails (see auth/services.ts for what stage B uses)
+  readonly auth: AuthServices;
+  // Runs `task` once the answer to the request was written: work whose time must not show in the answer (whether an
+  // account exists). Its errors are logged.
+  defer(task: () => void): void;
   // The limiter of that name, created on first use (IP_LIMIT_FACTOR applied, the IPv6 /48 at 10 times the limit)
   ipLimiter(name: string, limit: number, windowMs: number): IpRateLimiter;
   // The limiter of that name, per user id
@@ -100,10 +106,10 @@ export interface App {
   shutdown(): Promise<void>;
 }
 
-// Every API route. Stage A2 adds the account routes here (registerAuthRoutes), stage B the multiplayer ones and the
-// WebSocket at /api/ws (registerGameRoutes).
+// Every API route. Stage B adds the multiplayer ones and the WebSocket at /api/ws (registerGameRoutes).
 function registerRoutes(context: AppContext): void {
   registerCoreRoutes(context);
+  registerAuthRoutes(context);
 }
 
 export const API_LIMIT = {name: 'api', limit: 600, windowMs: 60 * 1000};
@@ -150,6 +156,8 @@ const plainText = (res: ServerResponse, status: number, text: string, headers: O
 export function createApp(config: Config, deps: AppDeps): App {
   const {clock, db} = deps;
   const log = deps.log ?? createLogger({level: config.logLevel, clock});
+  const mailer = deps.mailer ?? null;
+  const schedule = deps.defer ?? (task => { setImmediate(task); });
   const staticFiles = deps.staticFiles ?? loadStaticFiles(config.staticDir);
   const router = new Router();
   const baseHeaders = securityHeaders(config);
@@ -182,8 +190,16 @@ export function createApp(config: Config, deps: AppDeps): App {
     clock,
     db,
     log,
-    mailer: deps.mailer ?? null,
+    mailer,
     router,
+    auth: createAuthServices({config, clock, db, log, mailer}),
+    defer: task => schedule(() => {
+      try {
+        task();
+      } catch (error) {
+        log.error('http.deferred_error', {err: error});
+      }
+    }),
     ipLimiter: (name, limit, windowMs) => namedLimiter(name, 'ip', limit, windowMs) as IpRateLimiter,
     userLimiter: (name, limit, windowMs) => namedLimiter(name, 'user', limit, windowMs) as RateLimiter,
     setUserResolver: resolver => { resolveUser = resolver; },
@@ -200,8 +216,19 @@ export function createApp(config: Config, deps: AppDeps): App {
     for (const {limiter} of limiters.values())
       limiter.prune();
   });
+  context.addPurgeTask('login guard', () => {
+    context.auth.loginGuard.prune();
+    context.auth.captcha.prune();
+  });
+
+  context.setUserResolver(ctx => context.auth.sessions.resolve(ctx.cookies));
+  // Logins to unknown accounts are checked against a hash made now, with the same settings as the others
+  context.auth.passwords.prepare().catch(error => log.error('passwords.prepare', {err: error}));
 
   registerRoutes(context);
+  // Last at shutdown: mails still queued get a few seconds to go
+  if (mailer)
+    context.onShutdown(() => mailer.close());
   const apiLimiter = context.ipLimiter(API_LIMIT.name, API_LIMIT.limit, API_LIMIT.windowMs);
 
   const tooManyRequests = (ctx: RequestContext, name: string, decision: RateLimitDecision): HttpError => {

@@ -287,6 +287,17 @@ describe("Translations", () => {
         expect(texts.filter(text => French[text.key] === undefined)).toEqual([]);
     });
 
+    it("name the login screen's buttons as the emails do", () => {
+        const keys = pageTexts().map(text => text.key);
+
+        expect(keys).toEqual(expect.arrayContaining(["Forgot password?", "Log in"]));
+        expect(French["Forgot password?"]).toBe("Mot de passe oublié ?");
+        [EMAIL_TEXTS.passwordChanged.text, EMAIL_TEXTS.accountLocked.text].forEach(text => {
+            expect(text).toContain("\"Forgot password?\"");
+            expect(French[text]).toContain("« Mot de passe oublié ? »");
+        });
+    });
+
     it("keep the parameters of each text", () => {
         const parameters = (text: string) => (text.match(/\{\w+\}/g) || []).sort().join(",");
         const wrong = Object.keys(French).filter(key => HTML_KEYS.indexOf(key) === -1 &&
