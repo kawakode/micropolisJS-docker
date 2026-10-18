@@ -70,8 +70,9 @@ const addUser: AdminCommand = {
     const db = context.openDatabase();
     const users = new Users(db);
     const created = db.transaction(() => {
-      if (users.byUsernameKey(username.key))
-        return 'username';
+      const holder = users.usernameHolder(username);
+      if (holder)
+        return {taken: holder.username};
       if (users.byEmailKey(email.key))
         return 'email';
       // Verified at once (the admin vouches for the address); no password until its owner chooses one
@@ -79,12 +80,13 @@ const addUser: AdminCommand = {
                            emailKey: email.key, passwordHash: UNUSABLE_PASSWORD_HASH, locale,
                            now: context.clock.now(), loggedIn: false});
     });
-    if (created === 'username') {
-      context.err(`The username ${username.username} is taken`);
-      return FAILED;
-    }
     if (created === 'email') {
       context.err(`The address ${email.email} already has an account`);
+      return FAILED;
+    }
+    if ('taken' in created) {
+      context.err(usernameKey(created.taken) === username.key ? `The username ${username.username} is taken` :
+        `The username ${username.username} is taken: it looks too much like ${created.taken}`);
       return FAILED;
     }
 
@@ -135,6 +137,8 @@ const deleteUser: AdminCommand = {
       users.delete(user.id);
       db.run('DELETE FROM signup_tokens WHERE email_key = ?', user.email_key);
     });
+    // Nothing of the account left in the write-ahead log either
+    db.checkpoint();
     context.out(`Deleted the account ${user.username} <${user.email}>`);
     return OK;
   },

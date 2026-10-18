@@ -15,8 +15,8 @@ import type { Config } from './config';
 import { registerCoreRoutes } from './coreRoutes';
 import type { Database } from './db/database';
 import { purgeExpired } from './db/purge';
-import { ClientAddress, clientAddress, parseCookies, parseRequestTarget, readJsonBody, RequestContext,
-         RequestSession, RequestTarget, RequestUser } from './http/request';
+import { ClientAbortError, ClientAddress, clientAddress, parseCookies, parseRequestTarget, readJsonBody,
+         RequestContext, RequestSession, RequestTarget, RequestUser } from './http/request';
 import { HttpError, sendError } from './http/response';
 import { RateLimitRule, Router } from './http/router';
 import { checkOrigin, isJsonContentType, NON_PAGE_CONTENT_SECURITY_POLICY, pageContentSecurityPolicy,
@@ -34,8 +34,9 @@ import { IpRateLimiter, RateLimitDecision, RateLimiter } from './security/rateLi
 //   4. the route: 404 not_found, 405 method_not_allowed
 //   5. the route's per-IP limits
 //   6. the session (auth: 'optional' or 'required'): 401 unauthenticated when required and missing
-//   7. the route's per-user limits
-//   8. the JSON body, up to the route's size: 413 payload_too_large, 400 invalid_input
+//   7. the route's per-user and per-session limits
+//   8. the JSON body, up to the route's size: 413 payload_too_large, 400 invalid_input (a client that goes away
+//      before sending all of it gets no answer)
 //   9. the handler, which validates the body and answers (HttpError for errors, anything else is a 500 internal)
 
 export interface AppDeps {
@@ -89,6 +90,9 @@ export interface AppContext {
   ipLimiter(name: string, limit: number, windowMs: number): IpRateLimiter;
   // The limiter of that name, per user id
   userLimiter(name: string, limit: number, windowMs: number): RateLimiter;
+  // Counts the request against a limit from its handler, for a limit that only the requests that got past a check
+  // count against: 429 rate_limited when over it, logged like the routes' limits
+  limit(ctx: RequestContext, rule: RateLimitRule): void;
   setUserResolver(resolver: UserResolver): void;
   setUpgradeHandler(path: string, handler: UpgradeHandler): void;
   // Run at shutdown, in the order given, after the server stops accepting connections and before the database closes
@@ -137,9 +141,11 @@ export function rejectUpgrade(socket: Duplex, status: number): void {
 const newRequestId = () => randomBytes(6).toString('hex');
 
 // A refused Origin, as logged: the client chose it, so it is shortened. Refusals are logged once a minute per client
-// (per IPv6 /48), not per origin: a client sending a new origin with each request must not flood the log.
+// (per IPv6 /48), not per origin nor per /64: a client sending a new origin, or coming from a new /64 of its /48, with
+// each request must not flood the log.
 const shownOrigin = (origin: string | null) => origin === null ? 'none' : origin.slice(0, 100);
-const refusalKey = (address: ClientAddress) => address.aggregateKey ?? address.key;
+const refusalKey = (address: Pick<ClientAddress, 'key' | 'aggregateKey'>) => address.aggregateKey ?? address.key;
+const requestRefusalKey = (ctx: RequestContext) => refusalKey({key: ctx.ipKey, aggregateKey: ctx.ipAggregateKey});
 
 const isApiPath = (target: RequestTarget) => target.segments[0] === 'api';
 
@@ -163,14 +169,14 @@ export function createApp(config: Config, deps: AppDeps): App {
   const baseHeaders = securityHeaders(config);
   const pageHeaders: OutgoingHttpHeaders = {'Content-Security-Policy': pageContentSecurityPolicy(config.publicOrigin)};
 
-  const limiters = new Map<string, {per: 'ip' | 'user'; limit: number; windowMs: number;
+  const limiters = new Map<string, {per: RateLimitRule['per']; limit: number; windowMs: number;
                                     limiter: IpRateLimiter | RateLimiter}>();
   const upgradeHandlers = new Map<string, UpgradeHandler>();
   const shutdownTasks: ShutdownTask[] = [];
   const purgeTasks: {name: string; task: (now: number) => void}[] = [];
   let resolveUser: UserResolver = () => null;
 
-  const namedLimiter = (name: string, per: 'ip' | 'user', limit: number, windowMs: number) => {
+  const namedLimiter = (name: string, per: RateLimitRule['per'], limit: number, windowMs: number) => {
     const existing = limiters.get(name);
     if (existing) {
       if (existing.per !== per || existing.limit !== limit || existing.windowMs !== windowMs)
@@ -202,6 +208,7 @@ export function createApp(config: Config, deps: AppDeps): App {
     }),
     ipLimiter: (name, limit, windowMs) => namedLimiter(name, 'ip', limit, windowMs) as IpRateLimiter,
     userLimiter: (name, limit, windowMs) => namedLimiter(name, 'user', limit, windowMs) as RateLimiter,
+    limit: (ctx, rule) => applyLimits(ctx, [rule], rule.per === 'ip' ? 'ip' : 'signed-in'),
     setUserResolver: resolver => { resolveUser = resolver; },
     setUpgradeHandler: (path, handler) => { upgradeHandlers.set(path, handler); },
     onShutdown: task => { shutdownTasks.push(task); },
@@ -220,6 +227,8 @@ export function createApp(config: Config, deps: AppDeps): App {
     context.auth.loginGuard.prune();
     context.auth.captcha.prune();
   });
+  // The counts of the security events left out, for the minutes no later event wrote them
+  context.addPurgeTask('log', () => log.flush());
 
   context.setUserResolver(ctx => context.auth.sessions.resolve(ctx.cookies));
   // Logins to unknown accounts are checked against a hash made now, with the same settings as the others
@@ -232,20 +241,22 @@ export function createApp(config: Config, deps: AppDeps): App {
   const apiLimiter = context.ipLimiter(API_LIMIT.name, API_LIMIT.limit, API_LIMIT.windowMs);
 
   const tooManyRequests = (ctx: RequestContext, name: string, decision: RateLimitDecision): HttpError => {
-    log.security('rate_limited', name + ' ' + ctx.ipKey, {requestId: ctx.requestId, ip: ctx.ipKey, limit: name,
-                                                           user: ctx.user?.publicId});
+    log.security('rate_limited', name + ' ' + requestRefusalKey(ctx), {requestId: ctx.requestId, ip: ctx.ipKey,
+                                                                        limit: name, user: ctx.user?.publicId});
     return new HttpError(429, 'rate_limited', undefined,
                          {'Retry-After': String(Math.max(1, Math.ceil(decision.retryAfterMs / 1000)))});
   };
 
-  const applyLimits = (ctx: RequestContext, rules: readonly RateLimitRule[], per: 'ip' | 'user') => {
+  // The per-IP limits before the session is looked up, the per-user and per-session ones after
+  const applyLimits = (ctx: RequestContext, rules: readonly RateLimitRule[], phase: 'ip' | 'signed-in') => {
     for (const rule of rules) {
-      if (rule.per !== per)
+      if ((rule.per === 'ip') !== (phase === 'ip'))
         continue;
 
-      const decision = per === 'ip' ?
+      const decision = rule.per === 'ip' ?
         context.ipLimiter(rule.name, rule.limit, rule.windowMs).hit({key: ctx.ipKey, aggregateKey: ctx.ipAggregateKey}) :
-        context.userLimiter(rule.name, rule.limit, rule.windowMs).hit(String(ctx.user?.id));
+        (namedLimiter(rule.name, rule.per, rule.limit, rule.windowMs) as RateLimiter).hit(
+          rule.per === 'session' ? String(ctx.session?.tokenHash) : String(ctx.user?.id));
       if (!decision.allowed)
         throw tooManyRequests(ctx, rule.name, decision);
     }
@@ -280,7 +291,7 @@ export function createApp(config: Config, deps: AppDeps): App {
       if (route.auth === 'required' && !ctx.user)
         throw new HttpError(401, 'unauthenticated');
     }
-    applyLimits(ctx, route.limits, 'user');
+    applyLimits(ctx, route.limits, 'signed-in');
 
     if (UNSAFE_METHODS.has(ctx.method))
       ctx.body = await readJsonBody(req, route.bodyLimit);
@@ -308,6 +319,14 @@ export function createApp(config: Config, deps: AppDeps): App {
 
   const fail = (ctx: RequestContext, error: unknown) => {
     const {res} = ctx;
+    // The client went away in the middle of its request: nobody to answer, and nothing wrong with the server
+    if (error instanceof ClientAbortError) {
+      log.security('http.aborted', requestRefusalKey(ctx), {requestId: ctx.requestId, ip: ctx.ipKey, path: ctx.path,
+                                                            reason: error.reason}, 'info');
+      res.destroy();
+      return;
+    }
+
     if (res.headersSent) {
       log.error('http.error_after_answer', {requestId: ctx.requestId, err: error});
       res.destroy();
@@ -451,6 +470,7 @@ export function createApp(config: Config, deps: AppDeps): App {
       const drain = setTimeout(() => server.closeAllConnections(), SHUTDOWN_DRAIN_MS);
       await closed;
       clearTimeout(drain);
+      log.flush();
     })();
     return shuttingDown;
   };

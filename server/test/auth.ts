@@ -5,15 +5,20 @@
  *
  */
 
+import { existsSync, readFileSync } from 'node:fs';
 import type { OutgoingHttpHeaders } from 'node:http';
+import path from 'node:path';
 import { EMAIL_TEXTS } from '../../src/emailTexts.js';
 import { I18n } from '../../src/i18n.js';
 import { CEILING } from '../auth/loginGuard';
 import type { SessionRevocation } from '../auth/sessions';
 import type { Env } from '../config';
+import { Database, migrate } from '../db/database';
+import { MIGRATIONS } from '../db/migrations';
 import { PasswordHasher } from '../security/passwords';
 import { sha256Hex } from '../security/tokens';
-import { cleanUp, sessionCookie, solvedCaptcha, startTestApp, TestApp, TestResponse } from '../testing';
+import { cleanUp, sessionCookie, solvedCaptcha, startTestApp, temporaryDirectory, TestApp,
+         TestResponse } from '../testing';
 
 afterAll(cleanUp);
 
@@ -199,6 +204,14 @@ describe('Registration', () => {
       ['Admin', PASSWORD, 400, {code: 'invalid_input', fields: {username: 'reserved'}}],
       [42, PASSWORD, 400, {code: 'invalid_input', fields: {username: 'invalid'}}],
       ['ALICE', PASSWORD, 409, {code: 'username_taken'}],
+      // Looks like Alice (an l with a stroke, an upper case I for the l)
+      ['A\u0142ice', PASSWORD, 409, {code: 'username_taken'}],
+      ['AIice', PASSWORD, 409, {code: 'username_taken'}],
+      ['adm\u0131n', PASSWORD, 400, {code: 'invalid_input', fields: {username: 'reserved'}}],
+      // Latin alpha, small capitals: not letters of a language
+      ['\u0251lice', PASSWORD, 400, {code: 'invalid_input', fields: {username: 'invalid'}}],
+      ['\u1D00\u1D05\u1D0D\u026A\u0274', PASSWORD, 400, {code: 'invalid_input', fields: {username: 'invalid'}}],
+      ['Erin\u0661', PASSWORD, 400, {code: 'invalid_input', fields: {username: 'invalid'}}],
       ['Erin', 'short', 400, {code: 'weak_password', fields: {password: 'too_short'}}],
       ['Erin', 'x'.repeat(129), 400, {code: 'weak_password', fields: {password: 'too_long'}}],
       ['Erin', 'Password1234', 400, {code: 'weak_password', fields: {password: 'common'}}],
@@ -447,6 +460,18 @@ describe('Login', () => {
     expect((await logIn(t, 'alice', PASSWORD, from('192.0.2.20'))).headers['retry-after']).toBe('120');
     t.clock.advance(2 * MINUTE);
     expect((await logIn(t, 'alice', PASSWORD, from('192.0.2.20'))).status).toBe(200);
+  });
+
+  test('A client waiting for one login does not wait for the other login of the same account', async () => {
+    // Whether an address goes with a username must not show
+    for (let i = 0; i < 5; i++)
+      expect((await logIn(t, 'alice', 'wrong password!', from('192.0.2.30'))).status).toBe(401);
+    expect((await logIn(t, 'alice', 'wrong password!', from('192.0.2.30'))).json).toEqual(
+      {error: {code: 'too_many_attempts'}});
+    for (const other of ['alice@example.com', 'ALICE@example.com', 'nobody@example.com'])
+      expect((await logIn(t, other, 'wrong password!', from('192.0.2.30'))).json).toEqual(
+        {error: {code: 'invalid_credentials'}});
+    expect((await logIn(t, 'alice@example.com', PASSWORD, from('192.0.2.30'))).status).toBe(200);
   });
 
   test('Parallel attempts cannot check more passwords than the limits allow', async () => {
@@ -824,9 +849,9 @@ describe('The account', () => {
     expect(asked.status).toBe(202);
     expect(asked.json).toEqual({ok: true});
     await t.settle();
-    expect(t.mailbox.sent.map(m => [m.to, m.template])).toEqual([['Alice.New@example.com', 'emailChangeConfirm'],
-                                                                  ['alice@example.com', 'emailChangeNotice']]);
-    const token = tokenIn(t.mailbox.sent[0].text, 'email');
+    expect(t.mailbox.sent.map(m => [m.to, m.template])).toEqual([['alice@example.com', 'emailChangeNotice'],
+                                                                  ['Alice.New@example.com', 'emailChangeConfirm']]);
+    const token = tokenIn(t.mailbox.sent[1].text, 'email');
     // Not changed until confirmed
     expect((await t.request('/api/account', {headers: {Cookie: alice.cookie}})).json.user.email)
       .toBe('alice@example.com');
@@ -848,14 +873,44 @@ describe('The account', () => {
       expect.arrayContaining(['auth.email.change_request', 'auth.email.change']));
   });
 
-  test('An address already in use: the same answer, and nothing sent', async () => {
+  test('An address already in use: the same answer, and the same notice to the account\'s address', async () => {
     await signUp(t, 'bob@example.com', 'Bob');
     t.mailbox.clear();
     const taken = await post('/api/account/email', {currentPassword: password, newEmail: 'BOB@example.com'});
-    const free = await post('/api/account/email', {currentPassword: password, newEmail: 'free@example.com'});
-    expect(visible(taken)).toEqual(visible(free));
     await t.settle();
-    expect(t.mailbox.sent.map(m => m.to)).toEqual(['free@example.com', 'alice@example.com']);
+    const free = await post('/api/account/email', {currentPassword: password, newEmail: 'free@example.com'});
+    await t.settle();
+    expect(visible(taken)).toEqual(visible(free));
+    // The notice first, then one mail to the new address either way (so that the notice, and the mails queued after,
+    // do not go later for a free address): no link to the address in use, but a word to its account
+    expect(t.mailbox.sent.map(m => [m.to, m.template])).toEqual([['alice@example.com', 'emailChangeNotice'],
+                                                                  ['bob@example.com', 'emailChangeTaken'],
+                                                                  ['alice@example.com', 'emailChangeNotice'],
+                                                                  ['free@example.com', 'emailChangeConfirm']]);
+    const [first, second] = mailsTo(t, 'alice@example.com');
+    expect([first.subject, first.text, first.html]).toEqual([second.subject, second.text, second.html]);
+    // Nothing of the requester in it
+    const word = lastMailTo(t, 'bob@example.com');
+    expect(word.text).toContain('Hello Bob,');
+    expect(word.text).not.toMatch(/alice|#\//i);
+    expect(t.app.context.db.get('SELECT COUNT(*) AS n FROM email_tokens WHERE purpose = \'email_change\'')).toEqual({n: 1});
+
+    // Under the limits of a link: 3 an hour to an address (Bob's had its sign-up link)
+    t.mailbox.clear();
+    for (let i = 0; i < 2; i++)
+      await post('/api/account/email', {currentPassword: password, newEmail: 'bob@example.com'});
+    await t.settle();
+    expect(mailsTo(t, 'bob@example.com').length).toBe(1);
+    expect(mailsTo(t, 'alice@example.com').length).toBe(2);
+  });
+
+  test('The notice goes even when the link to the new address is not sent', async () => {
+    // 3 links an hour to an address: the fourth request gets no link, but its notice
+    for (let i = 0; i < 4; i++)
+      await post('/api/account/email', {currentPassword: password, newEmail: 'busy@example.com'});
+    await t.settle();
+    expect(mailsTo(t, 'busy@example.com').length).toBe(3);
+    expect(mailsTo(t, 'alice@example.com').map(m => m.template)).toEqual(Array(4).fill('emailChangeNotice'));
   });
 
   test('An address taken before the confirmation makes the link invalid', async () => {
@@ -923,11 +978,40 @@ describe('The account', () => {
                 updatedAt: expect.any(String), lastLoginAt: expect.any(String)},
       sessions: [{createdAt: expect.any(String), lastSeenAt: expect.any(String), expiresAt: expect.any(String),
                   current: true}],
+      pendingEmailChange: null,
+      loginProtection: {failedLogins: 0, windowStart: null, lockedUntil: null},
       cities: [{owner: 'me'}],
     });
     const hashes = t.db.all<{token_hash: string}>('SELECT token_hash FROM sessions').map(row => row.token_hash);
     for (const secret of ['scrypt', alice.cookie.split('=')[1], ...hashes, 'password'])
       expect(exported.text).not.toContain(secret);
+  });
+
+  test('The export holds the address waiting for its confirmation, and the failed logins', async () => {
+    const start = t.clock.now();
+    for (let i = 0; i < 2; i++)
+      expect((await logIn(t, 'alice', 'wrong password!')).status).toBe(401);
+    t.clock.advance(MINUTE);
+    expect((await post('/api/account/email', {currentPassword: password, newEmail: 'New@example.net'})).status)
+      .toBe(202);
+    await t.settle();
+
+    const exported = await t.request('/api/account/export', {headers: {Cookie: alice.cookie}});
+    const data = JSON.parse(exported.text);
+    expect(data.pendingEmailChange).toEqual({newEmail: 'New@example.net',
+                                             requestedAt: new Date(start + MINUTE).toISOString(),
+                                             expiresAt: new Date(start + MINUTE + DAY).toISOString()});
+    expect(data.loginProtection).toEqual({failedLogins: 2, windowStart: new Date(start).toISOString(),
+                                          lockedUntil: null});
+    // Never the token, nor its hash
+    const token = tokenIn(lastMailTo(t, 'New@example.net').text, 'email');
+    for (const secret of [token, sha256Hex(token)])
+      expect(exported.text).not.toContain(secret);
+
+    // Gone once confirmed
+    expect((await t.post('/api/auth/confirm-email-change', {token})).status).toBe(200);
+    expect(JSON.parse((await t.request('/api/account/export', {headers: {Cookie: alice.cookie}})).text)
+      .pendingEmailChange).toBeNull();
   });
 
   test('Deleting the account needs the password, and takes everything with it', async () => {
@@ -961,7 +1045,33 @@ describe('The account', () => {
     expect(t.mailbox.sent.map(m => m.template)).toEqual(['signup']);
   });
 
-  test('Account changes: 10 an hour per account', async () => {
+  test('Address changes: 10 an hour per account, whatever its sessions, counted once the password is right',
+       async () => {
+    const own = sessionCookie(await logIn(t, 'alice')) as string;
+    // Wrong passwords (the login guard's) and bad requests do not count against it
+    expect((await post('/api/account/email', {currentPassword: 'wrong password!', newEmail: 'x@example.com'}, own))
+      .status).toBe(401);
+    expect((await post('/api/account/email', {currentPassword: password, newEmail: 'nope'}, own)).status).toBe(400);
+
+    const statuses = [];
+    let cookie = alice.cookie;
+    for (let i = 0; i < 12; i++) {
+      // A new session every 3 changes: each login makes one
+      if (i % 3 === 0)
+        cookie = sessionCookie(await logIn(t, 'alice')) as string;
+      statuses.push((await post('/api/account/email', {currentPassword: password, newEmail: `n${i}@example.com`},
+                                cookie)).status);
+    }
+    expect(statuses).toEqual([...Array(10).fill(202), 429, 429]);
+    expect(t.logs.some(line => line.event === 'rate_limited' && line.limit === 'account-email')).toBe(true);
+    await t.settle();
+    expect(t.mailbox.sent.filter(m => m.template === 'emailChangeConfirm').length).toBe(10);
+    // The other changes still work
+    expect((await post('/api/account/password', {currentPassword: password, newPassword: NEW_PASSWORD}, own)).status)
+      .toBe(200);
+  });
+
+  test('Account changes: 10 an hour per session', async () => {
     const statuses = [];
     for (let i = 0; i < 11; i++)
       statuses.push((await post('/api/account/delete', {password: 'x'})).status);
@@ -969,5 +1079,146 @@ describe('The account', () => {
     expect(statuses.slice(0, 5)).toEqual([401, 401, 401, 401, 401]);
     expect(statuses[10]).toBe(429);
     expect(t.logs.some(line => line.event === 'rate_limited' && line.limit === 'account')).toBe(true);
+  });
+
+  test('A session (a stolen one, say) cannot keep the others from logging out everywhere or changing the password',
+       async () => {
+    const useUp = async (cookie: string) => {
+      for (let i = 0; i < 10; i++)
+        expect((await post('/api/account/delete', {}, cookie)).status).toBe(400);
+      expect((await post('/api/account/delete', {}, cookie)).status).toBe(429);
+    };
+
+    const stolen = alice.cookie;
+    const own = sessionCookie(await logIn(t, 'alice')) as string;
+    await useUp(stolen);
+    expect((await post('/api/account/logout-all', {}, own)).status).toBe(204);
+    expect((await session(t, stolen)).user).toBeNull();
+
+    const stolenAgain = sessionCookie(await logIn(t, 'alice')) as string;
+    const ownAgain = sessionCookie(await logIn(t, 'alice')) as string;
+    await useUp(stolenAgain);
+    expect((await post('/api/account/password', {currentPassword: password, newPassword: NEW_PASSWORD}, ownAgain))
+      .status).toBe(200);
+    expect((await session(t, stolenAgain)).user).toBeNull();
+  });
+});
+
+describe('A password reset made while a password is checked', () => {
+  let t: TestApp;
+  let alice: {user: any; cookie: string};
+  beforeEach(async () => {
+    t = await startTestApp(MAIL);
+    alice = await signUp(t, 'alice@example.com', 'Alice');
+    // Past the hour of the sign-up mail
+    t.clock.advance(2 * HOUR);
+  });
+  afterEach(() => t.close());
+
+  // The next password check, once its hash is computed, waits until release() (the time a hash takes in production)
+  const holdNextCheck = () => {
+    const passwords = t.app.context.auth.passwords;
+    const verify = passwords.verify.bind(passwords);
+    let reached = () => {};
+    let release = () => {};
+    const checked = new Promise<void>(resolve => { reached = resolve; });
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    passwords.verify = async (...args) => {
+      passwords.verify = verify;
+      const matches = await verify(...args);
+      reached();
+      await gate;
+      return matches;
+    };
+    return {checked, release};
+  };
+
+  // The owner resets the password with the link of a mail: every session ends
+  const reset = async () => {
+    await t.post('/api/auth/forgot-password', {email: 'alice@example.com', website: '',
+                                               captcha: await solvedCaptcha(t, 'forgot')});
+    await t.settle();
+    const token = tokenIn(lastMailTo(t, 'alice@example.com').text, 'reset');
+    expect((await t.post('/api/auth/reset-password', {token, password: NEW_PASSWORD})).status).toBe(200);
+    await t.settle();
+    t.mailbox.clear();
+  };
+
+  // The owner's new password works, and nobody else has a session
+  const resetHolds = async () => {
+    expect(t.db.get('SELECT count(*) AS n FROM sessions')).toEqual({n: 0});
+    expect((await logIn(t, 'alice', PASSWORD)).status).toBe(401);
+    expect((await logIn(t, 'alice', NEW_PASSWORD)).status).toBe(200);
+  };
+
+  test('A login with the old password makes no session', async () => {
+    const {checked, release} = holdNextCheck();
+    const login = logIn(t, 'alice', PASSWORD);
+    await checked;
+    await reset();
+    release();
+    const answer = await login;
+    expect(answer.json).toEqual({error: {code: 'invalid_credentials'}});
+    expect(sessionCookie(answer)).toBeNull();
+    await resetHolds();
+  });
+
+  test('A password change with the old password does not undo it', async () => {
+    const {checked, release} = holdNextCheck();
+    const change = t.post('/api/account/password', {currentPassword: PASSWORD, newPassword: 'the intruder\'s own phrase'},
+                          {Cookie: alice.cookie});
+    await checked;
+    await reset();
+    release();
+    const answer = await change;
+    expect(answer.json).toEqual({error: {code: 'unauthenticated'}});
+    expect(sessionCookie(answer)).toBeNull();
+    await resetHolds();
+  });
+
+  test('An address change with the old password sends no link, and makes no token', async () => {
+    const {checked, release} = holdNextCheck();
+    const change = t.post('/api/account/email', {currentPassword: PASSWORD, newEmail: 'mallory@evil.example'},
+                          {Cookie: alice.cookie});
+    await checked;
+    await reset();
+    release();
+    expect((await change).status).toBe(202);
+    await t.settle();
+    expect(t.mailbox.sent).toEqual([]);
+    expect(t.db.all('SELECT * FROM email_tokens')).toEqual([]);
+    expect(t.logs.find(line => line.event === 'auth.email.change_request')).toMatchObject({stale: true});
+    await resetHolds();
+  });
+
+  test('Deleting the account with the old password does not', async () => {
+    const {checked, release} = holdNextCheck();
+    const deletion = t.post('/api/account/delete', {password: PASSWORD}, {Cookie: alice.cookie});
+    await checked;
+    await reset();
+    release();
+    expect((await deletion).json).toEqual({error: {code: 'unauthenticated'}});
+    expect(t.db.get('SELECT count(*) AS n FROM users')).toEqual({n: 1});
+    await resetHolds();
+  });
+});
+
+describe('A deleted account', () => {
+  test('Leaves nothing of itself in the database files', async () => {
+    const directory = temporaryDirectory();
+    const file = path.join(directory, 'kawacity.db');
+    const db = new Database(file);
+    migrate(db, MIGRATIONS, {backupDirectory: path.join(directory, 'backups'), now: 0});
+    const t = await startTestApp(MAIL, {db});
+    await signUp(t, 'stays@example.com', 'Stays');
+    const gone = await signUp(t, 'gone.player@example.org', 'GonePlayer');
+    expect((await t.post('/api/account/delete', {password: PASSWORD}, {Cookie: gone.cookie})).status).toBe(204);
+
+    const bytes = [file, file + '-wal'].filter(name => existsSync(name))
+      .map(name => readFileSync(name).toString('latin1')).join('');
+    expect(bytes).toContain('stays@example.com');
+    for (const text of ['GonePlayer', 'goneplayer', 'gone.player@example.org', gone.user.id])
+      expect(bytes).not.toContain(text);
+    await t.close();
   });
 });

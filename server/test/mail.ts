@@ -10,6 +10,7 @@ import { I18n } from '../../src/i18n.js';
 import { FakeClock } from '../clock';
 import { createLogger } from '../log';
 import { createMailer, Mail, Mailer, MailTransport, MemoryTransport, smtpOptions } from '../mail/mailer';
+import { sha256Hex } from '../security/tokens';
 import { escapeHtml, renderMail } from '../mail/render';
 import { testConfig } from '../testing';
 
@@ -38,12 +39,25 @@ describe('Mailer', () => {
                                   text: 'Text', html: undefined}]);
     expect(logs.some(line => line.event === 'mail.sent' && line.template === 'test')).toBe(true);
 
-    memory.failWith = new Error('550 mailbox unavailable');
-    expect(mailer.send(mail('b@example.com', 'reset'), {subject: 'S', text: 'secret link'})).toBe(true);
+    // As nodemailer makes them: the server's reply, with the address, in the message
+    const reply = '550 5.1.1 <B@example.com>: Recipient address rejected: User unknown in local recipient table';
+    memory.failWith = Object.assign(new Error('Can\'t send mail - all recipients were rejected: ' + reply),
+                                    {code: 'EENVELOPE', command: 'RCPT TO', response: reply, responseCode: 550});
+    expect(mailer.send(mail('B@example.com', 'reset'), {subject: 'S', text: 'secret link'})).toBe(true);
     await mailer.idle();
-    const error = logs.find(line => line.event === 'mail.error');
-    expect(error).toMatchObject({level: 'error', template: 'reset', message: '550 mailbox unavailable'});
-    expect(JSON.stringify(logs)).not.toContain('secret link');
+    memory.failWith = new Error('Invalid recipient "c.private@example.org"');
+    expect(mailer.send(mail('c.private@example.org', 'signup'), content)).toBe(true);
+    await mailer.idle();
+
+    const errors = logs.filter(line => line.event === 'mail.error');
+    expect(errors[0]).toMatchObject({level: 'error', template: 'reset', code: 'EENVELOPE', command: 'RCPT TO',
+                                     responseCode: 550, status: '5.1.1'});
+    expect(errors[1]).toMatchObject({level: 'error', template: 'signup'});
+    // Neither the address, nor a hash of it (anyone could check a guess), nor the mail's text
+    const logText = JSON.stringify(logs).toLowerCase();
+    for (const secret of ['b@example.com', 'c.private', 'secret link', 'user unknown',
+                          ...['b@example.com', 'c.private@example.org'].map(key => sha256Hex(key).slice(0, 8))])
+      expect(logText).not.toContain(secret);
   });
 
   test('3 mails an hour and 10 a day per recipient; over that they are dropped, silently', async () => {
@@ -109,6 +123,30 @@ describe('Mailer', () => {
       sent.push(mailer.send(mail(`user${i}@example.com`), content));
     expect(sent).toEqual([true, true, true, true, true, false, false]);
     expect(logs.filter(line => line.event === 'mail.dropped')[0]).toMatchObject({reason: 'global'});
+  });
+
+  test('Links up to MAIL_MAX_PER_HOUR do not silence notices, nor hide that one was dropped', () => {
+    const {mailer, logs, clock} = setUp({maxPerHour: 5});
+    const notice = (to: string) => ({...mail(to, 'passwordChanged'), notice: true});
+    // Links anyone can ask for, to addresses of their choosing
+    for (let i = 0; i < 6; i++)
+      mailer.send(mail(`junk${i}@example.net`, 'signup'), content);
+    expect(mailer.allows('victim@example.com')).toBe(false);
+
+    expect(mailer.allows('victim@example.com', true)).toBe(true);
+    expect(mailer.send(notice('victim@example.com'), content)).toBe(true);
+    // Nor do notices count against the links' budget (once the links' hour is over)
+    clock.advance(2 * HOUR);
+    for (let i = 0; i < 10; i++)
+      mailer.send(notice(`owner${i}@example.com`), content);
+    expect(mailer.send(mail('new@example.net', 'signup'), content)).toBe(true);
+
+    // A notice over its own limit is logged on a line of its own, not counted among the links dropped
+    for (let i = 0; i < 6; i++)
+      mailer.send(notice('owner0@example.com'), content);
+    const dropped = logs.filter(line => line.event === 'mail.dropped');
+    expect(dropped.map(line => [line.reason, line.template, line.notice])).toEqual(
+      [['global', 'signup', undefined], ['recipient', 'passwordChanged', true]]);
   });
 
   test('A bounded queue', async () => {

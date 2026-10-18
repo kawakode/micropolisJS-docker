@@ -6,6 +6,7 @@
  */
 
 import http from 'node:http';
+import net from 'node:net';
 import { Database } from '../db/database';
 import { json, HttpError } from '../http/response';
 import { cleanUp, startTestApp, TestApp, testDatabase } from '../testing';
@@ -15,9 +16,9 @@ afterAll(cleanUp);
 const DAY = 24 * 60 * 60 * 1000;
 
 const addUser = (db: Database) => db.run(
-  `INSERT INTO users (public_id, username, username_key, email, email_key, password_hash, locale, created_at,
-                      updated_at) VALUES ('AAAAAAAAAAAAAAAAAAAAAA', 'Alice', 'alice', 'alice@example.com',
-                      'alice@example.com', 'x', 'fr', 1000, 1000)`).lastInsertRowid;
+  `INSERT INTO users (public_id, username, username_key, username_skeleton, email, email_key, password_hash, locale,
+                      created_at, updated_at) VALUES ('AAAAAAAAAAAAAAAAAAAAAA', 'Alice', 'alice', 'alice',
+                      'alice@example.com', 'alice@example.com', 'x', 'fr', 1000, 1000)`).lastInsertRowid;
 
 describe('GET /api/health', () => {
   let t: TestApp;
@@ -179,6 +180,8 @@ describe('Requests that change something', () => {
 
   test('Refusals are logged once a minute per client, whatever their origins', async () => {
     t.clock.advance(60 * 1000);
+    // The counts of the earlier tests' refusals
+    t.app.context.log.flush();
     const before = t.logs.filter(line => line.event === 'csrf.reject').length;
     for (let i = 0; i < 3; i++)
       await post({'Content-Type': 'application/json', Origin: `https://attacker${i}.example`});
@@ -188,12 +191,14 @@ describe('Requests that change something', () => {
                                     message: 'Origin https://attacker0.example does not match PUBLIC_URL ' +
                                              'http://localhost:8080'});
 
-    // The origin the client chose is shortened
+    // The origin the client chose is shortened; the minute over, the count of those left out comes first
     t.clock.advance(60 * 1000);
     await post({'Content-Type': 'application/json', Origin: 'https://' + 'a'.repeat(500) + '.example'});
     lines = t.logs.filter(line => line.event === 'csrf.reject').slice(before);
-    expect(lines.length).toBe(2);
-    expect(lines[1]).toMatchObject({suppressed: 2, origin: 'https://' + 'a'.repeat(92)});
+    expect(lines.length).toBe(3);
+    expect(lines[1]).toMatchObject({suppressed: 2, origin: 'https://attacker0.example'});
+    expect(lines[2]).toMatchObject({origin: 'https://' + 'a'.repeat(92)});
+    expect(lines[2].suppressed).toBeUndefined();
   });
 
   test('Need Content-Type: application/json', async () => {
@@ -337,6 +342,74 @@ describe('Rate limits', () => {
   });
 });
 
+describe('Refusals in the log', () => {
+  test('Refused requests are logged once a minute per IPv6 /48, not per /64', async () => {
+    const t = await startTestApp({TRUST_PROXY: '1'});
+    t.app.context.router.get('/api/test/once', ctx => json(ctx.res, 200, {}),
+                             {limits: [{name: 'test-once', limit: 1, windowMs: 60000, per: 'ip'}]});
+    const statuses = [];
+    for (let n = 0; n < 40; n++)
+      statuses.push((await t.request('/api/test/once', {headers: {'X-Forwarded-For': `2001:db8:77:${n}::1`}})).status);
+    // Each /64 may once, the /48 ten times
+    expect(statuses.filter(status => status === 200).length).toBe(10);
+    expect(statuses.filter(status => status === 429).length).toBe(30);
+
+    const lines = t.logs.filter(line => line.event === 'rate_limited');
+    expect(lines.length).toBe(1);
+    // The first /64 refused (the eleventh, 2001:db8:77:10::1)
+    expect(lines[0]).toMatchObject({limit: 'test-once', ip: '2001:db8:77:10::/64'});
+    t.app.runPurge();
+    expect(t.logs.filter(line => line.event === 'rate_limited')[1]).toMatchObject({suppressed: 29});
+    await t.close();
+  });
+});
+
+describe('Clients that go away', () => {
+  let t: TestApp;
+  beforeAll(async () => {
+    t = await startTestApp();
+    t.app.context.router.post('/api/test/echo', ctx => json(ctx.res, 200, {body: ctx.body}));
+  });
+  afterAll(() => t.close());
+
+  // A POST whose client goes away after part of its body, once the server is reading it
+  const abandon = () => new Promise<void>((resolve, reject) => {
+    const socket = net.connect(Number(new URL(t.url).port), '127.0.0.1');
+    t.app.server.once('request', () => socket.destroy());
+    socket.on('connect', () => socket.write('POST /api/test/echo HTTP/1.1\r\nHost: localhost:8080\r\n' +
+                                            'Origin: http://localhost:8080\r\nContent-Type: application/json\r\n' +
+                                            'Content-Length: 100\r\n\r\n{"a": '));
+    socket.on('close', () => resolve());
+    socket.on('error', reject);
+  });
+
+  // Until the server has seen every connection end
+  const settled = async () => {
+    const open = () => new Promise<number>(resolve => t.app.server.getConnections((_, count) => resolve(count)));
+    for (let i = 0; i < 200 && await open() > 0; i++)
+      await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise(resolve => setImmediate(resolve));
+  };
+
+  test('Are not server errors: no answer, and a line at info level, once a minute per client', async () => {
+    for (let i = 0; i < 5; i++)
+      await abandon();
+    await settled();
+
+    expect(t.logs.filter(line => line.event === 'http.error')).toEqual([]);
+    const lines = t.logs.filter(line => line.event === 'http.aborted');
+    expect(lines.length).toBe(1);
+    expect(lines[0]).toMatchObject({level: 'info', ip: '127.0.0.1', path: '/api/test/echo'});
+    expect(JSON.stringify(lines[0])).not.toContain('stack');
+
+    t.app.runPurge();
+    expect(t.logs.filter(line => line.event === 'http.aborted')[1]).toMatchObject({suppressed: 4});
+
+    // The server goes on
+    expect((await t.post('/api/test/echo', {a: 1})).json).toEqual({body: {a: 1}});
+  });
+});
+
 describe('WebSocket upgrades', () => {
   const upgrade = (t: TestApp, path: string, headers: http.OutgoingHttpHeaders) => new Promise<number>(resolve => {
     const req = http.request({host: '127.0.0.1', port: new URL(t.url).port, path, agent: false,
@@ -386,9 +459,13 @@ describe('Lifecycle', () => {
 
     t.app.context.onShutdown(async () => { ran.push('first'); });
     t.app.context.onShutdown(() => { ran.push('second'); });
+    t.app.context.log.security('test.refused', 'client');
+    t.app.context.log.security('test.refused', 'client');
     await Promise.all([t.app.shutdown(), t.app.shutdown()]);
     expect(ran.slice(1)).toEqual(['first', 'second']);
     expect(t.app.server.listening).toBe(false);
+    // The counts of the log's security events are written last
+    expect(t.logs[t.logs.length - 1]).toMatchObject({event: 'test.refused', suppressed: 1});
     t.db.close();
   });
 });

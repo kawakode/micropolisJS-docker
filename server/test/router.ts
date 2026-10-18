@@ -64,6 +64,9 @@ describe('Router', () => {
     expect(() => router.get('/api/:1x', nothing)).toThrow(/parameter/);
     expect(() => router.add('OPTIONS', '/api/x', nothing)).toThrow(/method/);
     expect(() => router.post('/api/x', nothing, {limits: [{name: 'x', limit: 1, windowMs: 1, per: 'user'}]}))
-      .toThrow(/per-user limits need auth/);
+      .toThrow(/per-user and per-session limits need auth/);
+    expect(() => router.post('/api/x', nothing, {auth: 'optional',
+                                                 limits: [{name: 'x', limit: 1, windowMs: 1, per: 'session'}]}))
+      .toThrow(/per-user and per-session limits need auth/);
   });
 });

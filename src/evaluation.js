@@ -62,8 +62,9 @@ Evaluation.prototype.evalInit = function() {
   for (var i = 0; i < NUMPROBLEMS; i++)
     this.problemVotes[i] = {index: i, voteCount: 0};
 
+  // No problem: a city without inhabitants has none
   for (i = 0; i < NUM_COMPLAINTS; i++)
-    this.problemOrder[i] = NUMPROBLEMS;
+    this.problemOrder[i] = null;
 };
 
 
@@ -369,11 +370,13 @@ Evaluation.prototype.getProblemVotes = function(i) {
 };
 
 
+// The i-th worst problem (Evaluation.CRIME...), or null when there is none
 Evaluation.prototype.getProblemNumber = function(i) {
   if (i < 0 || i >= NUM_COMPLAINTS)
     return null;
 
-  return this.problemOrder[i];
+  var problem = this.problemOrder[i];
+  return Number.isInteger(problem) && problem >= 0 && problem < NUMPROBLEMS ? problem : null;
 };
 
 

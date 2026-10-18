@@ -30,8 +30,17 @@ import { Session } from './session.js';
 var RESERVED_NAMES = ['admin', 'administrator', 'root', 'system', 'kawacity', 'moderator', 'support', 'staff', 'server',
                       'null', 'undefined', 'operator'];
 
-// Usernames: Latin letters (accents too) and digits, with _ . - between them
-var USERNAME = /^[\p{Script=Latin}\p{N}](?:[\p{Script=Latin}\p{N}_.-]*[\p{Script=Latin}\p{N}])?$/u;
+// Usernames: Latin letters (accents too) and the digits 0-9, with _ . - between them
+var USERNAME = /^[\p{Script=Latin}0-9](?:[\p{Script=Latin}0-9_.-]*[\p{Script=Latin}0-9])?$/u;
+
+// The letters: an ASCII letter, or one of these, once accents are taken off (the other Latin letters, phonetic ones,
+// small capitals..., often look like an ASCII letter: the server refuses them)
+var OTHER_LETTERS = Array.from('ßẞæÆœŒøØłŁđĐðÐþÞħĦıŋŊŧŦəƏ');
+
+var isUsernameCharacter = function(c) {
+  var base = c.normalize('NFD').replace(/\p{M}/gu, '');
+  return /^[A-Za-z0-9_.-]$/.test(base) || OTHER_LETTERS.indexOf(base) !== -1;
+};
 
 // What a browser accepts as an email address, roughly: the server checks it exactly
 var EMAIL = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
@@ -76,7 +85,7 @@ var checkUsername = function(username, limits) {
     return 'too_short';
   if (length(username) > limits.usernameMax)
     return 'too_long';
-  if (!USERNAME.test(username))
+  if (!USERNAME.test(username) || !Array.from(username).every(isUsernameCharacter))
     return 'invalid';
   if (RESERVED_NAMES.indexOf(username.toLowerCase()) !== -1)
     return 'reserved';

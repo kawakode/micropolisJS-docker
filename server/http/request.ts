@@ -173,6 +173,15 @@ export function parseCookies(header: string | undefined): Map<string, string> {
   return cookies;
 }
 
+// A client that went away (or was too slow, past the server's requestTimeout) before sending its whole body: nothing
+// is answered, and it is not a server error
+export class ClientAbortError extends Error {
+  constructor(readonly reason: string) {
+    super(`the client went away before the end of its request (${reason})`);
+    this.name = 'ClientAbortError';
+  }
+}
+
 // The body of a request, up to `limit` bytes; beyond, 413 (and the connection is closed rather than read to its end)
 export function readBody(req: IncomingMessage, limit: number): Promise<Buffer> {
   const tooLarge = () => new HttpError(413, 'payload_too_large', undefined, {Connection: 'close'});
@@ -210,9 +219,11 @@ export function readBody(req: IncomingMessage, limit: number): Promise<Buffer> {
         chunks.push(chunk);
     };
     const onEnd = () => finish(null);
-    const onError = (error: Error) => finish(error);
+    // The request's stream fails only when its connection does ('aborted', ECONNRESET...)
+    const onError = (error: Error & {code?: unknown}) =>
+      finish(new ClientAbortError(typeof error.code === 'string' ? error.code : error.message.slice(0, 50)));
     // Closed before its end: the client went away
-    const onClose = () => finish(new Error('request closed'));
+    const onClose = () => finish(new ClientAbortError('closed'));
 
     req.on('data', onData);
     req.on('end', onEnd);

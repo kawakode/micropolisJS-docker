@@ -5,8 +5,9 @@
  *
  */
 
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import type { DatabaseSync, StatementSync } from 'node:sqlite';
 import { Database, fileTimestamp, migrate } from '../db/database';
 import { MIGRATIONS } from '../db/migrations';
 import { purgeExpired } from '../db/purge';
@@ -16,9 +17,10 @@ import { cleanUp, temporaryDirectory, testDatabase } from '../testing';
 afterAll(cleanUp);
 
 const addUser = (db: Database, name: string) => db.run(
-  `INSERT INTO users (public_id, username, username_key, email, email_key, password_hash, locale, created_at,
-                      updated_at) VALUES (?, ?, ?, ?, ?, 'x', 'en', 0, 0)`,
-  newPublicId(), name, name.toLowerCase(), `${name}@example.com`, `${name.toLowerCase()}@example.com`).lastInsertRowid;
+  `INSERT INTO users (public_id, username, username_key, username_skeleton, email, email_key, password_hash, locale,
+                      created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'x', 'en', 0, 0)`,
+  newPublicId(), name, name.toLowerCase(), name.toLowerCase(), `${name}@example.com`,
+  `${name.toLowerCase()}@example.com`).lastInsertRowid;
 
 describe('Database', () => {
   test('Every connection checks foreign keys and uses the write-ahead log', () => {
@@ -28,8 +30,25 @@ describe('Database', () => {
     expect(db.get<{journal_mode: string}>('PRAGMA journal_mode')?.journal_mode).toBe('wal');
     expect(db.get<{timeout: number}>('PRAGMA busy_timeout')?.timeout).toBe(5000);
     expect(db.get<{synchronous: number}>('PRAGMA synchronous')?.synchronous).toBe(1);
+    expect(db.get<{secure_delete: number}>('PRAGMA secure_delete')?.secure_delete).toBe(1);
     db.close();
     expect(db.isOpen).toBe(false);
+  });
+
+  test('What is deleted cannot be read back from the file', () => {
+    const file = path.join(temporaryDirectory(), 'kawacity.db');
+    const db = new Database(file);
+    migrate(db, MIGRATIONS, {backupDirectory: '/nonexistent', now: 0});
+    addUser(db, 'Stays');
+    const gone = addUser(db, 'GonePlayer');
+    db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+    db.run('DELETE FROM users WHERE id = ?', gone);
+    db.close();
+
+    const bytes = readFileSync(file).toString('latin1');
+    expect(bytes).toContain('stays@example.com');
+    for (const text of ['GonePlayer', 'goneplayer', 'GonePlayer@example.com', 'goneplayer@example.com'])
+      expect(bytes).not.toContain(text);
   });
 
   test('Migrations create the schema once', () => {
@@ -76,6 +95,45 @@ describe('Database', () => {
     expect(again.backup).toBe(path.join(directory, 'backups', `before-v1-to-v2-20261018T000000Z.db`));
     expect(readdirSync(path.join(directory, 'backups')).length).toBe(2);
     db.close();
+  });
+
+  test('A copy is readable by its owner only from the start, in a directory of its own', () => {
+    const directory = temporaryDirectory();
+    const db = new Database(path.join(directory, 'kawacity.db'));
+    migrate(db, MIGRATIONS, {backupDirectory: path.join(directory, 'backups'), now: 0});
+    addUser(db, 'Alice');
+
+    // What the copy's file is when SQLite starts writing it: a usual umask would make a new file readable by all
+    const connection = (db as unknown as {connection: DatabaseSync}).connection;
+    const prepare = connection.prepare.bind(connection);
+    let modeWhenWritten: number | null = null;
+    connection.prepare = ((sql: string) => {
+      const statement = prepare(sql);
+      return !sql.startsWith('VACUUM INTO') ? statement : {
+        run: (target: string) => {
+          modeWhenWritten = existsSync(target) ? statSync(target).mode & 0o777 : null;
+          return statement.run(target);
+        },
+      } as unknown as StatementSync;
+    }) as typeof connection.prepare;
+
+    const umask = process.umask(0o022);
+    try {
+      const file = path.join(directory, 'backups', 'copy.db');
+      db.backupTo(file);
+      expect(modeWhenWritten).toBe(0o600);
+      expect(statSync(file).mode & 0o777).toBe(0o600);
+      expect(statSync(path.dirname(file)).mode & 0o777).toBe(0o700);
+      const copy = new Database(file);
+      expect(copy.get<{n: number}>('SELECT count(*) AS n FROM users')?.n).toBe(1);
+      copy.close();
+
+      // Never over a file that is there
+      expect(() => db.backupTo(file)).toThrow(/EEXIST/);
+    } finally {
+      process.umask(umask);
+      db.close();
+    }
   });
 
   test('An empty database is not copied', () => {

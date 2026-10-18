@@ -7,19 +7,25 @@
 
 import type { Clock } from '../clock';
 import type { Database } from '../db/database';
+import { loginLookup } from './users';
 
 // Password guessing (OWASP ASVS V2.2, NIST SP 800-63B 5.2.2). A login is checked against its subject: the account it
 // names, or, when it names none, the hash of the login string, tracked the same way in memory so that the answers do
 // not tell whether an account exists.
-//   (a) Per subject and client (IP key): after 5 failures in a row, that pair waits 2^(n-5) minutes (at most 60)
-//       before each new try (429 too_many_attempts). Other clients are not affected; a success clears the pair.
+//   (a) Per login string (its key, see loginLookup) and client (IP key): after 5 failures in a row, that pair waits
+//       2^(n-5) minutes (at most 60) before each new try (429 too_many_attempts). Other clients are not affected; a
+//       success clears the pair.
 //   (b) Per subject: 100 failures in 24 hours lock it for 24 hours, or until its password is reset; the account's
 //       owner gets one mail about it. For accounts this is kept in the users table, for unknown subjects in memory.
-// A subject has at most one password check under way (others get 429 rate_limited), and the failure is counted
+// A login string has at most one password check under way (others get 429 rate_limited), and the failure is counted
 // before the check starts, so that parallel requests cannot try more than the limits allow.
 //
+// (a) and the check under way go by the login string, not by the account: the username and the address of an account
+// must not share them, as an address that answered like the username would be known to be that account's. (b) goes
+// by the account, whatever names it.
+//
 // The account routes that ask for the current password (change password or email, delete the account) go through
-// the same guard.
+// the same guard, by the account (they have no login string).
 
 export const FREE_FAILURES = 5;
 export const MAX_WAIT = 60 * 60 * 1000;
@@ -30,12 +36,16 @@ export const LOCK_TIME = 24 * 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
 const DEFAULT_MAX_ENTRIES = 100000;
 
-// Who a login is for: an account (by its id), or the key of a login that names no account
-export type LoginSubject = {userId: number} | {unknownKey: string};
+// Who a login is for: an account (by its id, and the key of the login string that named it, if any), or the key of a
+// login that names no account
+export type LoginSubject = {userId: number; loginKey?: string} | {unknownKey: string};
 
-const subjectId = (subject: LoginSubject) => 'userId' in subject ? `u${subject.userId}` : `k${subject.unknownKey}`;
+// What (a) and the check under way go by: the login string's key, or the account's id on the account routes
+const throttleId = (subject: LoginSubject) =>
+  'unknownKey' in subject ? `k${subject.unknownKey}` :
+    subject.loginKey !== undefined ? `k${subject.loginKey}` : `u${subject.userId}`;
 
-// The subject id of a pair's key (subject id, NUL, client key)
+// The throttle id of a pair's key (throttle id, NUL, client key)
 const pairSubject = (pairKey: string) => pairKey.slice(0, pairKey.indexOf('\u0000'));
 
 export interface LoginAttempt {
@@ -87,7 +97,7 @@ export class LoginGuard {
   private readonly db: Database;
   private readonly clock: Clock;
   private readonly maxEntries: number;
-  // By subject id and client key; oldest first
+  // By throttle id and client key; oldest first
   private readonly pairs = new Map<string, PairState>();
   // By unknown key; oldest first
   private readonly unknown = new Map<string, CeilingState>();
@@ -163,7 +173,7 @@ export class LoginGuard {
   // the attempt must be ended with succeeded(), failed() or cancelled()
   begin(subject: LoginSubject, clientKey: string): GuardDecision {
     const now = this.clock.now();
-    const id = subjectId(subject);
+    const id = throttleId(subject);
     if (this.checking.has(id))
       return {allowed: false, reason: 'busy', retryAfterMs: 1000};
 
@@ -242,13 +252,16 @@ export class LoginGuard {
     };
   }
 
-  // After a password reset: the account is unlocked, and its failures forgotten
-  clearUser(userId: number): void {
+  // After a password reset: the account is unlocked, and the failures of its username, its address and its account
+  // routes forgotten
+  clearUser(user: {id: number; username: string; email: string}): void {
     this.db.run('UPDATE users SET failed_logins_day = 0, failed_window_start = NULL, locked_until = NULL WHERE id = ?',
-                userId);
-    const prefix = `u${userId}\u0000`;
+                user.id);
+    const ids = new Set([throttleId({userId: user.id}),
+                         throttleId({userId: user.id, loginKey: loginLookup(user.username).subjectKey}),
+                         throttleId({userId: user.id, loginKey: loginLookup(user.email).subjectKey})]);
     for (const key of this.pairs.keys()) {
-      if (key.startsWith(prefix))
+      if (ids.has(pairSubject(key)))
         this.pairs.delete(key);
     }
   }

@@ -13,14 +13,17 @@ import type { Logger } from '../log';
 import { RateLimiter } from '../security/rateLimit';
 
 // Sending mail: the account emails (sign-up and reset links, notices). Mails are queued and sent one after the other,
-// after the request that asked for them was answered; a mail that cannot be sent is logged (mail.error), never shown.
+// after the request that asked for them was answered; a mail that cannot be sent is logged (mail.error, without its
+// recipient nor the server's answer, which usually repeats the address), never shown.
 //
 // Every mail counts against limits, so that nobody can flood an inbox or spoil the sender's reputation through the
-// game: per recipient (by email_key) 3 an hour and 10 a day, MAIL_MAX_PER_HOUR in all, and a queue of 500. Over a limit
-// the mail is dropped without a word to the requester (mail.dropped is logged). The notices about an account (its
-// password or address changed, it was locked) have per-recipient limits of their own: anyone can have links mailed to
-// any address (registering, forgetting a password), and must not be able to use up its limits to silence the notice
-// that would tell its owner about a change.
+// game: per recipient (by email_key) 3 links an hour and 10 a day, MAIL_MAX_PER_HOUR links in all, and a queue of 500.
+// Over a limit the mail is dropped without a word to the requester (mail.dropped is logged). The notices about an
+// account (its password or address changed, it was locked) have per-recipient limits of their own, and do not count
+// against MAIL_MAX_PER_HOUR: anyone can have links mailed to any address (registering, forgetting a password), and
+// must not be able to use up a limit to silence the notice that would tell an account's owner about a change. Notices
+// go only to the addresses of accounts, after something that needed the account's password, a session or a mailed
+// link: their per-recipient limits are enough.
 //
 // Transports: smtp (SMTP_HOST), log (MAIL_TRANSPORT=log: the mail, links included, is written to the log, for
 // development only), memory (tests).
@@ -153,6 +156,24 @@ export const NO_SENDER: MailAddress = {name: 'KawaCity', address: 'kawacity@loca
 
 const ALL = 'all';
 
+// What went wrong with a mail, in the log: nodemailer's code and the SMTP command and reply code, never the text of
+// the error, where the server's reply (which usually repeats the address) is copied
+const failure = (error: unknown) => {
+  const e = (typeof error === 'object' && error !== null ? error : {}) as
+    {code?: unknown; originalCode?: unknown; command?: unknown; responseCode?: unknown; response?: unknown};
+  const text = (value: unknown) => typeof value === 'string' ? value.slice(0, 40) : undefined;
+  return {
+    // EENVELOPE, ECONNECTION, EAUTH... (and the system's code, such as ECONNREFUSED)
+    code: text(e.code),
+    originalCode: text(e.originalCode),
+    // RCPT TO, DATA, AUTH PLAIN...
+    command: text(e.command),
+    responseCode: typeof e.responseCode === 'number' ? e.responseCode : undefined,
+    // The enhanced status code of the reply: 5.1.1 (no such mailbox), 5.7.1 (refused)...
+    status: typeof e.response === 'string' ? /\b[245]\.\d{1,3}\.\d{1,3}\b/.exec(e.response)?.[0] : undefined,
+  };
+};
+
 export type DropReason = 'recipient' | 'global' | 'queue' | 'closed';
 
 export interface MailerOptions {
@@ -201,7 +222,8 @@ export class Mailer {
       return 'closed';
     if (this.queue.length >= this.queueLimit)
       return 'queue';
-    if (!this.globalLimiter.check(ALL).allowed)
+    // Links only (see the top of this file)
+    if (!notice && !this.globalLimiter.check(ALL).allowed)
       return 'global';
     if (this.limitersFor(notice).some(limiter => !limiter.check(toKey).allowed))
       return 'recipient';
@@ -220,12 +242,15 @@ export class Mailer {
     const notice = envelope.notice === true;
     const reason = this.refusal(envelope.toKey, notice);
     if (reason) {
-      this.log.security('mail.dropped', reason, {reason, template: envelope.template});
+      // Once a minute per reason and template: a notice dropped is not lost among links dropped
+      this.log.security('mail.dropped', `${reason} ${envelope.template}`,
+                        {reason, template: envelope.template, notice: notice || undefined});
       return false;
     }
 
     const {subject, text, html} = typeof content === 'function' ? content() : content;
-    this.globalLimiter.hit(ALL);
+    if (!notice)
+      this.globalLimiter.hit(ALL);
     this.limitersFor(notice).forEach(limiter => limiter.hit(envelope.toKey));
     this.queue.push({template: envelope.template, to: envelope.to, toKey: envelope.toKey, subject, text, html});
     if (!this.sending)
@@ -241,8 +266,10 @@ export class Mailer {
         await this.transport.deliver(mail, this.from);
         this.log.info('mail.sent', {template: mail.template});
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        this.log.error('mail.error', {template: mail.template, message: message.slice(0, 300)});
+        // Nothing of the recipient: even a hash of the address, which anyone could check for an address they guess
+        this.log.error('mail.error', {template: mail.template, ...failure(error),
+                                      message: 'A mail could not be sent: the mail-test admin command shows the ' +
+                                               'whole error'});
       }
     }
 

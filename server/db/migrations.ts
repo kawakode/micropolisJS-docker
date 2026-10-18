@@ -24,6 +24,7 @@ export const MIGRATIONS: readonly string[] = [
     public_id TEXT UNIQUE NOT NULL,
     username TEXT NOT NULL,
     username_key TEXT UNIQUE NOT NULL,
+    username_skeleton TEXT UNIQUE NOT NULL,
     email TEXT NOT NULL,
     email_key TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,

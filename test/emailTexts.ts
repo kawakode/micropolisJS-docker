@@ -9,6 +9,7 @@ const PLACEHOLDERS: {[email: string]: string[]} = {
     passwordChanged: ["site", "username"],
     emailChangeConfirm: ["hours", "link", "site", "username"],
     emailChangeNotice: ["site", "username"],
+    emailChangeTaken: ["site", "username"],
     emailChanged: ["site", "username"],
     accountLocked: ["hours", "site", "username"]
 };

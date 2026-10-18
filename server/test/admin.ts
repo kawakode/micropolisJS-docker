@@ -125,6 +125,12 @@ describe('Account commands', () => {
     // Refused: taken, invalid, wrong usage
     expect(await runAdminCommand(['user', 'add', 'ALICE', 'other@example.com'], context)).toBe(1);
     expect(err.pop()).toBe('The username ALICE is taken');
+    expect(await runAdminCommand(['user', 'add', 'A\u0142ice', 'other@example.com'], context)).toBe(1);
+    expect(err.pop()).toBe('The username A\u0142ice is taken: it looks too much like Alice');
+    expect(await runAdminCommand(['user', 'add', 'adm\u0131n', 'other@example.com'], context)).toBe(1);
+    expect(err.pop()).toMatch(/^The username "adm\u0131n" cannot be used \(reserved\)/);
+    expect(await runAdminCommand(['user', 'add', '\u0251lice', 'other@example.com'], context)).toBe(1);
+    expect(err.pop()).toMatch(/^The username "\u0251lice" cannot be used \(invalid\)/);
     expect(await runAdminCommand(['user', 'add', 'Alicia', 'alice@EXAMPLE.com'], context)).toBe(1);
     expect(err.pop()).toBe('The address alice@example.com already has an account');
     expect(await runAdminCommand(['user', 'add', 'admin', 'x@example.com'], context)).toBe(1);

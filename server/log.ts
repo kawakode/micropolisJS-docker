@@ -25,10 +25,13 @@ export interface Logger {
   warn(event: string, fields?: LogFields): void;
   info(event: string, fields?: LogFields): void;
   debug(event: string, fields?: LogFields): void;
-  // A security event that can be repeated at will (rate_limited, csrf.reject, ws.reject...): logged as a warning at
-  // most once per event and key per minute. The next line for that event and key counts the ones left out, as
-  // `suppressed`.
-  security(event: string, key: string, fields?: LogFields): void;
+  // A security event that can be repeated at will (rate_limited, csrf.reject, ws.reject...): logged (as a warning
+  // unless another level is given) at most once per event and key per minute. The ones left out are counted, and the
+  // count written once that minute is over, on a line of its own: the first line's fields, `suppressed` (how many)
+  // and `windowStart` (the first line's time).
+  security(event: string, key: string, fields?: LogFields, level?: LogLevel): void;
+  // Writes the counts of the security events left out so far (hourly, and at shutdown)
+  flush(): void;
 }
 
 export interface LoggerOptions {
@@ -42,6 +45,10 @@ const MAX_SECURITY_KEYS = 10000;
 const RESERVED_FIELDS = new Set(['time', 'level', 'event']);
 
 interface SecurityEntry {
+  event: string;
+  level: LogLevel;
+  // The first line's fields but its request id: the count is written with them
+  fields: LogFields;
   start: number;
   suppressed: number;
 }
@@ -87,41 +94,55 @@ export function createLogger(options: LoggerOptions = {}): Logger {
     write(line);
   };
 
-  const forgetOldSecurityKeys = (now: number) => {
-    for (const [key, entry] of securityEntries) {
-      if (now - entry.start >= SECURITY_WINDOW)
-        securityEntries.delete(key);
-    }
+  // Writes how many lines an entry left out, if any
+  const writeSuppressed = (entry: SecurityEntry) => {
+    if (entry.suppressed > 0)
+      emit(entry.level, entry.event, {...entry.fields, suppressed: entry.suppressed,
+                                      windowStart: new Date(entry.start).toISOString()});
+    entry.suppressed = 0;
+  };
 
-    // Still full: forget the oldest, whose next line will merely not count what it left out
-    while (securityEntries.size >= MAX_SECURITY_KEYS) {
-      const oldest = securityEntries.keys().next().value;
-      if (oldest === undefined)
+  // Forgets the entries whose minute is over, their counts written. They are kept oldest first (an entry is made
+  // when its minute starts), so the loop stops at the first whose minute is not over: each entry is looked at once.
+  const forgetEndedMinutes = (now: number) => {
+    for (const [key, entry] of securityEntries) {
+      if (now - entry.start < SECURITY_WINDOW)
         break;
-      securityEntries.delete(oldest);
+      writeSuppressed(entry);
+      securityEntries.delete(key);
     }
   };
 
-  const security = (event: string, key: string, fields?: LogFields) => {
-    if (!enabled('warn'))
+  const security = (event: string, key: string, fields: LogFields = {}, level: LogLevel = 'warn') => {
+    if (!enabled(level))
       return;
 
     const now = clock.now();
+    forgetEndedMinutes(now);
+
     const entryKey = event + '\u0000' + key;
     const entry = securityEntries.get(entryKey);
-
-    if (entry && now - entry.start < SECURITY_WINDOW) {
+    if (entry) {
       entry.suppressed++;
       return;
     }
 
-    const suppressed = entry ? entry.suppressed : 0;
-    securityEntries.delete(entryKey);
-    if (securityEntries.size >= MAX_SECURITY_KEYS)
-      forgetOldSecurityKeys(now);
-    securityEntries.set(entryKey, {start: now, suppressed: 0});
+    // Still full: the oldest goes, its count written
+    if (securityEntries.size >= MAX_SECURITY_KEYS) {
+      const [oldestKey, oldest] = securityEntries.entries().next().value as [string, SecurityEntry];
+      writeSuppressed(oldest);
+      securityEntries.delete(oldestKey);
+    }
 
-    emit('warn', event, suppressed > 0 ? {...fields, suppressed} : fields);
+    const kept = {...fields};
+    delete kept.requestId;
+    securityEntries.set(entryKey, {event, level, fields: kept, start: now, suppressed: 0});
+    emit(level, event, fields);
+  };
+
+  const flush = () => {
+    for (const entry of securityEntries.values())
+      writeSuppressed(entry);
   };
 
   return {
@@ -132,5 +153,6 @@ export function createLogger(options: LoggerOptions = {}): Logger {
     info: (event, fields) => emit('info', event, fields),
     debug: (event, fields) => emit('debug', event, fields),
     security,
+    flush,
   };
 }

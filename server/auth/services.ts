@@ -100,7 +100,8 @@ export function createAuthServices({config, clock, db, log, mailer}: AuthDeps): 
     exportSections,
     onAccountDeleting: hook => { deletionHooks.push(hook); },
     addExportSection: (name, section) => {
-      if (exportSections.has(name) || ['exportedAt', 'account', 'sessions'].includes(name))
+      if (exportSections.has(name) ||
+          ['exportedAt', 'account', 'sessions', 'pendingEmailChange', 'loginProtection'].includes(name))
         throw new Error(`export section registered twice: ${name}`);
       exportSections.set(name, section);
     },

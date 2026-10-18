@@ -21,6 +21,8 @@
 //   passwordChanged      {username} {site}                after the password was changed or reset
 //   emailChangeConfirm   {username} {site} {link} {hours} to the new address: the link confirms it
 //   emailChangeNotice    {username} {site}                to the old address, when the change is asked for
+//   emailChangeTaken     {username} {site}                to an account's address, asked for as another account's
+//                                                         new address: nothing changes
 //   emailChanged         {username} {site}                to the old address, once the change is confirmed
 //   accountLocked        {username} {site} {hours}        after too many failed logins, once
 
@@ -95,6 +97,16 @@ var EMAIL_TEXTS = {
       'If it was you, there is nothing else to do.',
       'If it was not you, someone else knows your password: log in at once and change it, which also cancels the ' +
       'change of address.'
+    ])
+  },
+
+  emailChangeTaken: {
+    subject: 'You already have a KawaCity account',
+    text: paragraphs([
+      'Hello {username},',
+      'Someone, maybe you, asked to use this email address for another KawaCity account on {site}. It is already the ' +
+      'address of your account, so nothing was changed.',
+      'There is nothing to do: your account has not changed.'
     ])
   },
 

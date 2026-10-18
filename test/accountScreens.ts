@@ -28,6 +28,15 @@ describe("The account forms", () => {
         expect(AccountScreens.checkUsername("ab", LIMITS)).toBe("too_short");
         expect(AccountScreens.checkUsername("a".repeat(21), LIMITS)).toBe("too_long");
         ["_bob", "bob.", "bo b", "бob", "bob!", "東京都"].forEach(name => expect(AccountScreens.checkUsername(name, LIMITS)).toBe("invalid"));
+        // Digits are 0 to 9: other scripts' digits look like letters, or are written right to left
+        ["\u3007perator", "r\u0D66\u0D66t", "r\u07C0\u07C0t", "bob\u0661"]
+            .forEach(name => expect(AccountScreens.checkUsername(name, LIMITS)).toBe("invalid"));
+        expect(AccountScreens.checkUsername("bob\uFF11\u00B2", LIMITS)).toBeNull();
+        // The letters of languages only: other Latin letters (phonetic ones, small capitals...) look like ASCII ones
+        ["\u0251dmin", "ka\u026Facity", "s\u028Bpport", "r\u1D0F\u1D0Ft", "b\uAB3Db", "a\u01C0ice"]
+            .forEach(name => expect(AccountScreens.checkUsername(name, LIMITS)).toBe("invalid"));
+        ["Stra\u00DFe", "S\u00F8ren", "\u00DE\u00F3ra", "I\u011Fd\u0131r", "\u0110or\u0111e", "\u01FElaf", "Z\u00F6e"]
+            .forEach(name => expect(AccountScreens.checkUsername(name, LIMITS)).toBeNull());
         ["admin", "Root", "KawaCity", "undefined"].forEach(name => expect(AccountScreens.checkUsername(name, LIMITS)).toBe("reserved"));
         expect(AccountScreens.checkUsername("bob", {...LIMITS, usernameMin: 4})).toBe("too_short");
     });

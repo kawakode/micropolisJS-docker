@@ -14,8 +14,12 @@ import { newPublicId, sha256Hex } from '../security/tokens';
 
 // Accounts: the rules for usernames, email addresses and languages, and the users table.
 //
-// Usernames are public: 3 to 20 characters once normalised (NFKC), Latin letters (accents allowed), digits and _ . -,
-// starting and ending with a letter or a digit. Two usernames that differ only by case are the same (username_key).
+// Usernames are public: 3 to 20 characters once normalised (NFKC), letters, digits 0-9 and _ . -, starting and
+// ending with a letter or a digit. The letters are those the languages written with Latin letters use: ASCII letters,
+// with accents or not, and a few others (USERNAME_LETTERS: ß, æ, ø, ł...). Unicode's other Latin letters (phonetic
+// letters, small capitals, letters with a hook...) are refused: many of them look like an ASCII letter or digit. Two
+// usernames that differ only by case are the same (username_key), and so are two that look alike (username_skeleton,
+// see usernameSkeleton): neither can be taken next to the other, nor next to a reserved name.
 //
 // Email addresses follow the grammar of an HTML email input (WHATWG), a Unicode domain being converted to ASCII
 // first: nothing a mail library could read as a name, a comment or a list of addresses gets through, so the address
@@ -33,7 +37,37 @@ export const RESERVED_USERNAMES: ReadonlySet<string> = new Set([
   'undefined', 'operator',
 ]);
 
-const USERNAME = /^[\p{Script=Latin}\p{N}](?:[\p{Script=Latin}\p{N}_.-]{1,18})[\p{Script=Latin}\p{N}]$/u;
+// Digits are ASCII only (NFKC already makes full-width and superscript digits ASCII): the digits of other scripts look
+// like letters (U+3007, U+09E6 and U+0D66 like o) or are written right to left (NKo, Arabic-Indic)
+const USERNAME = /^[\p{Script=Latin}0-9](?:[\p{Script=Latin}0-9_.-]{1,18})[\p{Script=Latin}0-9]$/u;
+
+// The letters that are not an ASCII letter with accents, in lower and upper case: German, Danish and Norwegian, French,
+// Polish, Croatian and Vietnamese, Icelandic, Maltese, Turkish and Azerbaijani, Sami. With accents too (ǿ, ǽ).
+export const USERNAME_LETTERS = 'ßẞæÆœŒøØłŁđĐðÐþÞħĦıŋŊŧŦəƏ';
+
+const OTHER_LETTERS: ReadonlySet<string> = new Set(USERNAME_LETTERS);
+
+// A letter a username may hold: an ASCII letter or one of USERNAME_LETTERS, once accents are taken off
+const isUsernameLetter = (c: string) => {
+  const base = c.normalize('NFD').replace(/\p{M}/gu, '');
+  return /^[A-Za-z]$/.test(base) || OTHER_LETTERS.has(base);
+};
+
+// The letters of USERNAME_LETTERS that look like ASCII letters, by what they look like, in lower case (Unicode's
+// confusables, UTS #39: ø is o with a stroke, ı is i); 0 looks like o. Usernames are compared without case, and an
+// upper case I looks like an l: i, l, 1 and their lookalikes are taken as one letter.
+const LOOKALIKES: Readonly<Record<string, string>> = {
+  ae: 'æ',
+  d: 'ðđ',
+  h: 'ħ',
+  l: 'i1ıł',
+  o: '0ø',
+  oe: 'œ',
+  t: 'ŧ',
+};
+
+const LOOKALIKE = new Map(Object.entries(LOOKALIKES).flatMap(([plain, letters]) =>
+  [...letters].map(letter => [letter, plain] as const)));
 
 const EMAIL = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/;
 
@@ -48,7 +82,17 @@ const codePoints = (text: string) => [...text].length;
 
 export const usernameKey = (username: string) => username.normalize('NFKC').toLowerCase();
 
-export function checkUsername(input: unknown): Checked<{username: string; key: string}> {
+// What a username looks like, for comparing usernames (after UTS #39's skeleton, for the letters a username may hold):
+// accents taken off, lower case, lookalikes as the ASCII letters they look like (LOOKALIKES), and m and w as rn and
+// vv. Two usernames with the same skeleton could be taken one for the other.
+export function usernameSkeleton(username: string): string {
+  const bare = username.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase();
+  return [...bare].map(c => LOOKALIKE.get(c) ?? c).join('').replace(/m/g, 'rn').replace(/w/g, 'vv');
+}
+
+const RESERVED_SKELETONS: ReadonlySet<string> = new Set([...RESERVED_USERNAMES].map(usernameSkeleton));
+
+export function checkUsername(input: unknown): Checked<{username: string; key: string; skeleton: string}> {
   if (typeof input !== 'string')
     return {ok: false, reason: 'invalid'};
 
@@ -59,13 +103,14 @@ export function checkUsername(input: unknown): Checked<{username: string; key: s
     return {ok: false, reason: 'too_short'};
   if (codePoints(username) > LIMITS.usernameMax)
     return {ok: false, reason: 'too_long'};
-  if (!USERNAME.test(username))
+  if (!USERNAME.test(username) || ![...username].every(c => /^[0-9_.-]$/.test(c) || isUsernameLetter(c)))
     return {ok: false, reason: 'invalid'};
 
   const key = usernameKey(username);
-  if (RESERVED_USERNAMES.has(key))
+  const skeleton = usernameSkeleton(username);
+  if (RESERVED_USERNAMES.has(key) || RESERVED_SKELETONS.has(skeleton))
     return {ok: false, reason: 'reserved'};
-  return {ok: true, username, key};
+  return {ok: true, username, key, skeleton};
 }
 
 export function checkEmail(input: unknown): Checked<{email: string; key: string}> {
@@ -110,6 +155,7 @@ export interface UserRow {
   public_id: string;
   username: string;
   username_key: string;
+  username_skeleton: string;
   email: string;
   email_key: string;
   password_hash: string;
@@ -161,6 +207,16 @@ export class Users {
     return this.db.get<UserRow>('SELECT * FROM users WHERE username_key = ?', key) ?? null;
   }
 
+  // The account whose username looks like that one (usernameSkeleton)
+  byUsernameSkeleton(skeleton: string): UserRow | null {
+    return this.db.get<UserRow>('SELECT * FROM users WHERE username_skeleton = ?', skeleton) ?? null;
+  }
+
+  // The account a new username could be taken for: the same but for case, or looking like it
+  usernameHolder(checked: {key: string; skeleton: string}): UserRow | null {
+    return this.byUsernameKey(checked.key) ?? this.byUsernameSkeleton(checked.skeleton);
+  }
+
   byEmailKey(key: string): UserRow | null {
     return this.db.get<UserRow>('SELECT * FROM users WHERE email_key = ?', key) ?? null;
   }
@@ -173,11 +229,11 @@ export class Users {
 
   create(user: NewUser): UserRow {
     const id = this.db.run(
-      `INSERT INTO users (public_id, username, username_key, email, email_key, password_hash, locale, created_at,
-                          updated_at, last_login_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      newPublicId(), user.username, user.usernameKey, user.email, user.emailKey, user.passwordHash, user.locale,
-      user.now, user.now, user.loggedIn ? user.now : null).lastInsertRowid;
+      `INSERT INTO users (public_id, username, username_key, username_skeleton, email, email_key, password_hash, locale,
+                          created_at, updated_at, last_login_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      newPublicId(), user.username, user.usernameKey, usernameSkeleton(user.username), user.email, user.emailKey,
+      user.passwordHash, user.locale, user.now, user.now, user.loggedIn ? user.now : null).lastInsertRowid;
     return this.byId(id) as UserRow;
   }
 
@@ -185,9 +241,11 @@ export class Users {
     this.db.run('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', passwordHash, now, id);
   }
 
-  // The same password hashed with today's settings: replaced only if the password was not changed meanwhile
-  rehashPassword(id: number, oldHash: string, newHash: string): void {
-    this.db.run('UPDATE users SET password_hash = ? WHERE id = ? AND password_hash = ?', newHash, id, oldHash);
+  // The same password hashed with today's settings: replaced only if the password was not changed meanwhile (true
+  // when it was replaced)
+  rehashPassword(id: number, oldHash: string, newHash: string): boolean {
+    return this.db.run('UPDATE users SET password_hash = ? WHERE id = ? AND password_hash = ?', newHash, id,
+                       oldHash).changes === 1;
   }
 
   setEmail(id: number, email: string, emailKey: string, now: number): void {

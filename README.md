@@ -25,7 +25,7 @@ Commands:
 
 - **Update**: `docker compose pull && docker compose up -d`
 - **Stop**: `docker compose down` (the data stays in the `kawacity-data` volume)
-- **Without Compose**: `docker run -d -p 8080:8080 -v kawacity-data:/data -e PUBLIC_URL=http://localhost:8080 --restart unless-stopped ghcr.io/kawakode/kawacity`
+- **Without Compose**: `docker run -d -p 8080:8080 -v kawacity-data:/data -e PUBLIC_URL=http://localhost:8080 --log-opt max-size=10m --log-opt max-file=3 --restart unless-stopped ghcr.io/kawakode/kawacity` (the `--log-opt` settings rotate the log, as `docker-compose.yml` does: without them Docker keeps it for as long as the container lives)
 - **Accounts**, made and repaired by hand (the links printed are valid 24 h for a new account, 1 h for a reset; give them to their owners yourself):
 
   ```sh
@@ -36,7 +36,7 @@ Commands:
   docker compose exec kawacity node server/main.cjs mail-test you@example.com          # checks the mail settings
   ```
 
-- **Backup**: `docker compose exec kawacity node server/main.cjs backup` copies the database to `/data/backups/kawacity-<time>.db`, safely while the game is played, and `docker compose cp kawacity:/data/backups .` takes the copies out. The server also makes a copy there before it upgrades the database to a new version.
+- **Backup**: `docker compose exec kawacity node server/main.cjs backup` copies the database to `/data/backups/kawacity-<time>.db`, safely while the game is played, and `docker compose cp kawacity:/data/backups .` takes the copies out. The server also makes a copy there before it upgrades the database to a new version. Copies keep the accounts they hold, deleted ones included, until you delete them.
 - **Restore**: stop the server, put the copy in place of `kawacity.db` and delete `kawacity.db-wal` and `kawacity.db-shm`, then start it again:
 
   ```sh
@@ -101,11 +101,11 @@ git push origin v1.2.3
 ## Security notes ##
 
 - **Passwords**: 12 to 128 characters, any characters, spaces included, and no rules about what they mix; common passwords (a list of 20,000), passwords with the username or the email address in them, and passwords of fewer than 4 different characters are refused. They are hashed with scrypt (N = 2^15 by default, `PASSWORD_HASH_COST`), and hashed again with new settings at the next login.
-- **Logging in**: after 5 failures in a row for one account from one address, that address waits (1 minute, then 2, 4... up to an hour); 100 failures in a day lock the account for a day, or until its password is reset, and its owner gets an email. Answers are the same whether an account exists or not, for logging in, signing up and resetting a password. A captcha, a proof of work computed by the browser (no third party, no tracking), guards signing up, logging in and resetting a password.
+- **Logging in**: after 5 failures in a row for one username or email address from one address, that address waits (1 minute, then 2, 4... up to an hour); 100 failures in a day lock the account for a day, or until its password is reset, and its owner gets an email. A password reset ends every session, even one being opened while it was made. Answers are the same whether an account exists or not, for logging in, signing up and resetting a password. A captcha, a proof of work computed by the browser (no third party, no tracking), guards signing up, logging in and resetting a password.
 - **Sessions**: a random token in an `HttpOnly`, `SameSite=Strict` cookie (`__Host-` and `Secure` with https), stored hashed. A session ends after 7 days unused or 30 days in any case (`SESSION_IDLE_DAYS`, `SESSION_MAX_DAYS`): a deliberate choice for a game (NIST 800-63B AAL1), as changing the password or the email address and deleting the account always ask for the password. Changing or resetting the password ends the other sessions; "Log out everywhere" ends them all.
-- **Emails**: sign-up is email-first (an account exists only once its address was confirmed), links in emails work once and expire (24 h to sign up or confirm an address, 1 h to reset a password), and an address gets at most 3 emails with a link an hour and 10 a day (`MAIL_MAX_PER_HOUR` in all). The notices that tell an account's owner about a change (password or address changed, account locked) have limits of their own, so that links anyone can ask for cannot silence them. With SMTP, STARTTLS with a valid certificate is required unless `SMTP_SECURE=true` or `SMTP_REQUIRE_TLS=false`.
+- **Emails**: sign-up is email-first (an account exists only once its address was confirmed), links in emails work once and expire (24 h to sign up or confirm an address, 1 h to reset a password), and an address gets at most 3 emails with a link an hour and 10 a day (`MAIL_MAX_PER_HOUR` emails with a link in all); an account can ask for 10 new addresses an hour. The notices that tell an account's owner about a change (password or address changed, account locked) have limits of their own, and do not count against `MAIL_MAX_PER_HOUR`, so that links anyone can ask for cannot silence them. A mail that cannot be sent is logged without its address, nor anything made from it (`node server/main.cjs mail-test <address>` shows the whole error). With SMTP, STARTTLS with a valid certificate is required unless `SMTP_SECURE=true` or `SMTP_REQUIRE_TLS=false`.
 - **Requests**: changes are only accepted from the page at `PUBLIC_URL` (`Origin` checked, JSON only, no CORS); limits per address on every route; strict security headers and Content-Security-Policy.
-- **Privacy**: the server keeps the username, email address, password hash, sessions and cities of each account, and its log keeps addresses and account ids (never passwords, tokens or what was typed to log in). Players can download what is kept about them and delete their account from the game.
+- **Privacy**: the server keeps the username, email address, password hash, sessions and cities of each account, and its log keeps addresses and account ids (never passwords, tokens, email addresses or what was typed to log in) for as long as its rotation allows (set it up with `--log-opt` without Compose). Players can download what is kept about them and delete their account from the game: it is then overwritten in the database at once, but the backups keep it until you delete them.
 
 ## Playing ##
 

@@ -6,7 +6,7 @@
  */
 
 import { CEILING, CEILING_WINDOW, LOCK_TIME, LoginGuard, LoginSubject, waitAfter } from '../auth/loginGuard';
-import { Users } from '../auth/users';
+import { loginLookup, Users } from '../auth/users';
 import { FakeClock } from '../clock';
 import { testDatabase } from '../testing';
 
@@ -91,6 +91,38 @@ describe('Login guard', () => {
     expect(db.get('SELECT failed_logins_day FROM users')).toEqual({failed_logins_day: 0});
   });
 
+  test('The username and the address of an account are throttled apart, the account as a whole', () => {
+    const {db, guard, alice} = setUp();
+    const userId = (alice as {userId: number}).userId;
+    const byName = {userId, loginKey: loginLookup('alice').subjectKey};
+    const byAddress = {userId, loginKey: loginLookup('a@example.com').subjectKey};
+
+    // Failures with the username do not hold the address up: that it is the same account does not show
+    for (let i = 0; i < 5; i++)
+      expect(fail(guard, byName, 'ip-1')).toEqual({locked: false});
+    expect(guard.begin(byName, 'ip-1')).toMatchObject({allowed: false, reason: 'throttled'});
+    const address = guard.begin(byAddress, 'ip-1');
+    expect(address.allowed).toBe(true);
+
+    // Nor does a check under way
+    const name = guard.begin(byName, 'ip-2');
+    expect(name.allowed).toBe(true);
+    expect(guard.begin(byName, 'ip-3')).toEqual({allowed: false, reason: 'busy', retryAfterMs: 1000});
+    if (address.allowed)
+      address.attempt.failed();
+    if (name.allowed)
+      name.attempt.failed();
+
+    // The ceiling counts them all
+    expect(db.get('SELECT failed_logins_day FROM users')).toEqual({failed_logins_day: 7});
+
+    // A reset forgets the failures of the username and the address
+    fail(guard, {userId, loginKey: loginLookup('A@EXAMPLE.com').subjectKey}, 'ip-4');
+    guard.clearUser({id: userId, username: 'Alice', email: 'a@example.com'});
+    expect(guard.size.pairs).toBe(0);
+    expect(guard.begin(byName, 'ip-1').allowed).toBe(true);
+  });
+
   test('100 failures in 24 hours lock an account for 24 hours, once, until a reset', () => {
     const {db, clock, guard, alice} = setUp();
     const locks: boolean[] = [];
@@ -109,7 +141,7 @@ describe('Login guard', () => {
                                                    retryAfterMs: LOCK_TIME - 1000});
 
     // A reset lifts it
-    guard.clearUser((alice as {userId: number}).userId);
+    guard.clearUser({id: (alice as {userId: number}).userId, username: 'Alice', email: 'a@example.com'});
     expect(guard.begin(alice, 'ip-new').allowed).toBe(true);
   });
 

@@ -17,12 +17,13 @@ export type Handler = (ctx: RequestContext) => void | Promise<void>;
 export type AuthRequirement = 'none' | 'optional' | 'required';
 
 // A sliding-window limit, shared by every route that names it: per client IP key (times IP_LIMIT_FACTOR, with the
-// IPv6 /48 at 10 times the limit), or per signed-in user (the route then needs a session)
+// IPv6 /48 at 10 times the limit), per signed-in user, or per session (a session cannot use up the others' limit;
+// the route then needs a session)
 export interface RateLimitRule {
   name: string;
   limit: number;
   windowMs: number;
-  per: 'ip' | 'user';
+  per: 'ip' | 'user' | 'session';
 }
 
 export interface RouteOptions {
@@ -108,8 +109,8 @@ export class Router {
 
     const limits = options.limits ?? [];
     const auth = options.auth ?? 'none';
-    if (limits.some(rule => rule.per === 'user') && auth !== 'required')
-      throw new Error(`per-user limits need auth: 'required' (${method} ${pattern})`);
+    if (limits.some(rule => rule.per !== 'ip') && auth !== 'required')
+      throw new Error(`per-user and per-session limits need auth: 'required' (${method} ${pattern})`);
 
     this.routes.push({
       method,

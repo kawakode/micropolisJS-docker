@@ -147,11 +147,11 @@ export function registerAuthRoutes(context: AppContext): void {
     if (!signup)
       throw invalidToken();
 
-    // Told only to the holder of the link
+    // Told only to the holder of the link. A username is taken when another differs from it by case, or looks like it.
     const username = checkUsername(body.username);
     if (!username.ok)
       throw invalidInput({username: username.reason});
-    if (users.byUsernameKey(username.key))
+    if (users.usernameHolder(username))
       throw new HttpError(409, 'username_taken');
     const password = newPasswordField(body.password, 'password', {username: username.username, email: signup.email});
 
@@ -162,7 +162,7 @@ export function registerAuthRoutes(context: AppContext): void {
       const used = consumeSignupToken(db, token, now);
       if (!used || users.byEmailKey(used.emailKey))
         throw invalidToken();
-      if (users.byUsernameKey(username.key))
+      if (users.usernameHolder(username))
         throw new HttpError(409, 'username_taken');
 
       db.run('DELETE FROM signup_tokens WHERE email_key = ?', used.emailKey);
@@ -186,17 +186,25 @@ export function registerAuthRoutes(context: AppContext): void {
     verifyCaptcha(ctx, body.captcha, 'login');
 
     const user = await checkPassword(context, ctx, users.byLogin(login), loginLookup(login).subjectKey, password);
+    // The hash the password was checked against (or the same password hashed again)
+    let checkedHash = user.password_hash;
 
     // Hashed again with today's settings
     if (passwords.needsRehash(user.password_hash)) {
       try {
-        users.rehashPassword(user.id, user.password_hash, await passwords.hash(password, ctx.ipKey));
+        const rehashed = await passwords.hash(password, ctx.ipKey);
+        if (users.rehashPassword(user.id, user.password_hash, rehashed))
+          checkedHash = rehashed;
       } catch (error) {
         log.warn('auth.rehash_failed', {...logFields(ctx, user.public_id), err: error});
       }
     }
 
     const session = db.transaction(() => {
+      // A password reset or change that was made while the password was checked ended every session: the password
+      // checked is no longer the account's, and no session is made with it
+      if (users.byId(user.id)?.password_hash !== checkedHash)
+        throw new HttpError(401, 'invalid_credentials');
       users.noteLogin(user.id, clock.now());
       // This browser's previous session ends: a login always starts a new one
       if (ctx.session)
@@ -268,7 +276,7 @@ export function registerAuthRoutes(context: AppContext): void {
 
       users.setPasswordHash(current.id, passwordHash, now);
       deleteEmailTokens(db, current.id);
-      auth.loginGuard.clearUser(current.id);
+      auth.loginGuard.clearUser(current);
       return {user: current, revocation: sessions.deleteForUser(current.id)};
     });
     sessions.notifyRevoked(revocation);

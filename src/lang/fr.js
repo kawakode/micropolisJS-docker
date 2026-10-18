@@ -791,8 +791,10 @@ var strings = {
   'What the server keeps': 'Ce que le serveur conserve',
   'Your username, your email address, your password (in a form that cannot be read back), and the sessions of the devices where you are logged in. If you play with others: your shared cities and regions, and who belongs to them. Chat messages are only kept in memory while a city is played.':
     'Votre nom d\'utilisateur, votre adresse e-mail, votre mot de passe (sous une forme qui ne permet pas de le relire) et les sessions des appareils où vous êtes connecté. Si vous jouez avec d\'autres : vos villes et régions partagées, et qui en fait partie. Les messages du chat ne sont gardés qu\'en mémoire, pendant qu\'une ville est jouée.',
-  'The server\'s logs record the IP addresses and the accounts behind requests, to protect it against abuse. Old logs are deleted as new ones are written.':
-    'Les journaux du serveur notent les adresses IP et les comptes à l\'origine des requêtes, pour le protéger des abus. Les anciens journaux sont effacés à mesure que de nouveaux s\'écrivent.',
+  'The server\'s logs record the IP addresses and the accounts behind requests, to protect it against abuse. Old logs are deleted as new ones are written, by the log rotation that the people who run this server set up.':
+    'Les journaux du serveur notent les adresses IP et les comptes à l\'origine des requêtes, pour le protéger des abus. Les anciens journaux sont effacés à mesure que de nouveaux s\'écrivent, par la rotation des journaux que les responsables de ce serveur mettent en place.',
+  'Backups of the server\'s data, made by the people who run it, keep what they hold until they delete them.':
+    'Les sauvegardes des données du serveur, faites par ses responsables, gardent ce qu\'elles contiennent jusqu\'à ce qu\'ils les effacent.',
   'Why': 'Pourquoi',
   'Only to run your account and the cities you play with others: nothing is sold or shared, and there is no advertising and no tracking.':
     'Uniquement pour faire fonctionner votre compte et les villes que vous jouez avec d\'autres : rien n\'est vendu ni partagé, et il n\'y a ni publicité ni pistage.',
@@ -913,6 +915,18 @@ var paragraphs = function(list) {
     'Si c\'était vous, il n\'y a rien d\'autre à faire.',
     'Si ce n\'était pas vous, quelqu\'un d\'autre connaît votre mot de passe : connectez-vous tout de suite et ' +
     'changez-le, ce qui annule aussi le changement d\'adresse.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'Someone, maybe you, asked to use this email address for another KawaCity account on {site}. It is already the ' +
+    'address of your account, so nothing was changed.',
+    'There is nothing to do: your account has not changed.'
+  ], [
+    'Bonjour {username},',
+    'Quelqu\'un, peut-être vous, a demandé à utiliser cette adresse e-mail pour un autre compte KawaCity sur {site}. ' +
+    'C\'est déjà l\'adresse de votre compte : rien n\'a donc été changé.',
+    'Il n\'y a rien à faire : votre compte n\'a pas changé.'
   ]],
 
   [[

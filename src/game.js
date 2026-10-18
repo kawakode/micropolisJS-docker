@@ -713,10 +713,17 @@ var makeWindowOpenHandler = function(winName, customFn) {
     var win = winName + 'Window';
     var data = [];
 
-    if (customFn)
-      data = customFn();
+    try {
+      if (customFn)
+        data = customFn();
 
-    this[win].open.apply(this[win], data);
+      this[win].open.apply(this[win], data);
+    } catch (e) {
+      // A window that failed to open must not leave the game paused, as if it were open
+      this.dialogOpen = false;
+      this._openWindow = null;
+      throw e;
+    }
   };
 };
 

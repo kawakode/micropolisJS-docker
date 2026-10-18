@@ -5,7 +5,7 @@
  *
  */
 
-import { chmodSync, existsSync, mkdirSync } from 'node:fs';
+import { chmodSync, closeSync, existsSync, mkdirSync, openSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync, SQLInputValue, SQLOutputValue, StatementSync } from 'node:sqlite';
 
@@ -21,9 +21,10 @@ export interface RunResult {
 }
 
 // Set on every connection: foreign keys checked (and cascaded), write-ahead log, wait up to 5 s for a lock (an admin
-// command running next to the server)
+// command running next to the server), and what is deleted overwritten with zeros (secure_delete: a deleted account
+// cannot be read back from the file)
 const PRAGMAS = 'PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; ' +
-                'PRAGMA synchronous = NORMAL;';
+                'PRAGMA synchronous = NORMAL; PRAGMA secure_delete = ON;';
 
 export class Database {
   readonly file: string;
@@ -118,11 +119,23 @@ export class Database {
     return this.get<{n: number}>("SELECT count(*) AS n FROM sqlite_schema WHERE type = 'table'")?.n === 0;
   }
 
-  // A consistent copy of the database, even while the server writes to it, readable by its owner only. The file must
-  // not exist yet.
+  // Copies the write-ahead log into the database file and empties it: after a deletion, the pages the log still held
+  // with the deleted rows are gone too
+  checkpoint(): void {
+    this.connection.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+  }
+
+  // A consistent copy of the database, even while the server writes to it, readable by its owner only, from the start:
+  // the file is made empty with that mode (it must not exist yet), then filled, in a directory made for its owner only
   backupTo(file: string): void {
-    mkdirSync(path.dirname(file), {recursive: true});
-    this.connection.prepare('VACUUM INTO ?').run(file);
+    mkdirSync(path.dirname(file), {recursive: true, mode: 0o700});
+    closeSync(openSync(file, 'wx', 0o600));
+    try {
+      this.connection.prepare('VACUUM INTO ?').run(file);
+    } catch (error) {
+      rmSync(file, {force: true});
+      throw error;
+    }
     chmodSync(file, 0o600);
   }
 
