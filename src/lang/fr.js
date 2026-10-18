@@ -401,7 +401,6 @@ var strings = {
   'Sorry, the game could not be saved in this browser: it may be blocking storage, or it may be full. You can still keep it as a file.':
     'Désolé, la partie n\'a pas pu être sauvée dans ce navigateur : il bloque peut-être le stockage, ou celui-ci est plein. Vous pouvez quand même la garder dans un fichier.',
   'saveFile': 'Ou <a id="saveDownload" href="#" download="city.kawacity">gardez-en une copie dans un fichier</a>, à ouvrir depuis l\'écran titre.',
-  'nag': 'Ouah ! Vous jouez à ce truc depuis une demi-heure ?!? Si ça vous plaît, Graeme McCutcheon, l\'auteur de micropolisJS sur lequel KawaCity est basé, serait ravi que votre argent aille à <a class="nag" href="https://www.refuweegee.co.uk/your-donations" target="_blank" rel="noopener">Refuweegee</a>, une association qui aide les réfugiés en Écosse.',
   'Automatic budget': 'Budget automatique',
   'On': 'Oui',
   'Off': 'Non',

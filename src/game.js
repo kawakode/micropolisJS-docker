@@ -32,7 +32,6 @@ import { InputStatus } from './inputStatus.js';
 import { IsoView } from './isoView.js';
 import * as Messages from './messages.ts';
 import { MonsterTV } from './monsterTV.js';
-import { NagWindow } from './nagWindow.js';
 import { NeighboursWindow } from './neighboursWindow.js';
 import { Notification } from './notification.js';
 import { QueryWindow } from './queryWindow.js';
@@ -75,7 +74,6 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.simulation = new Simulation(this.gameMap, difficulty, this.defaultSpeed, savedGame);
 
   this.name = name || 'MyTown';
-  this.everClicked = false;
 
   // Track when various milestones are first reached
   this._reachedTown = this._reachedCity = this._reachedCapital = this._reachedMetropolis = this._reachedMegalopolis = false;
@@ -125,26 +123,6 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.inputStatus.isBlocked = function() {
     return this.dialogOpen;
   }.bind(this);
-
-  var self = this;
-  if (!this.everClicked) {
-    this.nagger = window.setTimeout(function() {
-      self.dialogOpen = true;
-      self._openWindow = 'nagWindow';
-      self.nagWindow.open();
-    }, 30 * 60 * 1000);
-
-    // The link is written again when the language changes
-    $('#nagMessage').on('click', '.nag', function() {
-      if (self.nagger !== null) {
-        window.clearTimeout(self.nagger);
-        self.nagger = null;
-        self.everClicked = true;
-      }
-
-      return true;
-    });
-  }
 
   // Initialise monsterTV
   this.monsterTV = new MonsterTV(this.gameMap, tileSet, spriteSheet, null);
@@ -237,10 +215,6 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   // ... the save confirmation window
   this.saveWindow = new SaveWindow(opacityLayerID, 'saveWindow');
   this.saveWindow.addEventListener(Messages.SAVE_WINDOW_CLOSED, this.genericDialogClosure);
-
-  // ... the nag confirmation window
-  this.nagWindow = new NagWindow(opacityLayerID, 'nagWindow');
-  this.nagWindow.addEventListener(Messages.NAG_WINDOW_CLOSED, this.genericDialogClosure);
 
   // ... the scenario window: the briefing, and the outcome
   this.scenarioWindow = new ScenarioWindow(opacityLayerID, 'scenarioWindow');
@@ -469,7 +443,7 @@ var milestones = ['_reachedTown', '_reachedCity', '_reachedCapital', '_reachedMe
 
 // Everything needed to restore the game
 Game.prototype.getSaveData = function() {
-  var saveData = {name: this.name, everClicked: this.everClicked};
+  var saveData = {name: this.name};
   for (var i = 0; i < milestones.length; i++)
     saveData[milestones[i]] = this[milestones[i]];
 
@@ -493,7 +467,6 @@ Game.prototype.save = function() {
 // Note: the simulation loads its own state when it is constructed with the saved game
 Game.prototype.load = function(saveData) {
   this.name = saveData.name || this.name;
-  this.everClicked = !!saveData.everClicked;
   for (var i = 0; i < milestones.length; i++)
     this[milestones[i]] = !!saveData[milestones[i]];
 

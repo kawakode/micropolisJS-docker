@@ -161,7 +161,7 @@ describe("Translations", () => {
 
     it("keep the parameters of each text", () => {
         const parameters = (text: string) => (text.match(/\{\w+\}/g) || []).sort().join(",");
-        const html = ["credits", "nag", "saveFile"];
+        const html = ["credits", "saveFile"];
         const wrong = Object.keys(French).filter(key => html.indexOf(key) === -1 &&
                                                         parameters(key) !== parameters(French[key]));
         expect(wrong).toEqual([]);
