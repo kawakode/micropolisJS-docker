@@ -1869,6 +1869,12 @@ kbd {
   font-size: 16px;
 }
 
+/* The mayor of a neighbour that is another player's city */
+.neighbourOwner {
+  font-size: 14px;
+  color: var(--teal);
+}
+
 .neighbourPopulation {
   margin-left: auto;
   font-size: 14px;
@@ -1987,6 +1993,11 @@ kbd {
 
 .dealState.muted {
   color: var(--muted);
+}
+
+/* A deal another player's city signed, waiting for this one */
+.dealState.offer {
+  color: var(--teal);
 }
 
 .dealsLegend {

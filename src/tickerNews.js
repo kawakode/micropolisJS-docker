@@ -74,13 +74,46 @@ PROBLEMS[Evaluation.TRAFFIC] = ['traffic', 'add rail, avenues or highways where 
 PROBLEMS[Evaluation.UNEMPLOYMENT] = ['unemployment', 'zone more commercial and industrial land'];
 PROBLEMS[Evaluation.FIRE] = ['fires', 'build fire stations, and fund them fully'];
 
-// The deals with the neighbouring cities that are not in force (see Neighbours), and what they need
+// The deals with the neighbouring cities that are not in force (see Neighbours), and what they need. With another
+// player's city, {owner} is its mayor and {deal} the deal's name.
 var ON_HOLD = {
   trade: 'The trade agreement with {name} is on hold: build a road or a railway to the {side} edge of the map.',
   buyPower: 'The electricity bought from {name} is on hold: build a power line to the {side} edge of the map.',
   sellPower: 'The electricity sold to {name} is on hold: build a power line to the {side} edge of the map.',
   noPower: '{name} gets none of the electricity it buys: link the power line at the {side} edge to the grid, or build ' +
-           'another power plant.'
+           'another power plant.',
+  noPowerBought: 'No electricity comes from {name}: {owner} has none to spare at their edge.',
+  proposed: 'Deal proposed to {name} ({deal}): it waits for {owner} to sign it too.',
+  offered: '{owner}, mayor of {name}, offers a deal ({deal}): sign it in the Neighbours window to accept.',
+  theirLinkTrade: 'The trade agreement with {name} waits for {owner} to build a road or a railway to their edge.',
+  theirLinkPower: 'The power deal with {name} waits for {owner} to build a power line to their edge.'
+};
+
+
+// What a deal on hold needs, and its parameters
+var onHoldNews = function(deal) {
+  var params = {name: deal.name, side: I18n.t(Text.edges[deal.side])};
+  if (!deal.player)
+    return [ON_HOLD[deal.state === 'noPower' ? 'noPower' : deal.kind], params];
+
+  params.owner = deal.ownerName;
+  params.deal = I18n.t(Text.deals[deal.kind]);
+
+  switch (deal.state) {
+    case 'proposed':
+    case 'offered':
+      return [ON_HOLD[deal.state], params];
+
+    case 'theirLink':
+      return [deal.kind === 'trade' ? ON_HOLD.theirLinkTrade : ON_HOLD.theirLinkPower, params];
+
+    case 'noPower':
+      return [deal.kind === 'buyPower' ? ON_HOLD.noPowerBought : ON_HOLD.noPower, params];
+  }
+
+  // Our own link is missing: the city's name says whose it is
+  params.name = I18n.t('{name} ({owner})', {name: deal.name, owner: deal.ownerName});
+  return [ON_HOLD[deal.kind], params];
 };
 
 // The jokes, by topic: something the mayor did (a tool's name, a change of the budget...), idle when the mayor has
@@ -552,8 +585,8 @@ TickerNews.prototype.cityReport = function(status) {
   var onHold = status.dealsOnHold || [];
   if (onHold.length > 0) {
     var deal = onHold[0];
-    add(ADVICE, 'dealOnHold', ON_HOLD[deal.state === 'noPower' ? 'noPower' : deal.kind],
-        {name: deal.name, side: I18n.t(Text.edges[deal.side])}, deal);
+    var news = onHoldNews(deal);
+    add(ADVICE, 'dealOnHold', news[0], news[1], deal);
   }
 
   if (census.totalPop > 60 && census.policeStationPop === 0)

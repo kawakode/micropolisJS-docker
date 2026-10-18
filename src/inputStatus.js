@@ -23,32 +23,13 @@ import { GameTools } from './gameTools.js';
 import { I18n } from './i18n.js';
 import * as Messages from './messages.ts';
 import { MiscUtils } from './miscUtils.js';
+import { Placements } from './placements.js';
 
-// How the tools behave when dragged
-var TOOL_LINE = 'line';         // Lays an L-shaped path of tiles from the start of the drag (roads, rails, wires)
-var TOOL_AREA = 'area';         // Fills the dragged rectangle (bulldozer, parks), widened by the tool's brush
-var TOOL_BUILDING = 'building'; // Places a grid of buildings over the dragged rectangle
-var TOOL_SINGLE = 'single';     // Acts on a single tile on click (query)
-
-var toolCategories = {
-  road: TOOL_LINE,
-  dirtroad: TOOL_LINE,
-  avenue: TOOL_LINE,
-  highway: TOOL_LINE,
-  rail: TOOL_LINE,
-  wire: TOOL_LINE,
-  bulldozer: TOOL_AREA,
-  bulldozer3: TOOL_AREA,
-  bulldozer5: TOOL_AREA,
-  bulldozer7: TOOL_AREA,
-  park: TOOL_AREA,
-  garden: TOOL_AREA,
-  plaza: TOOL_AREA,
-  trees: TOOL_AREA,
-  water: TOOL_AREA,
-  landfill: TOOL_AREA,
-  query: TOOL_SINGLE
-};
+// How the tools behave when dragged (see Placements)
+var TOOL_LINE = Placements.LINE;         // Lays an L-shaped path of tiles from the start of the drag (roads, rails, wires)
+var TOOL_AREA = Placements.AREA;         // Fills the dragged rectangle (bulldozer, parks), widened by the tool's brush
+var TOOL_BUILDING = Placements.BUILDING; // Places a grid of buildings over the dragged rectangle
+var TOOL_SINGLE = Placements.SINGLE;     // Acts on a single tile on click (query)
 
 // Keyboard shortcuts for selecting tools
 var toolShortcuts = {
@@ -67,10 +48,6 @@ var toolShortcuts = {
 
 // Pressing the bulldozer's key again goes through its sizes
 var BULLDOZER_SIZES = ['bulldozer', 'bulldozer3', 'bulldozer5', 'bulldozer7'];
-
-// Limit how much can be done in a single drag
-var MAX_AREA_SIDE = 64;
-var MAX_BUILDINGS = 100;
 
 // Keyboard panning speed, in CSS pixels per second
 var KEY_PAN_SPEED = 900;
@@ -175,7 +152,7 @@ InputStatus.TOOL_SINGLE = TOOL_SINGLE;
 
 
 InputStatus.getToolCategory = function(toolName) {
-  return toolCategories[toolName] || TOOL_BUILDING;
+  return Placements.getToolCategory(toolName);
 };
 
 
@@ -420,9 +397,7 @@ var pointerUpHandler = function(e) {
     if (tile !== null)
       gesture.current = tile;
 
-    var placements = this._computePlacements(gesture.anchor, gesture.current);
-    if (placements.length > 0)
-      this._emitEvent(Messages.TOOL_APPLY, {toolName: gesture.toolName, placements: placements});
+    this._applyDrag(gesture);
   }
 
   this._updateCursor();
@@ -568,75 +543,21 @@ InputStatus.prototype.update = function(elapsed) {
 };
 
 
-// Computes the coordinates at which the tool should be applied for a drag from anchor to current (in order).
-// For buildings, the coordinates are those of the building's "centre" tile, as expected by the tools.
+// Asks for the tool to be applied over a finished drag: TOOL_APPLY gives the placements, and the drag's ends for the
+// server of a shared city, which works the placements out again
+InputStatus.prototype._applyDrag = function(gesture) {
+  var placements = this._computePlacements(gesture.anchor, gesture.current);
+  if (placements.length > 0)
+    this._emitEvent(Messages.TOOL_APPLY, {toolName: gesture.toolName, placements: placements,
+                                          anchor: {x: gesture.anchor.x, y: gesture.anchor.y},
+                                          current: {x: gesture.current.x, y: gesture.current.y}});
+};
+
+
+// Computes the coordinates at which the tool should be applied for a drag from anchor to current (in order), on the
+// map. For buildings, the coordinates are those of the building's "centre" tile, as expected by the tools.
 InputStatus.prototype._computePlacements = function(anchor, current) {
-  var placements = [];
-  var x, y;
-  var category = InputStatus.getToolCategory(this.toolName);
-
-  switch (category) {
-    case TOOL_SINGLE:
-      placements.push({x: current.x, y: current.y});
-      break;
-
-    case TOOL_LINE:
-      // An L-shaped path: first along the axis with the greatest distance, then along the other
-      var dx = current.x - anchor.x;
-      var dy = current.y - anchor.y;
-      var stepX = dx < 0 ? -1 : 1;
-      var stepY = dy < 0 ? -1 : 1;
-
-      if (Math.abs(dx) >= Math.abs(dy)) {
-        for (x = anchor.x; x !== current.x + stepX; x += stepX)
-          placements.push({x: x, y: anchor.y});
-        for (y = anchor.y + stepY; y !== current.y + stepY; y += stepY)
-          placements.push({x: current.x, y: y});
-      } else {
-        for (y = anchor.y; y !== current.y + stepY; y += stepY)
-          placements.push({x: anchor.x, y: y});
-        for (x = anchor.x + stepX; x !== current.x + stepX; x += stepX)
-          placements.push({x: x, y: current.y});
-      }
-      break;
-
-    case TOOL_AREA:
-      // A brush wider than a tile sweeps the drag, centred on the pointer
-      var reach = Math.floor((this.toolBrush - 1) / 2);
-      var minX = Math.min(anchor.x, current.x) - reach;
-      var minY = Math.min(anchor.y, current.y) - reach;
-      var maxX = Math.min(Math.max(anchor.x, current.x) + reach, minX + MAX_AREA_SIDE - 1);
-      var maxY = Math.min(Math.max(anchor.y, current.y) + reach, minY + MAX_AREA_SIDE - 1);
-
-      for (y = minY; y <= maxY; y++) {
-        for (x = minX; x <= maxX; x++)
-          placements.push({x: x, y: y});
-      }
-      break;
-
-    case TOOL_BUILDING:
-      // A grid of buildings, aligned on the first one
-      var size = this.toolWidth - 0;
-      var countX = Math.floor(Math.abs(current.x - anchor.x) / size) + 1;
-      var countY = Math.floor(Math.abs(current.y - anchor.y) / size) + 1;
-      var dirX = current.x < anchor.x ? -1 : 1;
-      var dirY = current.y < anchor.y ? -1 : 1;
-
-      for (var j = 0; j < countY; j++) {
-        for (var i = 0; i < countX; i++) {
-          if (placements.length >= MAX_BUILDINGS)
-            break;
-          placements.push({x: anchor.x + i * size * dirX, y: anchor.y + j * size * dirY});
-        }
-      }
-      break;
-  }
-
-  // Discard anything off the map
-  var map = this._map;
-  return placements.filter(function(p) {
-    return map.testBounds(p.x, p.y);
-  });
+  return Placements.computePlacements(this.toolName, anchor, current, this._map);
 };
 
 

@@ -16,6 +16,13 @@ import { HROADPOWER, LASTPOWER, POWERBASE, VROADPOWER } from './tileValues.ts';
 // demand for zones (see Valves), or feeds the power grid or draws on it (see PowerManager). Deals are paid with the
 // yearly budget, for the months they were in force (see Budget.collectTax). The neighbours grow over the years,
 // faster when they deal with the city.
+//
+// In a region of shared cities, the neighbour beyond an edge may be another player's city (see remote): it then
+// replaces the neighbour of the save, which is kept as it is, for as long as the cities are side by side. A deal with a
+// player's city needs both mayors: it is in force when each city signed its side of it (trade and trade, twinning and
+// twinning, buying power and selling it), and when both cities have the link at their edge. Power bought from a player's
+// city also needs that city to have the power to send. Each city pays or earns its side of the deal. A player's city
+// grows by itself, not with the years of this one.
 
 var SIDES = ['north', 'east', 'south', 'west'];
 var KINDS = ['trade', 'buyPower', 'sellPower', 'twinning'];
@@ -49,6 +56,9 @@ var DEALS = {
 // Buying and selling power with the same neighbour make no sense together
 var EXCLUSIVE = {buyPower: 'sellPower', sellPower: 'buyPower'};
 
+// The deal a player's city must sign for a deal of this city to be in force
+var MATCH = {trade: 'trade', buyPower: 'sellPower', sellPower: 'buyPower', twinning: 'twinning'};
+
 var NAMES = [
   'Belmonte', 'Rivedale', 'Castelnor', 'Altamira', 'Brightwater', 'Valcourt', 'Northam', 'Port Lenoir',
   'Greenfield', 'Montclair', 'Saint-Aubin', 'Oakridge', 'Lakeview', 'Fontaine-sur-Mer', 'Redcliff', 'Mirabel',
@@ -76,9 +86,8 @@ var byKind = function(value) {
 };
 
 
-// How big a neighbour is, from 0 to 1
-var sizeOf = function(neighbour) {
-  return Math.min(1, neighbour.population / BIG_CITY);
+var isOwn = function(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key);
 };
 
 
@@ -95,7 +104,85 @@ function Neighbours(map, random) {
 
   // By side: whether the power sold could be delivered at the last scan of the power grid
   this._delivered = {};
+
+  // KawaCity: the players' cities beyond the edges, by side (only in a region of shared cities): {cityId, name,
+  // ownerName, population, edge}, edge being what that city has at the edge facing this one (see edgeState). Set while
+  // the game runs (see setRemote), never saved.
+  this.remote = {};
 }
+
+
+// The player's city beyond the neighbour's edge, or null
+Neighbours.prototype.getRemote = function(side) {
+  return isOwn(this.remote, side) && SIDES.indexOf(side) !== -1 ? this.remote[side] : null;
+};
+
+
+var cleanEdge = function(edge) {
+  edge = edge !== null && typeof(edge) === 'object' ? edge : {};
+  var signed = edge.signed !== null && typeof(edge.signed) === 'object' ? edge.signed : {};
+  var result = {transport: edge.transport === true, power: edge.power === true, powerOut: edge.powerOut === true,
+                signed: {}};
+  KINDS.forEach(function(kind) {
+    result.signed[kind] = signed[kind] === true;
+  });
+  return result;
+};
+
+
+// Puts a player's city beyond an edge, or takes it away (with null): {cityId, name, ownerName, population, edge}, edge
+// as edgeState describes it (from that city's side). The deals signed with the neighbour of the save stay as they are.
+Neighbours.prototype.setRemote = function(side, remote) {
+  if (SIDES.indexOf(side) === -1)
+    return;
+
+  if (remote === null || remote === undefined) {
+    delete this.remote[side];
+    return;
+  }
+
+  var population = Number(remote.population);
+  this.remote[side] = {
+    cityId: String(remote.cityId),
+    name: cleanName(String(remote.name)),
+    ownerName: cleanName(String(remote.ownerName)),
+    population: isFinite(population) && population > 0 ? Math.round(population) : 0,
+    edge: cleanEdge(remote.edge)
+  };
+};
+
+
+// Ends every deal with a neighbour, and forgets the months they were in force this year (when the city beyond the edge
+// changes)
+Neighbours.prototype.clearDeals = function(side) {
+  var neighbour = this.get(side);
+  if (neighbour === null)
+    return;
+
+  KINDS.forEach(function(kind) {
+    neighbour.deals[kind] = false;
+    neighbour.months[kind] = 0;
+  });
+};
+
+
+// The name and population of the city beyond the neighbour's edge: the player's city there, if any
+Neighbours.prototype._nameOf = function(neighbour) {
+  var remote = this.getRemote(neighbour.side);
+  return remote !== null ? remote.name : neighbour.name;
+};
+
+
+Neighbours.prototype._populationOf = function(neighbour) {
+  var remote = this.getRemote(neighbour.side);
+  return remote !== null ? remote.population : neighbour.population;
+};
+
+
+// How big a neighbour is, from 0 to 1
+Neighbours.prototype.sizeOf = function(neighbour) {
+  return Math.min(1, this._populationOf(neighbour) / BIG_CITY);
+};
 
 
 // New neighbours, for a new city
@@ -206,12 +293,23 @@ Neighbours.prototype._getLinks = function() {
 
 // What a deal with the neighbour costs (negative) or earns in a year
 Neighbours.prototype.yearly = function(neighbour, kind) {
-  return DEALS[kind].yearly(sizeOf(neighbour));
+  return DEALS[kind].yearly(this.sizeOf(neighbour));
+};
+
+
+// Whether a player's city has the link a deal needs at its edge
+var hasTheirLink = function(remote, kind) {
+  var link = DEALS[kind].link;
+  return link === null || (link === 'transport' ? remote.edge.transport : remote.edge.power);
 };
 
 
 // The state of a deal with the neighbour, if it were signed: 'active', 'noLink' (on hold, for want of its link), or
-// 'noPower' (power sold, but the grid does not reach the edge, or has none to spare)
+// 'noPower' (power sold, but the grid does not reach the edge, or has none to spare).
+//
+// With a player's city, also: 'proposed' (that city has not signed its side: the deal waits for it), 'theirLink' (it
+// has signed, but has no link at its edge), 'offered' (it has signed, its link is there, but this city has not signed
+// yet), and 'noPower' for power bought that the city cannot send.
 Neighbours.prototype.dealState = function(neighbour, kind) {
   var links = this._getLinks()[neighbour.side];
   var link = DEALS[kind].link;
@@ -219,10 +317,33 @@ Neighbours.prototype.dealState = function(neighbour, kind) {
   if ((link === 'transport' && !links.transport) || (link === 'power' && links.power.length === 0))
     return 'noLink';
 
+  var remote = this.getRemote(neighbour.side);
+  if (remote !== null) {
+    if (!remote.edge.signed[MATCH[kind]])
+      return 'proposed';
+
+    if (!hasTheirLink(remote, kind))
+      return 'theirLink';
+
+    if (!neighbour.deals[kind])
+      return 'offered';
+
+    if (kind === 'buyPower' && !remote.edge.powerOut)
+      return 'noPower';
+  }
+
   if (kind === 'sellPower' && !this._delivered[neighbour.side])
     return 'noPower';
 
   return 'active';
+};
+
+
+// Whether the city beyond the edge agrees to a deal, as far as it is concerned: it signed its side, and has the link
+// (always, with the neighbour of the save)
+Neighbours.prototype._agreed = function(neighbour, kind) {
+  var remote = this.getRemote(neighbour.side);
+  return remote === null || (remote.edge.signed[MATCH[kind]] && hasTheirLink(remote, kind));
 };
 
 
@@ -252,7 +373,7 @@ Neighbours.prototype.demandBonus = function() {
       if (!DEALS[kind].demand || !this._isActive(n, kind))
         return;
 
-      var demand = DEALS[kind].demand(sizeOf(n));
+      var demand = DEALS[kind].demand(this.sizeOf(n));
       bonus.res += demand.res;
       bonus.com += demand.com;
       bonus.ind += demand.ind;
@@ -279,13 +400,13 @@ Neighbours.prototype.powerSupply = function() {
 
 
 // After a scan of the power grid: the power sold is delivered where the grid reaches the neighbour's edge, as long as
-// there is power to spare
+// there is power to spare (and, to a player's city, as long as it agrees to buy it)
 Neighbours.prototype.deliverPower = function(powerGridMap, spare) {
   var links = this._getLinks();
 
   this.list.forEach(function(n) {
     var delivered = false;
-    if (n.deals.sellPower && spare >= POWER_DEAL) {
+    if (n.deals.sellPower && spare >= POWER_DEAL && this._agreed(n, 'sellPower')) {
       delivered = links[n.side].power.some(function(pos) {
         return powerGridMap.worldGet(pos.x, pos.y) > 0;
       });
@@ -323,6 +444,10 @@ Neighbours.prototype.closeYear = function() {
       }
       n.months[kind] = 0;
     }, this);
+
+    // A player's city grows by itself
+    if (this.getRemote(n.side) !== null)
+      return;
 
     var growth = 0.01 + 0.01 * deals + (this._random() * 0.03 - 0.01);
     n.population = Math.max(500, Math.round(n.population * (1 + growth)));
@@ -363,36 +488,77 @@ Neighbours.prototype.edgeCentre = function(side) {
 
 
 // Everything about the neighbours, to show them (see NeighboursWindow): [{side, name, population, links: {transport,
-// power}, deals: [{kind, signed, state, yearly}]}]
+// power}, deals: [{kind, signed, state, yearly}]}]. A player's city also has player: true, ownerName, cityId and
+// theirLinks: {transport, power} (its links at its edge), and each of its deals theirs: whether it signed its side.
 Neighbours.prototype.describe = function() {
   var links = this.findLinks();
 
   return this.list.map(function(n) {
-    return {
+    var remote = this.getRemote(n.side);
+    var description = {
       side: n.side,
-      name: n.name,
-      population: n.population,
+      name: this._nameOf(n),
+      population: this._populationOf(n),
       links: {transport: links[n.side].transport, power: links[n.side].power.length > 0},
       deals: KINDS.map(function(kind) {
-        return {kind: kind, signed: n.deals[kind], state: this.dealState(n, kind), yearly: this.yearly(n, kind)};
+        var deal = {kind: kind, signed: n.deals[kind], state: this.dealState(n, kind), yearly: this.yearly(n, kind)};
+        if (remote !== null)
+          deal.theirs = remote.edge.signed[MATCH[kind]];
+        return deal;
       }, this)
     };
+
+    if (remote !== null) {
+      description.player = true;
+      description.ownerName = remote.ownerName;
+      description.cityId = remote.cityId;
+      description.theirLinks = {transport: remote.edge.transport, power: remote.edge.power};
+    }
+
+    return description;
   }, this);
 };
 
 
-// The deals signed but not in force, for the news: [{side, name, kind, state}]
+// The deals signed but not in force, for the news: [{side, name, kind, state}]. With a player's city, the entries also
+// have player: true and ownerName, and the deals that city signed but this one did not are there too, as 'offered'.
 Neighbours.prototype.dealsOnHold = function() {
   var onHold = [];
   this.list.forEach(function(n) {
+    var remote = this.getRemote(n.side);
     KINDS.forEach(function(kind) {
       var state = n.deals[kind] ? this.dealState(n, kind) : 'active';
-      if (state !== 'active')
-        onHold.push({side: n.side, name: n.name, kind: kind, state: state});
+      if (remote !== null && !n.deals[kind] && remote.edge.signed[MATCH[kind]])
+        state = 'offered';
+      if (state === 'active')
+        return;
+
+      var deal = {side: n.side, name: this._nameOf(n), kind: kind, state: state};
+      if (remote !== null) {
+        deal.player = true;
+        deal.ownerName = remote.ownerName;
+      }
+      onHold.push(deal);
     }, this);
   }, this);
 
   return onHold;
+};
+
+
+// What this city has at each edge, for the player's city beyond it: {side: {transport, power, powerOut, signed:
+// {trade, buyPower, sellPower, twinning}}}, powerOut telling whether the power sold there was delivered at the last
+// scan of the power grid
+Neighbours.prototype.edgeState = function() {
+  var links = this.findLinks();
+  var state = {};
+
+  this.list.forEach(function(n) {
+    state[n.side] = {transport: links[n.side].transport, power: links[n.side].power.length > 0,
+                     powerOut: this._delivered[n.side] === true, signed: Object.assign({}, n.deals)};
+  }, this);
+
+  return state;
 };
 
 
@@ -414,6 +580,7 @@ Neighbours.SIDES = SIDES;
 Neighbours.KINDS = KINDS;
 Neighbours.POWER_DEAL = POWER_DEAL;
 Neighbours.EXCLUSIVE = EXCLUSIVE;
+Neighbours.MATCH = MATCH;
 Neighbours.MAX_NAME_LENGTH = MAX_NAME_LENGTH;
 
 

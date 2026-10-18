@@ -31,8 +31,11 @@ var SpriteManager = EventEmitter(function(map) {
   this.map = map;
   this.spriteCycle = 0;
 
-  // Sprites of the same kind share their table of listeners, so each message is passed on by a single function:
-  // adding it again for every new sprite is then harmless
+  // KawaCity: each sprite gets a number, unique among the sprites of this manager, to follow it (on a server, and in
+  // the messages to the players)
+  this._lastSpriteId = 0;
+
+  // The functions passing the sprites' messages on: the same for every sprite
   this._reflectors = {};
   var messages = Messages.CRASHES.concat([Messages.HEAVY_TRAFFIC, Messages.EXPLOSION_REPORTED]);
   for (var i = 0; i < messages.length; i++)
@@ -103,6 +106,8 @@ SpriteManager.prototype.moveObjects = function(simData) {
 
 SpriteManager.prototype.makeSprite = function(type, x, y) {
   var newSprite = new constructors[type](this.map, this, x, y);
+  this._lastSpriteId += 1;
+  newSprite.id = this._lastSpriteId;
 
   // Listen for crashes
   for (var i = 0, l = Messages.CRASHES.length; i < l; i++)

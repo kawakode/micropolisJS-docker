@@ -319,6 +319,15 @@ var strings = {
   'Needs a power line to this edge.': 'Demande une ligne électrique jusqu\'à ce bord.',
   'Not delivered: the grid does not reach this edge, or has no power to spare.':
     'Non livrée : le réseau n\'atteint pas ce bord, ou n\'a pas d\'électricité en trop.',
+  'Mayor: {owner}': 'Maire : {owner}',
+  '{owner} offers this deal: tick it to accept.': '{owner} propose cet accord : cochez-le pour l\'accepter.',
+  'Proposed: waiting for {owner} to sign it too.': 'Proposé : en attente de la signature de {owner}.',
+  'On hold: {owner} has no road or railway at this edge yet.':
+    'En attente : {owner} n\'a pas encore de route ni de voie ferrée jusqu\'à ce bord.',
+  'On hold: {owner} has no power line at this edge yet.':
+    'En attente : {owner} n\'a pas encore de ligne électrique jusqu\'à ce bord.',
+  'Not delivered: {owner} has no power to spare at this edge.':
+    'Non livrée : {owner} n\'a pas d\'électricité en trop à ce bord.',
   'Deals in force: {amount}.': 'Accords en vigueur : {amount}.',
 
   // The query window
@@ -602,6 +611,17 @@ var strings = {
     'La vente d\'électricité à {name} est en attente : construisez une ligne électrique jusqu\'au bord {side} de la carte.',
   '{name} gets none of the electricity it buys: link the power line at the {side} edge to the grid, or build another power plant.':
     '{name} ne reçoit pas l\'électricité achetée : reliez au réseau la ligne électrique du bord {side}, ou construisez une autre centrale.',
+  'No electricity comes from {name}: {owner} has none to spare at their edge.':
+    'Aucune électricité n\'arrive de {name} : {owner} n\'en a pas en trop à son bord.',
+  'Deal proposed to {name} ({deal}): it waits for {owner} to sign it too.':
+    'Accord proposé à {name} ({deal}) : il attend la signature de {owner}.',
+  '{owner}, mayor of {name}, offers a deal ({deal}): sign it in the Neighbours window to accept.':
+    '{owner}, maire de {name}, propose un accord ({deal}) : signez-le dans la fenêtre Voisins pour l\'accepter.',
+  'The trade agreement with {name} waits for {owner} to build a road or a railway to their edge.':
+    'L\'accord commercial avec {name} attend que {owner} construise une route ou une voie ferrée jusqu\'à son bord.',
+  'The power deal with {name} waits for {owner} to build a power line to their edge.':
+    'L\'accord d\'électricité avec {name} attend que {owner} construise une ligne électrique jusqu\'à son bord.',
+  '{name} ({owner})': '{name} ({owner})',
   'Citizens demand a police station: crime grows unchecked without one.':
     'Les habitants réclament un commissariat : sans lui, la criminalité prospère.',
   'Citizens demand a fire station: nothing would stop a fire today.':

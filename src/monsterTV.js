@@ -20,7 +20,8 @@ import { SPRITE_DYING, SPRITE_MOVED } from './messages.ts';
 var TIMEOUT_SECS = 10;
 
 
-var MonsterTV = function(map, tileSet, spriteSheet, animationManager) {
+// animationManager is optional (the TV then has its own), and so is options: {noWrite} (see AnimationManager)
+var MonsterTV = function(map, tileSet, spriteSheet, animationManager, options) {
   this.isOpen = false;
   this._tracking = null;
 
@@ -29,7 +30,7 @@ var MonsterTV = function(map, tileSet, spriteSheet, animationManager) {
   $(monsterTVID).toggle();
 
   this.canvas = new GameCanvas(monsterTVCanvasID, monsterTVContainerID);
-  this.canvas.init(map, tileSet, spriteSheet, animationManager);
+  this.canvas.init(map, tileSet, spriteSheet, animationManager, options);
   this.canvas.disallowOffMap();
 
   this._onMove = onMove.bind(this);
