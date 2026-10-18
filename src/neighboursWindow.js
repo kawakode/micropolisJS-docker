@@ -104,8 +104,12 @@ NeighboursWindow.prototype.open = function(neighbours) {
 };
 
 
+// A text made safe to put in HTML, between tags or in an attribute's value (between double or single quotes): the
+// names of the neighbours come from saves, which may come from anywhere
+var ENTITIES = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;'};
+
 var escape = function(text) {
-  return $('<div>').text(text).html();
+  return String(text).replace(/[&<>"']/g, function(c) { return ENTITIES[c]; });
 };
 
 
@@ -133,6 +137,22 @@ var stateOf = function(deal, signed) {
 
 
 NeighboursWindow.prototype._render = function() {
+  var cards = this._cards();
+
+  $(listID).html(cards.html);
+  $('#neighboursBalance').text(I18n.t('Deals in force: {amount}.', {amount: yearlyText(cards.balance)}))
+    .toggleClass('income', cards.balance > 0).toggleClass('cost', cards.balance < 0);
+};
+
+
+// The picture of a neighbour, which grows with it, as HTML
+NeighboursWindow.prototype._picture = function(population) {
+  return PixelIcons.picture('town', PixelIcons.townFor(population), 2).outerHTML;
+};
+
+
+// The neighbours' cards as HTML, and the yearly balance of the deals that would be in force: {html, balance}
+NeighboursWindow.prototype._cards = function() {
   var balance = 0;
 
   var cards = this._neighbours.map(function(n) {
@@ -149,19 +169,17 @@ NeighboursWindow.prototype._render = function() {
         balance += deal.yearly;
 
       return '<li class="deal' + (signed ? ' signed' : '') + '">' +
-        '<input type="checkbox" class="dealToggle" id="' + id + '" data-side="' + n.side + '" data-kind="' +
-        deal.kind + '"' + (signed ? ' checked' : '') + '>' +
-        '<label for="' + id + '"><span class="dealName">' + escape(I18n.t(Text.deals[deal.kind])) + '</span>' +
+        '<input type="checkbox" class="dealToggle" id="' + escape(id) + '" data-side="' + escape(n.side) +
+        '" data-kind="' + escape(deal.kind) + '"' + (signed ? ' checked' : '') + '>' +
+        '<label for="' + escape(id) + '"><span class="dealName">' + escape(I18n.t(Text.deals[deal.kind])) + '</span>' +
         '<span class="dealAmount ' + (deal.yearly > 0 ? 'income' : 'cost') + '">' + escape(yearlyText(deal.yearly)) +
         '</span></label>' +
         (state ? '<p class="dealState ' + state[1] + '">' + escape(state[0]) + '</p>' : '') +
         '</li>';
     }, this);
 
-    // The neighbour's picture grows with it
-    var picture = PixelIcons.picture('town', PixelIcons.townFor(n.population), 2).outerHTML;
-
-    return '<section class="neighbour" aria-label="' + escape(n.name) + '"><div class="neighbourTop">' + picture +
+    return '<section class="neighbour" aria-label="' + escape(n.name) + '"><div class="neighbourTop">' +
+      this._picture(n.population) +
       '<div class="neighbourInfo"><header class="neighbourHeader"><span class="neighbourSide">' +
       escape(I18n.t(Text.sides[n.side])) + '</span><span class="neighbourName">' + escape(n.name) +
       '</span><span class="neighbourPopulation">' +
@@ -171,10 +189,11 @@ NeighboursWindow.prototype._render = function() {
       '</p></div></div><ul class="deals">' + deals.join('') + '</ul></section>';
   }, this);
 
-  $(listID).html(cards.join(''));
-  $('#neighboursBalance').text(I18n.t('Deals in force: {amount}.', {amount: yearlyText(balance)}))
-    .toggleClass('income', balance > 0).toggleClass('cost', balance < 0);
+  return {html: cards.join(''), balance: balance};
 };
+
+
+NeighboursWindow.escape = escape;
 
 
 export { NeighboursWindow };

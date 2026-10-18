@@ -635,8 +635,206 @@ var strings = {
   '{city} welcomed {n} new residents last year.': '{city} a accueilli {n} nouveaux habitants l\'an dernier.',
   'Treasury: {funds}, with taxes at {tax}%.': 'Trésorerie : {funds}, avec des impôts à {tax} %.',
   'All quiet in {city}: no disaster, no crisis. Enjoy it while it lasts.':
-    'Tout est calme à {city} : ni catastrophe, ni crise. Profitez-en tant que ça dure.'
+    'Tout est calme à {city} : ni catastrophe, ni crise. Profitez-en tant que ça dure.',
+
+  // What the server reports (see apiErrors.js)
+  'Something in this form is not right. Please check it and try again.':
+    'Quelque chose ne va pas dans ce formulaire. Vérifiez-le et réessayez.',
+  'This request did not come from the game\'s page. Please reload the page and try again.':
+    'Cette demande ne vient pas de la page du jeu. Rechargez la page et réessayez.',
+  'The server did not understand this request. Please reload the page and try again.':
+    'Le serveur n\'a pas compris cette demande. Rechargez la page et réessayez.',
+  'This is too big to send to the server.': 'C\'est trop gros pour être envoyé au serveur.',
+  'Not found. It may have been deleted.': 'Introuvable. Cela a peut-être été supprimé.',
+  'The server cannot do that.': 'Le serveur ne peut pas faire ça.',
+  'Please log in to do that.': 'Connectez-vous pour faire ça.',
+  'You are not allowed to do that.': 'Vous n\'avez pas le droit de faire ça.',
+  'The check that you are not a robot failed. Please try again.':
+    'La vérification que vous n\'êtes pas un robot a échoué. Réessayez.',
+  'The check that you are not a robot expired. Please try again.':
+    'La vérification que vous n\'êtes pas un robot a expiré. Réessayez.',
+  'Too many requests at once. Please wait a moment and try again.':
+    'Trop de demandes à la fois. Patientez un instant et réessayez.',
+  'Too many failed attempts. Please wait a while before trying again.':
+    'Trop de tentatives manquées. Patientez un moment avant de réessayer.',
+  'Wrong username, email or password.': 'Nom d\'utilisateur, e-mail ou mot de passe incorrect.',
+  'This username is already taken. Please choose another one.': 'Ce nom d\'utilisateur est déjà pris. Choisissez-en un autre.',
+  'Please choose a stronger password.': 'Choisissez un mot de passe plus solide.',
+  'This link does not work any more: it has expired or was already used.':
+    'Ce lien ne marche plus : il a expiré ou a déjà servi.',
+  'The server is very busy. Please try again in a moment.': 'Le serveur est très occupé. Réessayez dans un instant.',
+  'This is already done, or can no longer be done.': 'C\'est déjà fait, ou ce n\'est plus possible.',
+  'You have reached the limit: this cannot be done for now.': 'Vous avez atteint la limite : impossible pour l\'instant.',
+  'New accounts cannot be created on this server.': 'Impossible de créer de nouveaux comptes sur ce serveur.',
+  'Something went wrong on the server. Please try again later.':
+    'Quelque chose s\'est mal passé sur le serveur. Réessayez plus tard.',
+  'The server cannot be reached. Please check your connection and try again.':
+    'Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.',
+  'The server took too long to answer. Please try again.': 'Le serveur a mis trop de temps à répondre. Réessayez.',
+  'Please fill this in.': 'Remplissez ce champ.',
+  'This does not look right.': 'Ceci ne semble pas correct.',
+  'This is too short.': 'C\'est trop court.',
+  'This is too long.': 'C\'est trop long.',
+  'This password is too common: anyone could guess it.':
+    'Ce mot de passe est trop courant : n\'importe qui pourrait le deviner.',
+  'Your password must not contain your username.': 'Votre mot de passe ne doit pas contenir votre nom d\'utilisateur.',
+  'Your password must not contain your email address.': 'Votre mot de passe ne doit pas contenir votre adresse e-mail.',
+  'This password is too simple: use more different characters.':
+    'Ce mot de passe est trop simple : utilisez plus de caractères différents.',
+  'This name is reserved. Please choose another one.': 'Ce nom est réservé. Choisissez-en un autre.',
+  'This city was deleted.': 'Cette ville a été supprimée.',
+  'You are no longer a member of this city.': 'Vous n\'êtes plus membre de cette ville.',
+  'You were logged out. Please log in again.': 'Votre session a pris fin. Reconnectez-vous.',
+  'Something went wrong with this city on the server. Please try again later.':
+    'Quelque chose s\'est mal passé avec cette ville sur le serveur. Réessayez plus tard.',
+  'The server is shutting down. The city was saved: please come back in a moment.':
+    'Le serveur s\'arrête. La ville a été sauvegardée : revenez dans un moment.',
+  'That cannot be built there': 'Impossible de construire ça ici',
+
+  // The emails' subjects (see emailTexts.js; their texts follow)
+  'Finish creating your KawaCity account': 'Terminez la création de votre compte KawaCity',
+  'You already have a KawaCity account': 'Vous avez déjà un compte KawaCity',
+  'Choose a new KawaCity password': 'Choisissez un nouveau mot de passe KawaCity',
+  'Your KawaCity password was changed': 'Le mot de passe de votre compte KawaCity a changé',
+  'Confirm your new email address for KawaCity': 'Confirmez votre nouvelle adresse e-mail pour KawaCity',
+  'Your KawaCity email address is about to change': 'L\'adresse e-mail de votre compte KawaCity va changer',
+  'Your KawaCity email address was changed': 'L\'adresse e-mail de votre compte KawaCity a changé',
+  'Your KawaCity account is locked for now': 'Votre compte KawaCity est bloqué pour l\'instant'
 };
+
+
+// The emails' texts (see emailTexts.js) are long: each is written paragraph by paragraph, the English text and then its
+// translation
+var paragraphs = function(list) {
+  return list.join('\n\n');
+};
+
+[
+  [[
+    'Hello,',
+    'Someone, probably you, asked to create a KawaCity account on {site} with this email address.',
+    'To choose your username and password, open this link within {hours} h:',
+    '{link}',
+    'If it was not you, just ignore this email: no account will be created.'
+  ], [
+    'Bonjour,',
+    'Quelqu\'un, sans doute vous, a demandé à créer un compte KawaCity sur {site} avec cette adresse e-mail.',
+    'Pour choisir votre nom d\'utilisateur et votre mot de passe, ouvrez ce lien dans les {hours} h :',
+    '{link}',
+    'Si ce n\'était pas vous, ignorez simplement cet e-mail : aucun compte ne sera créé.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'Someone, probably you, asked to create a KawaCity account on {site} with this email address. You already have ' +
+    'one: your username is {username}.',
+    'You can log in with it as usual. If you forgot your password, open this link within {hours} h to choose a new ' +
+    'one:',
+    '{link}',
+    'If it was not you, just ignore this email: your account has not changed.'
+  ], [
+    'Bonjour {username},',
+    'Quelqu\'un, sans doute vous, a demandé à créer un compte KawaCity sur {site} avec cette adresse e-mail. Vous en ' +
+    'avez déjà un : votre nom d\'utilisateur est {username}.',
+    'Vous pouvez vous connecter comme d\'habitude. Si vous avez oublié votre mot de passe, ouvrez ce lien dans les ' +
+    '{hours} h pour en choisir un nouveau :',
+    '{link}',
+    'Si ce n\'était pas vous, ignorez simplement cet e-mail : votre compte n\'a pas changé.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'Someone, probably you, asked to reset the password of your KawaCity account on {site}.',
+    'To choose a new password, open this link within {hours} h:',
+    '{link}',
+    'If it was not you, just ignore this email: your password has not changed.'
+  ], [
+    'Bonjour {username},',
+    'Quelqu\'un, sans doute vous, a demandé à réinitialiser le mot de passe de votre compte KawaCity sur {site}.',
+    'Pour choisir un nouveau mot de passe, ouvrez ce lien dans les {hours} h :',
+    '{link}',
+    'Si ce n\'était pas vous, ignorez simplement cet e-mail : votre mot de passe n\'a pas changé.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'The password of your KawaCity account on {site} has just been changed.',
+    'If it was you, all is well: there is nothing else to do.',
+    'If it was not you, choose a new password at once with "Forgot password?" on the login screen of {site}.'
+  ], [
+    'Bonjour {username},',
+    'Le mot de passe de votre compte KawaCity sur {site} vient d\'être changé.',
+    'Si c\'était vous, tout va bien : il n\'y a rien d\'autre à faire.',
+    'Si ce n\'était pas vous, choisissez tout de suite un nouveau mot de passe avec « Mot de passe oublié ? » sur ' +
+    'l\'écran de connexion de {site}.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'Someone, probably you, asked to use this email address for your KawaCity account on {site}.',
+    'To confirm it, open this link within {hours} h:',
+    '{link}',
+    'If it was not you, just ignore this email: nothing will change.'
+  ], [
+    'Bonjour {username},',
+    'Quelqu\'un, sans doute vous, a demandé à utiliser cette adresse e-mail pour votre compte KawaCity sur {site}.',
+    'Pour la confirmer, ouvrez ce lien dans les {hours} h :',
+    '{link}',
+    'Si ce n\'était pas vous, ignorez simplement cet e-mail : rien ne changera.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'Someone, probably you, asked to change the email address of your KawaCity account on {site}. The change is ' +
+    'made once the new address is confirmed.',
+    'If it was you, there is nothing else to do.',
+    'If it was not you, someone else knows your password: log in at once and change it, which also cancels the ' +
+    'change of address.'
+  ], [
+    'Bonjour {username},',
+    'Quelqu\'un, sans doute vous, a demandé à changer l\'adresse e-mail de votre compte KawaCity sur {site}. Le ' +
+    'changement sera fait une fois la nouvelle adresse confirmée.',
+    'Si c\'était vous, il n\'y a rien d\'autre à faire.',
+    'Si ce n\'était pas vous, quelqu\'un d\'autre connaît votre mot de passe : connectez-vous tout de suite et ' +
+    'changez-le, ce qui annule aussi le changement d\'adresse.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'The email address of your KawaCity account on {site} has just been changed. The account\'s emails now go to ' +
+    'the new address, and this one no longer works to log in.',
+    'If it was you, there is nothing else to do.',
+    'If it was not you, someone else knows your password: log in at once with your username, change your password ' +
+    'and set your email address back. If you cannot, contact the people who run {site}.'
+  ], [
+    'Bonjour {username},',
+    'L\'adresse e-mail de votre compte KawaCity sur {site} vient d\'être changée. Les e-mails du compte partent ' +
+    'désormais à la nouvelle adresse, et celle-ci ne permet plus de se connecter.',
+    'Si c\'était vous, il n\'y a rien d\'autre à faire.',
+    'Si ce n\'était pas vous, quelqu\'un d\'autre connaît votre mot de passe : connectez-vous tout de suite avec ' +
+    'votre nom d\'utilisateur, changez votre mot de passe et remettez votre adresse e-mail. Si vous n\'y arrivez ' +
+    'pas, contactez les responsables de {site}.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'There were too many failed attempts to log in to your KawaCity account on {site}, so it is locked for ' +
+    '{hours} h.',
+    'To unlock it now, choose a new password with "Forgot password?" on the login screen.',
+    'If these attempts were not yours, someone may be trying to guess your password. A new one, long and used ' +
+    'nowhere else, keeps your account safe.'
+  ], [
+    'Bonjour {username},',
+    'Il y a eu trop de tentatives de connexion manquées à votre compte KawaCity sur {site} : il est donc bloqué ' +
+    'pendant {hours} h.',
+    'Pour le débloquer tout de suite, choisissez un nouveau mot de passe avec « Mot de passe oublié ? » sur l\'écran ' +
+    'de connexion.',
+    'Si ces tentatives n\'étaient pas les vôtres, quelqu\'un essaie peut-être de deviner votre mot de passe. Un ' +
+    'nouveau, long et utilisé nulle part ailleurs, protège votre compte.'
+  ]]
+].forEach(function(text) {
+  strings[paragraphs(text[0])] = paragraphs(text[1]);
+});
 
 
 var jokes = {

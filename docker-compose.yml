@@ -2,13 +2,69 @@
 #
 #   docker compose up -d
 #
-# then open http://localhost:8080
+# then open http://localhost:8080. The settings below can be changed here, or in a .env file next to this one
+# (see .env.example and README.md): PUBLIC_URL is the address players open, and mail (SMTP_*) lets them create
+# accounts.
 
 services:
   kawacity:
-    # latest, or a version: 1, 1.0, 1.0.0
-    image: ghcr.io/kawakode/kawacity:latest
+    # latest, or a version: 2, 2.0, 2.0.0
+    image: ghcr.io/kawakode/kawacity:${KAWACITY_VERSION:-latest}
     ports:
-      # host port:container port
-      - "8080:80"
+      # host port:container port. Behind a reverse proxy on this host, publish it on this host only:
+      # "127.0.0.1:8080:8080"
+      - "${KAWACITY_PORT:-8080}:8080"
+    environment:
+      # The address players open (https://kawacity.example.com), without a path: links in mails start with it, and
+      # only pages from it may post to the server or join multiplayer
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      # Behind a reverse proxy: how many there are (1 for nginx or Caddy on this host), so that players are told
+      # apart by their own address. Leave 0 when players connect to this port directly.
+      TRUST_PROXY: ${TRUST_PROXY:-0}
+      # The addresses those proxies connect from (empty: the local and private networks)
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      # Classrooms and offices share one address: every per-address limit is multiplied by this
+      IP_LIMIT_FACTOR: ${IP_LIMIT_FACTOR:-1}
+      # Mail, for accounts (sign-up and password reset links). Without SMTP_HOST, no mail is sent, and accounts can
+      # only be made with the admin commands (see README.md)
+      SMTP_HOST: ${SMTP_HOST:-}
+      # 587 with STARTTLS, or 465 with SMTP_SECURE=true
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      # Who the mails come from: KawaCity <kawacity@example.com>
+      MAIL_FROM: ${MAIL_FROM:-}
+      # open, or closed: only the admin commands make accounts
+      REGISTRATION: ${REGISTRATION:-open}
+      # Who runs this server and how to reach them, shown in the privacy notice
+      OPERATOR_CONTACT: ${OPERATOR_CONTACT:-}
+      # The other settings (see .env.example) are added the same way, such as MAX_ROOMS: ${MAX_ROOMS:-10}
+      # The SMTP password can come from a Docker secret instead: remove SMTP_PASSWORD above, then add
+      #   SMTP_PASSWORD_FILE: /run/secrets/smtp_password
+      # here, "secrets: [smtp_password]" to this service, and at the end of this file:
+      #   secrets:
+      #     smtp_password:
+      #       file: ./smtp_password.txt
+    volumes:
+      # Accounts, cities and backups
+      - kawacity-data:/data
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Time to save the cities being played
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
     restart: unless-stopped
+
+volumes:
+  kawacity-data:

@@ -106,35 +106,64 @@ var onChange = function(listener) {
 };
 
 
+var has = function(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key);
+};
+
+
 var fill = function(text, params) {
   return text.replace(/\{(\w+)\}/g, function(match, name) {
-    return params[name] === undefined ? match : String(params[name]);
+    return !has(params, name) || params[name] === undefined ? match : String(params[name]);
   });
 };
 
 
-// The language's typographic rules: in French, a (no-break) space before the high punctuation
-var typeset = function(text) {
-  if (language !== 'fr')
+// A language's typographic rules: in French, a (no-break) space before the high punctuation
+var typesetFor = function(lang, text) {
+  if (lang !== 'fr')
     return text;
 
   return text.replace(/ ([:;!?%\u00bb])/g, '\u00a0$1').replace(/\u00ab /g, '\u00ab\u00a0');
 };
 
 
-// The text in the current language, with each {name} replaced by params[name]
-var t = function(text, params) {
-  var result = text.indexOf('|') === -1 ? text : text.slice(text.indexOf('|') + 1);
+var typeset = function(text) {
+  return typesetFor(language, text);
+};
 
-  if (language !== 'en') {
-    var translation = DICTIONARIES[language][text];
-    if (translation === undefined)
-      missing[text] = true;
-    else
-      result = typeset(translation);
-  }
+
+// The translation of a text in a language other than English, or undefined if its dictionary lacks it
+var lookup = function(lang, text) {
+  if (lang === 'en' || !has(DICTIONARIES, lang) || !has(DICTIONARIES[lang], text))
+    return undefined;
+
+  return DICTIONARIES[lang][text];
+};
+
+
+// The English text: without its context, if it has one
+var english = function(text) {
+  return text.indexOf('|') === -1 ? text : text.slice(text.indexOf('|') + 1);
+};
+
+
+// The text in the given language (in English if that language's dictionary lacks it, or the game does not speak it),
+// with each {name} replaced by params[name]. It depends on nothing but its arguments, so a server can translate for
+// each player.
+var translate = function(lang, text, params) {
+  var translation = lookup(lang, text);
+  var result = translation === undefined ? english(text) : typesetFor(lang, translation);
 
   return params ? fill(result, params) : result;
+};
+
+
+// The text in the current language, with each {name} replaced by params[name]
+var t = function(text, params) {
+  if (language !== 'en' && lookup(language, text) === undefined)
+    missing[text] = true;
+
+  return translate(language, text, params);
 };
 
 
@@ -176,7 +205,7 @@ var translateDocument = function(root) {
     if (element._i18nEnglish === undefined)
       element._i18nEnglish = element.innerHTML;
 
-    var translation = language === 'en' ? undefined : DICTIONARIES[language][element.getAttribute('data-i18n-html')];
+    var translation = lookup(language, element.getAttribute('data-i18n-html'));
     if (language !== 'en' && translation === undefined)
       missing[element.getAttribute('data-i18n-html')] = true;
     element.innerHTML = translation === undefined ? element._i18nEnglish : typeset(translation);
@@ -197,6 +226,7 @@ var translateDocument = function(root) {
 
 
 var I18n = {
+  ATTRIBUTES: ATTRIBUTES,
   LANGUAGES: LANGUAGES,
   NAMES: NAMES,
   detect: detect,
@@ -204,6 +234,7 @@ var I18n = {
   setLanguage: setLanguage,
   onChange: onChange,
   t: t,
+  translate: translate,
   typeset: typeset,
   formatNumber: formatNumber,
   money: money,

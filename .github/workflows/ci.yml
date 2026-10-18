@@ -1,0 +1,82 @@
+# Checks every push and pull request: the tests, the type check, the build, a smoke test of the built server, an audit
+# of the server's dependencies, and the Docker image (built, not published).
+
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Test, build and smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
+
+      # The built server starts, serves the game with its security headers and compressed, answers its health check,
+      # refuses a POST from elsewhere, and stops cleanly on SIGTERM
+      - name: Smoke test the built server
+        run: |
+          data=$(mktemp -d)
+          PORT=8080 PUBLIC_URL=http://127.0.0.1:8080 DATA_DIR="$data" STATIC_DIR=dist MAIL_TRANSPORT=log \
+            node --disable-warning=ExperimentalWarning --enable-source-maps build/server/main.cjs > server.log 2>&1 &
+          pid=$!
+          for i in $(seq 1 30); do
+            curl -fsS -o /dev/null http://127.0.0.1:8080/api/health && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8080/api/health
+          curl -fsS -D page.txt -o /dev/null http://127.0.0.1:8080/
+          grep -qi '^content-security-policy: default-src' page.txt
+          curl -fsS -H 'Accept-Encoding: gzip' -D script.txt -o /dev/null http://127.0.0.1:8080/src/micropolis.js
+          grep -qi '^content-encoding: gzip' script.txt
+          status=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' \
+                   http://127.0.0.1:8080/api/session)
+          test "$status" = 403
+          kill -TERM "$pid"
+          timeout 10 tail --pid="$pid" -f /dev/null
+          wait "$pid"
+
+      - name: Server log
+        if: always()
+        run: cat server.log || true
+
+      - name: Audit the server's dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # The image must use the Node.js version of .node-version
+      - name: Check the image's Node.js version
+        run: grep -q "^ARG NODE_IMAGE=node:$(cat .node-version)-alpine$" Dockerfile
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          build-args: BUILD_ID=ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

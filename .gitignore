@@ -1,7 +1,14 @@
 *.swp
 *.swo
+build/
 coverage/
+data/
 dist/
 node_modules/
 TODO
 __pycache__/
+.env
+.env.*
+!.env.example
+*.db
+*.db-*

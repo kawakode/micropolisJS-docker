@@ -16,6 +16,18 @@
         },
         {
             "type": "npm",
+            "script": "dev:server",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "type": "npm",
+            "script": "start:server",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "type": "npm",
             "script": "test",
             "group": {
                 "kind": "test",

@@ -70,6 +70,22 @@ describe("The neighbouring cities", () => {
         expect(loaded.list).toEqual(neighbours.list);
     });
 
+    it("keep the names read from a save short, and without control or format characters", () => {
+        const saveData: any = {};
+        makeNeighbours().save(saveData);
+        saveData.neighbours[0].name = "New\u202eYork\u0000\n" + "x".repeat(40);
+        saveData.neighbours[1].name = "Zero\u200bWidth\ufeff";
+        saveData.neighbours[2].name = "\u{1f3d9}".repeat(31);
+
+        const loaded = new (Neighbours as any)(makeMap());
+        loaded.load(saveData);
+        expect(loaded.list[0].name).toBe("NewYork" + "x".repeat(23));
+        expect(loaded.list[1].name).toBe("ZeroWidth");
+        expect(loaded.list[2].name).toBe("\u{1f3d9}".repeat(30));
+        expect(loaded.list[3].name).toBe(saveData.neighbours[3].name);
+        expect((Neighbours as any).MAX_NAME_LENGTH).toBe(30);
+    });
+
     it("are found anew for a game saved before there were neighbours", () => {
         const loaded = new (Neighbours as any)(makeMap(), sequence(9));
         loaded.load({});

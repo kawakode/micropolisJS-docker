@@ -56,6 +56,9 @@ var NAMES = [
   'Marbourg', 'Elmstead', 'Vallon', 'Stonebury', 'Bellerive', 'Fairport', 'Hautecombe', 'Copperfield'
 ];
 
+// The longest name a neighbour can have, in characters
+var MAX_NAME_LENGTH = 30;
+
 // A neighbour this big or bigger counts as big, for the deals
 var BIG_CITY = 100000;
 
@@ -117,6 +120,13 @@ Neighbours.prototype.save = function(saveData) {
 };
 
 
+// A name read from a save, which may come from anywhere: without control or format characters (such as those that
+// reverse the text's direction), and no longer than a name can be
+var cleanName = function(name) {
+  return Array.from(name.replace(/[\p{Cc}\p{Cf}]/gu, '')).slice(0, MAX_NAME_LENGTH).join('');
+};
+
+
 // A game saved before there were neighbours gets new ones
 Neighbours.prototype.load = function(saveData) {
   var saved = saveData.neighbours;
@@ -137,7 +147,7 @@ Neighbours.prototype.load = function(saveData) {
       deals[kind] = !!(n.deals && n.deals[kind]);
       months[kind] = n.months && typeof(n.months[kind]) === 'number' ? n.months[kind] : 0;
     });
-    return {side: n.side, name: n.name, population: n.population, deals: deals, months: months};
+    return {side: n.side, name: cleanName(n.name), population: n.population, deals: deals, months: months};
   });
   this._links = null;
   this._delivered = {};
@@ -404,6 +414,7 @@ Neighbours.SIDES = SIDES;
 Neighbours.KINDS = KINDS;
 Neighbours.POWER_DEAL = POWER_DEAL;
 Neighbours.EXCLUSIVE = EXCLUSIVE;
+Neighbours.MAX_NAME_LENGTH = MAX_NAME_LENGTH;
 
 
 export { Neighbours };

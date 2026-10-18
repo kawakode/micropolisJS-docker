@@ -7,35 +7,85 @@ KawaCity is a modified version of [micropolisJS](https://github.com/graememcc/mi
 
 ## Deploying ##
 
-The image is published as `ghcr.io/kawakode/kawacity` (amd64 and arm64). With Docker Compose:
+The image is published as `ghcr.io/kawakode/kawacity` (amd64 and arm64): one server for the game, its accounts and multiplayer, on port 8080, which keeps its data in `/data`. With Docker Compose:
 
 ```sh
 curl -O https://raw.githubusercontent.com/kawakode/micropolisJS-docker/main/docker-compose.yml
 docker compose up -d
 ```
 
-Then open <http://localhost:8080>. The port and the version can be changed in [docker-compose.yml](docker-compose.yml).
+Then open <http://localhost:8080>. The settings are in [docker-compose.yml](docker-compose.yml), or in a `.env` file next to it ([.env.example](.env.example) lists them all, with their defaults):
+
+- **PUBLIC_URL**: the address players open, such as `https://kawacity.example.com`, without a path. Mails link to it, and only pages from it may post to the server or join multiplayer: at any other address (a LAN address, another port) the game only links to it. Plain `http` is refused except for `localhost`, unless `ALLOW_INSECURE_HTTP=1`.
+- **Mail** (`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD` or `SMTP_PASSWORD_FILE`, `MAIL_FROM`): players need it to create accounts and reset their passwords. On port 587 STARTTLS is required; set `SMTP_SECURE=true` for port 465. `OPERATOR_CONTACT` (who runs the server and how to reach them) is shown in the privacy notice.
+- **Without mail**, the game looks as it always did: nobody can sign up, and logging in is only offered once an account has been made with the admin commands below. `REGISTRATION=closed` keeps sign-ups closed with mail too.
+- **Shared addresses**: limits count requests per address (per /64 for IPv6). A class or an office behind one address can raise them with `IP_LIMIT_FACTOR` (such as `10`).
+
+Commands:
 
 - **Update**: `docker compose pull && docker compose up -d`
-- **Stop**: `docker compose down`
-- **Without Compose**: `docker run -d -p 8080:80 --restart unless-stopped ghcr.io/kawakode/kawacity`
+- **Stop**: `docker compose down` (the data stays in the `kawacity-data` volume)
+- **Without Compose**: `docker run -d -p 8080:8080 -v kawacity-data:/data -e PUBLIC_URL=http://localhost:8080 --restart unless-stopped ghcr.io/kawakode/kawacity`
+- **Accounts**, made and repaired by hand (the links printed are valid 24 h for a new account, 1 h for a reset):
 
-The game is a static site: for HTTPS or a domain name, put it behind your usual reverse proxy.
+  ```sh
+  docker compose exec kawacity node server/main.cjs user add alice alice@example.com   # prints a link to choose a password
+  docker compose exec kawacity node server/main.cjs user reset alice                   # or her email address
+  docker compose exec kawacity node server/main.cjs user list
+  docker compose exec kawacity node server/main.cjs user delete alice
+  docker compose exec kawacity node server/main.cjs mail-test you@example.com          # checks the mail settings
+  ```
+
+- **Backup**: `docker compose exec kawacity node server/main.cjs backup` copies the database to `/data/backups/kawacity-<time>.db`, safely while the game is played, and `docker compose cp kawacity:/data/backups .` takes the copies out. The server also makes a copy there before it upgrades the database to a new version.
+- **Restore**: stop the server, put the copy in place of `kawacity.db` and delete `kawacity.db-wal` and `kawacity.db-shm`, then start it again:
+
+  ```sh
+  docker compose stop
+  docker compose run --rm --no-deps -T --entrypoint sh kawacity \
+    -c 'cat > /data/kawacity.db && rm -f /data/kawacity.db-wal /data/kawacity.db-shm' < kawacity-copy.db
+  docker compose up -d
+  ```
+
+- Run **one container per volume**: the cities being played live in the server's memory.
+
+**HTTPS and a domain name**: put the server behind a reverse proxy, publish its port on the host only (`"127.0.0.1:8080:8080"` in docker-compose.yml), and set `PUBLIC_URL=https://kawacity.example.com` and `TRUST_PROXY=1`. `TRUST_PROXY` is the number of proxies in front of the server (2 for a CDN, then nginx): the client's address is then read from `X-Forwarded-For`, from the addresses of `TRUSTED_PROXIES` only (the local and private networks by default, Docker's included; `TRUSTED_PROXIES=172.18.0.0/16` would trust only that Docker network). Never set it while players can reach the port directly, or they could choose their own address. With [Caddy](https://caddyserver.com):
+
+```
+kawacity.example.com {
+	reverse_proxy 127.0.0.1:8080
+}
+```
+
+With nginx, see [docker/nginx.example.conf](docker/nginx.example.conf): multiplayer needs the WebSocket upgrade it passes on.
+
+**Upgrading from 1.x**: version 2 listens on port 8080 instead of 80, and keeps accounts and cities in a volume. Download the new docker-compose.yml (or change `"8080:80"` to `"8080:8080"`, and add `PUBLIC_URL` and the `kawacity-data:/data` volume), and point a reverse proxy that used port 80 to 8080.
+
+**Without the server**: `npm run build` also makes the game a static site in `dist/`, which any web server can host. Single player works the same there; accounts and multiplayer need the image.
 
 ## Development ##
 
-You need Node.js 22 or later.
+You need Node.js 22.13 or later.
 
 ```sh
 npm ci
-npm run dev     # development build at http://localhost:8080
-npm run build   # static site in dist/
-npm test        # unit tests
+npm run build   # the game in dist/, and its server in build/server/
+npm test        # unit tests, the server's included
 npm run lint    # type check
 ```
 
+`npm run dev` serves the game alone at <http://localhost:8080>. With the server too, copy `.env.example` to `.env` (the server on port 3000, behind `npm run dev`, printing its mails in its log), then run each of these in its own terminal:
+
+```sh
+npm run dev           # the game at http://localhost:8080, which passes /api on to the server
+npm run dev:server    # builds the server again on every change
+npm run start:server  # runs it (once built), and restarts it on every build
+```
+
+`docker compose -f docker-compose.yml -f compose.dev.yml up --build` runs the image built from this checkout instead, with [Mailpit](https://mailpit.axllent.org) showing the mails it sends at <http://localhost:8025>.
+
 - `?debug=1` in the URL shows a debug menu and exposes the game as `window.kawaCity`, and the translations as `window.kawaI18n`.
 - `docker build -t kawacity .` builds the image.
+- The server is in `server/` (TypeScript, bundled with the game's modules it uses): its settings are read by `server/config.ts`, and its tests are in `server/test/`.
 - The texts are written in English; `src/lang/fr.js` translates them into French (see `src/i18n.js`). `npm test` checks that every text has its translation.
 - `python3 tools/pixelart/generate.py` regenerates the tiles and sprites in `images/` from the original artwork (needs Pillow and numpy).
 - `python3 tools/icon/generate.py` draws, in pixel art, the favicon and the icons in `images/icons/`, and the interface's pictures in `images/ui/` with their places in `src/uiIcons.js` (needs Pillow).

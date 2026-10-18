@@ -19,7 +19,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-visual">
     <meta name="description" content="Play KawaCity and build a virtual city in your browser! KawaCity is based on micropolisJS, a handwritten HTML5/Javascript port of the open-source city simulator Micropolis.">
     <meta name="theme-color" content="#0b1220">
     <link rel="stylesheet" media="screen" type="text/css" href="css/style.css?v=<%= htmlWebpackPlugin.options.gitHash %>">
@@ -353,12 +353,12 @@
             <p class="graphsHint" data-i18n>Drag across the graph to look at those years.</p>
             <fieldset class="choice graphsLegend" id="graphsSeriesSelect">
               <legend class="visuallyHidden" data-i18n>Show</legend>
-              <input type="checkbox" class="graphsSeries" id="graphsRes" value="res" checked="checked"><label for="graphsRes"><span class="swatch" style="background: #4cc464"></span><span data-i18n>Residential</span></label>
-              <input type="checkbox" class="graphsSeries" id="graphsCom" value="com" checked="checked"><label for="graphsCom"><span class="swatch" style="background: #5c9cff"></span><span data-i18n>Commercial</span></label>
-              <input type="checkbox" class="graphsSeries" id="graphsInd" value="ind" checked="checked"><label for="graphsInd"><span class="swatch" style="background: #f8c838"></span><span data-i18n>Industrial</span></label>
-              <input type="checkbox" class="graphsSeries" id="graphsMoney" value="money" checked="checked"><label for="graphsMoney"><span class="swatch" style="background: #6ee0d0"></span><span data-i18n>Cash flow</span></label>
-              <input type="checkbox" class="graphsSeries" id="graphsCrime" value="crime" checked="checked"><label for="graphsCrime"><span class="swatch" style="background: #e04836"></span><span data-i18n>Crime</span></label>
-              <input type="checkbox" class="graphsSeries" id="graphsPollution" value="pollution" checked="checked"><label for="graphsPollution"><span class="swatch" style="background: #b08850"></span><span data-i18n>Pollution</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsRes" value="res" checked="checked"><label for="graphsRes"><span class="swatch swatchRes"></span><span data-i18n>Residential</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsCom" value="com" checked="checked"><label for="graphsCom"><span class="swatch swatchCom"></span><span data-i18n>Commercial</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsInd" value="ind" checked="checked"><label for="graphsInd"><span class="swatch swatchInd"></span><span data-i18n>Industrial</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsMoney" value="money" checked="checked"><label for="graphsMoney"><span class="swatch swatchMoney"></span><span data-i18n>Cash flow</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsCrime" value="crime" checked="checked"><label for="graphsCrime"><span class="swatch swatchCrime"></span><span data-i18n>Crime</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsPollution" value="pollution" checked="checked"><label for="graphsPollution"><span class="swatch swatchPollution"></span><span data-i18n>Pollution</span></label>
             </fieldset>
             <div class="modalButtons">
               <input type="submit" id="graphsOK" class="button primary dialogOK" value="OK">
@@ -620,11 +620,6 @@
       <div class="tickerLabel" aria-hidden="true">Kawa News</div>
       <div class="tickerTrack" role="marquee" aria-label="City news" data-i18n-aria-label></div>
     </footer>
-    <script>
-      // If we got here, then we have script. Note we don't necessarily have jQuery though
-      [].forEach.call(document.querySelectorAll('[data-hasscript]'), function(elem) {
-        elem.setAttribute('data-hasscript', 'true');
-      });
-    </script>
+    <script src="src/hasScript.js?v=<%= htmlWebpackPlugin.options.gitHash %>"></script>
   </body>
 </html>

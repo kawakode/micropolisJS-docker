@@ -2149,6 +2149,14 @@ kbd {
   border: 2px solid var(--win-outline);
 }
 
+/* The colours of the lines (see GraphsWindow) */
+.swatchRes { background: #4cc464; }
+.swatchCom { background: #5c9cff; }
+.swatchInd { background: #f8c838; }
+.swatchMoney { background: #6ee0d0; }
+.swatchCrime { background: #e04836; }
+.swatchPollution { background: #b08850; }
+
 /* Scenarios */
 
 #scenarioPanel {
