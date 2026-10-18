@@ -343,6 +343,30 @@ Minimap.prototype.paint = function(force) {
   var frame = [Math.round(view.x * scaleX), Math.round(view.y * scaleY), Math.round(view.width * scaleX),
                Math.round(view.height * scaleY)];
   ctx.lineWidth = lineWidth;
+
+  if (view.screen) {
+    // The isometric view sees a diamond of the map
+    var screen = view.screen;
+    var corners = [view.toMap(screen.x, screen.y), view.toMap(screen.x + screen.width, screen.y),
+                   view.toMap(screen.x + screen.width, screen.y + screen.height),
+                   view.toMap(screen.x, screen.y + screen.height)];
+    [['#070a1f', lineWidth], ['#f8c838', 0]].forEach(function(style) {
+      ctx.beginPath();
+      corners.forEach(function(corner, i) {
+        var px = Math.round(corner.x * scaleX) + style[1];
+        var py = Math.round(corner.y * scaleY) + style[1];
+        if (i === 0)
+          ctx.moveTo(px, py);
+        else
+          ctx.lineTo(px, py);
+      });
+      ctx.closePath();
+      ctx.strokeStyle = style[0];
+      ctx.stroke();
+    });
+    return;
+  }
+
   ctx.strokeStyle = '#070a1f';
   ctx.strokeRect(frame[0] + lineWidth * 1.5, frame[1] + lineWidth * 1.5, frame[2] - lineWidth, frame[3] - lineWidth);
   ctx.strokeStyle = '#f8c838';

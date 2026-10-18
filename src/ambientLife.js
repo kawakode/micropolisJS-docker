@@ -9,6 +9,8 @@
  *
  */
 
+import { EMITTERS } from './isoArt.js';
+import { IsoTiles } from './isoTiles.js';
 import { BIT_MASK, ZONEBIT } from "./tileFlags.ts";
 import { CHANNEL, COMBASE, FIRE, GASPLANT, HHTHR, HOUSE, HRAILROAD, INDBASE, LASTFIRE, LASTROAD, NUCLEAR, PORTBASE, POWERPLANT,
          RIVER, ROADBASE, VRAILROAD } from "./tileValues.ts";
@@ -22,6 +24,10 @@ import { ZoneUtils } from './zoneUtils.js';
  * commercial areas; factories and power plants smoke; dust rises where buildings go up; day turns to night and the
  * windows light up. Vehicles, people and smoke stop while the game is paused. Only the area in view (plus a margin)
  * is populated. Positions are in world pixels (16 per tile).
+ *
+ * A particle rises from a point of the map (ax, ay), at a height az: its x and y are where it has moved to from
+ * there, as seen on the screen (y going up as it rises). In the view from above, that is simply where it is; the
+ * isometric view draws it from where it rose from (see IsoView.particlePosition).
  *
  */
 
@@ -143,7 +149,21 @@ function AmbientLife(map, simulation) {
   this.dayNight = true;
   this._time = 0.2;
   this._fireworks = [];
+
+  // Whether the map is seen in the isometric view, where chimneys are elsewhere
+  this.isometric = false;
 }
+
+
+// Follows the view of the map: smoke rises from the chimneys of the buildings as they are drawn
+AmbientLife.prototype.setIsometric = function(isometric) {
+  if (this.isometric === !!isometric)
+    return;
+
+  this.isometric = !!isometric;
+  this.particles = [];
+  this._lastSurvey = -Infinity;
+};
 
 
 AmbientLife.prototype._tileValue = function(x, y) {
@@ -204,7 +224,7 @@ AmbientLife.prototype._survey = function(bounds, reportChanges) {
       } else if (isOpenWater(value)) {
         water.push(index);
       } else if (value >= FIRE && value <= LASTFIRE) {
-        emitters.push({x: x * TILE + 8, y: y * TILE + 6, rate: 2.5, kind: 'fire'});
+        emitters.push({x: x * TILE + 8, y: y * TILE + 6, z: this.isometric ? 6 : 0, rate: 2.5, kind: 'fire'});
       } else if (raw & ZONEBIT) {
         this._findEmitters(x, y, value, emitters);
       }
@@ -238,6 +258,21 @@ AmbientLife.prototype._findSidewalks = function(x, y, sidewalks) {
 
 // Factories and power plants smoke
 AmbientLife.prototype._findEmitters = function(x, y, value, emitters) {
+  if (this.isometric) {
+    // From the chimneys of the zone's building (x and y is its centre)
+    var building = IsoTiles.buildingOf(value);
+    var points = building ? EMITTERS[building.name] : null;
+    if (!points)
+      return;
+
+    var rate = {smoke: 2.6, steam: 2}[points[0][3]];
+    for (var i = 0; i < points.length; i++) {
+      emitters.push({x: (x - 1) * TILE + points[i][0], y: (y - 1) * TILE + points[i][1], z: points[i][2],
+                     rate: rate / points.length * 1.5, kind: points[i][3]});
+    }
+    return;
+  }
+
   if (isDevelopedIndustry(value)) {
     // Somewhere along the top of the zone, the same place every time for a given zone
     var offset = ((x * 7 + y * 13) % 5) * 6 - 12;
@@ -267,6 +302,11 @@ AmbientLife.prototype._addParticle = function(p) {
   if (this.particles.length >= MAX_PARTICLES)
     return;
 
+  if (p.ax === undefined) {
+    p.ax = p.x;
+    p.ay = p.y;
+  }
+  p.az = p.az || 0;
   p.age = 0;
   this.particles.push(p);
 };
@@ -279,14 +319,16 @@ AmbientLife.prototype._emit = function(emitter) {
     case 'smoke':
     case 'fire':
       var fire = emitter.kind === 'fire';
-      this._addParticle({x: emitter.x + randomBetween(-1.5, 1.5), y: emitter.y, vx: wind.x * 0.7 + randomBetween(-1.5, 1.5),
+      this._addParticle({x: emitter.x + randomBetween(-1.5, 1.5), y: emitter.y, az: emitter.z,
+                         vx: wind.x * 0.7 + randomBetween(-1.5, 1.5),
                          vy: -randomBetween(6, 9) + wind.y * 0.4, gravity: 0, life: randomBetween(3, 4.5),
                          size0: 2, size1: fire ? 8 : 7, c0: fire ? [52, 44, 44] : [72, 72, 82],
                          c1: fire ? [126, 118, 116] : [184, 186, 196], a0: 0.85, a1: 0, fade: true});
       break;
 
     case 'steam':
-      this._addParticle({x: emitter.x + randomBetween(-4, 4), y: emitter.y, vx: wind.x * 0.6 + randomBetween(-1, 1),
+      this._addParticle({x: emitter.x + randomBetween(-4, 4), y: emitter.y, az: emitter.z,
+                         vx: wind.x * 0.6 + randomBetween(-1, 1),
                          vy: -randomBetween(4, 6) + wind.y * 0.3, gravity: 0, life: randomBetween(3.5, 5),
                          size0: 3, size1: 9, c0: [250, 252, 255], c1: [222, 228, 238], a0: 0.8, a1: 0, fade: true});
       break;
@@ -314,18 +356,21 @@ AmbientLife.prototype._dust = function(x, y, size, isZone) {
 };
 
 
-AmbientLife.prototype._burst = function(x, y) {
+AmbientLife.prototype._burst = function(rocket) {
   var colour = pick(FIREWORK_COLOURS);
   var second = pick(FIREWORK_COLOURS);
   var count = Math.floor(randomBetween(36, 52));
+  var x = rocket.x;
+  var y = rocket.y;
 
-  this._addParticle({x: x, y: y, vx: 0, vy: 0, gravity: 0, life: 0.25, size0: 10, size1: 16, c0: [255, 250, 230],
-                     c1: colour, a0: 0.55, a1: 0, glow: true});
+  this._addParticle({x: x, y: y, ax: rocket.ax, ay: rocket.ay, az: rocket.az, vx: 0, vy: 0, gravity: 0, life: 0.25,
+                     size0: 10, size1: 16, c0: [255, 250, 230], c1: colour, a0: 0.55, a1: 0, glow: true});
 
   for (var i = 0; i < count; i++) {
     var angle = (i / count) * Math.PI * 2 + randomBetween(-0.1, 0.1);
     var speed = randomBetween(30, 62);
-    this._addParticle({x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, gravity: 22,
+    this._addParticle({x: x, y: y, ax: rocket.ax, ay: rocket.ay, az: rocket.az, vx: Math.cos(angle) * speed,
+                       vy: Math.sin(angle) * speed, gravity: 22,
                        drag: 1.6, life: randomBetween(1.3, 2.1), size0: 2, size1: 1, c0: colour,
                        c1: i % 3 === 0 ? second : colour, a0: 1, a1: 0, glow: true, fade: true, twinkle: i % 4 === 0});
   }
@@ -341,7 +386,7 @@ AmbientLife.prototype._updateParticles = function(seconds) {
 
     if (p.age >= p.life) {
       if (p.rocket)
-        this._burst(p.x, p.y);
+        this._burst(p);
       continue;
     }
 
@@ -357,7 +402,8 @@ AmbientLife.prototype._updateParticles = function(seconds) {
 
     // Rockets leave a trail of sparks
     if (p.rocket && Math.random() < 0.8)
-      this._addParticle({x: p.x, y: p.y, vx: randomBetween(-2, 2), vy: randomBetween(2, 6), gravity: 0, life: 0.4,
+      this._addParticle({x: p.x, y: p.y, ax: p.ax, ay: p.ay, az: p.az, vx: randomBetween(-2, 2), vy: randomBetween(2, 6),
+                         gravity: 0, life: 0.4,
                          size0: 1, size1: 1, c0: [255, 236, 180], c1: [255, 160, 80], a0: 0.9, a1: 0, glow: true});
 
     kept.push(p);
@@ -391,15 +437,18 @@ AmbientLife.prototype._updateFireworks = function(seconds) {
       continue;
     }
 
-    var view = f.view;
+    // In the isometric view, the rockets are launched from the bottom of the screen, from the point of the map there
+    var view = f.view.screen || f.view;
     var height = randomBetween(0.45, 0.65) * view.height;
     var x = view.x + randomBetween(0.2, 0.8) * view.width;
     var y = view.y + view.height * 0.85;
+    var ground = f.view.screen ? f.view.toMap(x, y) : {x: x, y: y};
     var life = randomBetween(0.9, 1.3);
     // Launch fast enough to reach the bursting height as gravity slows the rocket down
     var gravity = 30;
     var vy = -(height / life + gravity * life / 2);
-    this._addParticle({x: x, y: y, vx: randomBetween(-6, 6), vy: vy, gravity: gravity, life: life, size0: 2, size1: 2,
+    this._addParticle({x: ground.x, y: ground.y, vx: randomBetween(-6, 6), vy: vy, gravity: gravity, life: life,
+                       size0: 2, size1: 2,
                        c0: [255, 244, 210], c1: [255, 200, 120], a0: 1, a1: 1, rocket: true, glow: true});
   }
 

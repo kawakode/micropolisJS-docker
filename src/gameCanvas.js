@@ -17,6 +17,7 @@
 import $ from "jquery";
 
 import { AnimationManager } from './animationManager.js';
+import { IsoView } from './isoView.js';
 import { MiscUtils } from './miscUtils.js';
 import { Position } from './position.ts';
 import { TILE_COUNT, TILE_INVALID } from "./tileValues.ts";
@@ -124,6 +125,10 @@ GameCanvas.prototype.init = function(map, tileSet, spriteSheet, animationManager
   // Reused between paints to avoid allocations
   this._tileValues = [];
 
+  // Whether the map is seen in perspective, from the south-east (see IsoView), rather than from straight above. In the
+  // isometric view, the view's coordinates are iso pixels, not world pixels.
+  this._isometric = false;
+
   this.cssWidth = 0;
   this.cssHeight = 0;
   this._dpr = 1;
@@ -198,8 +203,64 @@ var clampAxis = function(value, visible, mapSize, allowOffMap) {
 
 
 GameCanvas.prototype._clampView = function() {
+  if (this._isometric) {
+    // The map is a diamond: keep its bounding box in view, with room above for the tallest buildings
+    var left = -this._map.height * TILE_SIZE;
+    var top = -IsoView.TALLEST / 2;
+    var width = (this._map.width + this._map.height) * TILE_SIZE;
+    var height = (this._map.width + this._map.height) * TILE_SIZE / 2 - top;
+    this._viewX = left + clampAxis(this._viewX - left, this._visibleWorldWidth(), width, this._allowScrolling);
+    this._viewY = top + clampAxis(this._viewY - top, this._visibleWorldHeight(), height, this._allowScrolling);
+    return;
+  }
+
   this._viewX = clampAxis(this._viewX, this._visibleWorldWidth(), this._map.width * TILE_SIZE, this._allowScrolling);
   this._viewY = clampAxis(this._viewY, this._visibleWorldHeight(), this._map.height * TILE_SIZE, this._allowScrolling);
+};
+
+
+GameCanvas.prototype.isIsometric = function() {
+  return this._isometric;
+};
+
+
+// Switches between the isometric view and the view from above, keeping the same place in the middle of the view
+GameCanvas.prototype.setIsometric = function(isometric) {
+  isometric = !!isometric;
+  if (isometric === this._isometric)
+    return;
+
+  if (!this.ready) {
+    this._isometric = isometric;
+    return;
+  }
+
+  var centre = this.getViewCentre();
+  this._isometric = isometric;
+  this._centreOnPoint(centre.x * TILE_SIZE, centre.y * TILE_SIZE);
+};
+
+
+// Puts the given world pixel in the middle of the view
+GameCanvas.prototype._centreOnPoint = function(x, y) {
+  if (this._isometric) {
+    this._viewX = IsoView.isoX(x, y) - this._visibleWorldWidth() / 2;
+    this._viewY = IsoView.isoY(x, y) - this._visibleWorldHeight() / 2;
+  } else {
+    this._viewX = x - this._visibleWorldWidth() / 2;
+    this._viewY = y - this._visibleWorldHeight() / 2;
+  }
+  this._clampView();
+};
+
+
+// The world pixel on the ground at a point of the canvas, in CSS pixels
+GameCanvas.prototype._canvasToWorld = function(x, y) {
+  var viewX = this._viewX + x / this._zoom;
+  var viewY = this._viewY + y / this._zoom;
+  if (this._isometric)
+    return IsoView.toMap(viewX, viewY);
+  return {x: viewX, y: viewY};
 };
 
 
@@ -246,8 +307,13 @@ GameCanvas.prototype.moveTo = function(x, y) {
 
   this._checkReady();
 
-  this._viewX = x * TILE_SIZE;
-  this._viewY = y * TILE_SIZE;
+  if (this._isometric) {
+    this._viewX = IsoView.isoX(x * TILE_SIZE, y * TILE_SIZE);
+    this._viewY = IsoView.isoY(x * TILE_SIZE, y * TILE_SIZE);
+  } else {
+    this._viewX = x * TILE_SIZE;
+    this._viewY = y * TILE_SIZE;
+  }
   this._clampView();
 };
 
@@ -263,9 +329,7 @@ GameCanvas.prototype.centreOn = function(x, y) {
     x = x.x;
   }
 
-  this._viewX = (Math.floor(x) + 0.5) * TILE_SIZE - this._visibleWorldWidth() / 2;
-  this._viewY = (Math.floor(y) + 0.5) * TILE_SIZE - this._visibleWorldHeight() / 2;
-  this._clampView();
+  this._centreOnPoint((Math.floor(x) + 0.5) * TILE_SIZE, (Math.floor(y) + 0.5) * TILE_SIZE);
 };
 
 
@@ -319,6 +383,12 @@ GameCanvas.prototype.zoomOut = function(anchorX, anchorY) {
 GameCanvas.prototype.getTileOrigin = function() {
   this._checkReady();
 
+  if (this._isometric) {
+    // The tiles well inside the view (the view's corners show the ground of farther tiles)
+    var rect = this._isoTileRect(0.25);
+    return {x: rect.minX, y: rect.minY};
+  }
+
   return {x: Math.floor(this._viewX / TILE_SIZE), y: Math.floor(this._viewY / TILE_SIZE)};
 };
 
@@ -326,14 +396,45 @@ GameCanvas.prototype.getTileOrigin = function() {
 GameCanvas.prototype.getMaxTile = function() {
   this._checkReady();
 
+  if (this._isometric) {
+    var rect = this._isoTileRect(0.25);
+    return {x: rect.maxX, y: rect.maxY};
+  }
+
   return {x: Math.floor((this._viewX + this._visibleWorldWidth() - 1) / TILE_SIZE),
           y: Math.floor((this._viewY + this._visibleWorldHeight() - 1) / TILE_SIZE)};
 };
 
 
-// The visible area, in world pixels
+// In the isometric view, the bounds of the tiles under the view, its sides brought in by the given fraction
+GameCanvas.prototype._isoTileRect = function(inset) {
+  var w = this.cssWidth;
+  var h = this.cssHeight;
+  var a = this._canvasToWorld(w * inset, h * inset);
+  var b = this._canvasToWorld(w * (1 - inset), h * inset);
+  var c = this._canvasToWorld(w * inset, h * (1 - inset));
+  var d = this._canvasToWorld(w * (1 - inset), h * (1 - inset));
+  return {minX: Math.floor(Math.min(a.x, c.x) / TILE_SIZE), maxX: Math.floor(Math.max(b.x, d.x) / TILE_SIZE),
+          minY: Math.floor(Math.min(b.y, a.y) / TILE_SIZE), maxY: Math.floor(Math.max(c.y, d.y) / TILE_SIZE)};
+};
+
+
+// The visible area, in world pixels. In the isometric view, the view's corners are those of a diamond on the map:
+// this is the rectangle round it, with the view itself in iso pixels (screen), and the function giving the point of
+// the map under a point of the screen (toMap).
 GameCanvas.prototype.getVisibleWorldRect = function() {
   this._checkReady();
+
+  if (this._isometric) {
+    var w = this._visibleWorldWidth();
+    var h = this._visibleWorldHeight();
+    var top = IsoView.toMap(this._viewX + w, this._viewY);
+    var left = IsoView.toMap(this._viewX, this._viewY);
+    var bottom = IsoView.toMap(this._viewX, this._viewY + h);
+    var right = IsoView.toMap(this._viewX + w, this._viewY + h);
+    return {x: left.x, y: top.y, width: right.x - left.x, height: bottom.y - top.y,
+            screen: {x: this._viewX, y: this._viewY, width: w, height: h}, toMap: IsoView.toMap};
+  }
 
   return {x: this._viewX, y: this._viewY, width: this._visibleWorldWidth(), height: this._visibleWorldHeight()};
 };
@@ -341,8 +442,8 @@ GameCanvas.prototype.getVisibleWorldRect = function() {
 
 // The centre of the view, in tile coordinates
 GameCanvas.prototype.getViewCentre = function() {
-  return {x: (this._viewX + this._visibleWorldWidth() / 2) / TILE_SIZE,
-          y: (this._viewY + this._visibleWorldHeight() / 2) / TILE_SIZE};
+  var centre = this._canvasToWorld(this.cssWidth / 2, this.cssHeight / 2);
+  return {x: centre.x / TILE_SIZE, y: centre.y / TILE_SIZE};
 };
 
 
@@ -356,8 +457,8 @@ GameCanvas.prototype.canvasCoordinateToTileCoordinate = function(x, y) {
   if (x < 0 || y < 0 || x >= this.cssWidth || y >= this.cssHeight)
     return null;
 
-  return {x: Math.floor((this._viewX + x / this._zoom) / TILE_SIZE),
-          y: Math.floor((this._viewY + y / this._zoom) / TILE_SIZE)};
+  var world = this._canvasToWorld(x, y);
+  return {x: Math.floor(world.x / TILE_SIZE), y: Math.floor(world.y / TILE_SIZE)};
 };
 
 
@@ -393,9 +494,16 @@ GameCanvas.prototype.tileToCanvasCoordinate = function(x, y) {
     x = x.x;
   }
 
-  var canvasX = (x * TILE_SIZE - this._viewX) * this._zoom;
-  var canvasY = (y * TILE_SIZE - this._viewY) * this._zoom;
   var size = TILE_SIZE * this._zoom;
+  var canvasX, canvasY;
+  if (this._isometric) {
+    // The top left of the tile's diamond
+    canvasX = (IsoView.isoX(x * TILE_SIZE, y * TILE_SIZE) - TILE_SIZE - this._viewX) * this._zoom;
+    canvasY = (IsoView.isoY(x * TILE_SIZE, y * TILE_SIZE) - this._viewY) * this._zoom;
+  } else {
+    canvasX = (x * TILE_SIZE - this._viewX) * this._zoom;
+    canvasY = (y * TILE_SIZE - this._viewY) * this._zoom;
+  }
 
   if (canvasX + size <= 0 || canvasY + size <= 0 || canvasX >= this.cssWidth || canvasY >= this.cssHeight)
     return null;
@@ -437,32 +545,42 @@ GameCanvas.prototype._drawTile = function(ctx, tileVal, dx, dy, dw, dh) {
 };
 
 
-GameCanvas.prototype._screenshot = function(onlyVisible) {
-  if (onlyVisible)
-    return this._canvas.toDataURL();
+// A picture of the map, as a canvas: the part on screen, as it is shown, or the whole map at full size (its tiles only,
+// without what moves)
+GameCanvas.prototype.takePicture = function(onlyVisible) {
+  var picture = document.createElement('canvas');
+  var ctx = picture.getContext('2d');
 
-  var tempCanvas = document.createElement('canvas');
-  tempCanvas.width = this._map.width * TILE_SIZE;
-  tempCanvas.height = this._map.height * TILE_SIZE;
-  var ctx = tempCanvas.getContext('2d');
+  if (onlyVisible) {
+    picture.width = this._canvas.width;
+    picture.height = this._canvas.height;
+    ctx.drawImage(this._canvas, 0, 0);
+    return picture;
+  }
+
+  ctx.imageSmoothingEnabled = false;
+
+  if (this._isometric && IsoView.getImages()) {
+    // The whole diamond of the map, and room for the buildings at its top
+    var margin = 8;
+    picture.width = (this._map.width + this._map.height) * TILE_SIZE + 2 * margin;
+    picture.height = (this._map.width + this._map.height) * TILE_SIZE / 2 + IsoView.TALLEST + 2 * margin;
+    var frame = new IsoView.Frame(this, ctx, -this._map.height * TILE_SIZE - margin, -IsoView.TALLEST - margin, 1,
+                                  picture.width, picture.height);
+    IsoView.paintMap(frame, {animate: false});
+    return picture;
+  }
+
+  picture.width = this._map.width * TILE_SIZE;
+  picture.height = this._map.height * TILE_SIZE;
   this._waterFrame = 0;
 
   for (var x = 0; x < this._map.width; x++) {
     for (var y = 0; y < this._map.height; y++)
-      this._drawTile(ctx, this._map.getTileValue(x, y), x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      this._drawMapTile(ctx, this._map.getTileValue(x, y), x, y, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
   }
 
-  return tempCanvas.toDataURL();
-};
-
-
-GameCanvas.prototype.screenshotMap = function() {
-  return this._screenshot(false);
-};
-
-
-GameCanvas.prototype.screenshotVisible = function() {
-  return this._screenshot(true);
+  return picture;
 };
 
 
@@ -500,9 +618,6 @@ GameCanvas.prototype._paintTiles = function(ctx, isPaused) {
   // Adjust for animations
   this.animationManager.getTiles(tileValues, firstX, firstY, width, height, isPaused);
 
-  var map = this._map;
-  var roadsImage = this._tileSet.roadsImage;
-
   for (var y = 0; y < height; y++) {
     var mapY = firstY + y;
     var dy = this._toDeviceY(mapY * TILE_SIZE);
@@ -513,17 +628,22 @@ GameCanvas.prototype._paintTiles = function(ctx, isPaused) {
       var dx = this._toDeviceX(mapX * TILE_SIZE);
       var dw = this._toDeviceX((mapX + 1) * TILE_SIZE) - dx;
 
-      var tileVal = tileValues[y * width + x];
-      this._drawTile(ctx, tileVal, dx, dy, dw, dh);
-
-      // The kind of road, if it isn't a street
-      if (tileVal >= 0 && roadStyleRows[tileVal] >= 0 && roadsImage) {
-        var roadClass = map.getRoadClass(mapX, mapY);
-        if (roadClass > 0)
-          ctx.drawImage(roadsImage, (roadClass - 1) * TILE_SIZE, roadStyleRows[tileVal] * TILE_SIZE, TILE_SIZE, TILE_SIZE,
-                        dx, dy, dw, dh);
-      }
+      this._drawMapTile(ctx, tileValues[y * width + x], mapX, mapY, dx, dy, dw, dh);
     }
+  }
+};
+
+
+// Draws the tile at mapX, mapY, with the kind of road if it isn't a street
+GameCanvas.prototype._drawMapTile = function(ctx, tileVal, mapX, mapY, dx, dy, dw, dh) {
+  this._drawTile(ctx, tileVal, dx, dy, dw, dh);
+
+  var roadsImage = this._tileSet.roadsImage;
+  if (tileVal >= 0 && roadStyleRows[tileVal] >= 0 && roadsImage) {
+    var roadClass = this._map.getRoadClass(mapX, mapY);
+    if (roadClass > 0)
+      ctx.drawImage(roadsImage, (roadClass - 1) * TILE_SIZE, roadStyleRows[tileVal] * TILE_SIZE, TILE_SIZE, TILE_SIZE,
+                    dx, dy, dw, dh);
   }
 };
 
@@ -558,6 +678,11 @@ GameCanvas.prototype._paintSprites = function(ctx, spriteList) {
 GameCanvas.prototype._paintOverlay = function(ctx, overlay) {
   var dpr = this._dpr;
   var rects = overlay.rects || [];
+
+  if (this._isometric) {
+    IsoView.paintOverlayRects(this._isoFrame, rects, dpr);
+    rects = [];
+  }
 
   for (var i = 0, l = rects.length; i < l; i++) {
     var r = rects[i];
@@ -601,6 +726,11 @@ GameCanvas.prototype._paintOverlay = function(ctx, overlay) {
     var boxH = fontSize + 8 * px;
     var lx = this._toDeviceX((label.x + 1) * TILE_SIZE) + 6 * px;
     var ly = this._toDeviceY(label.y * TILE_SIZE) - boxH - 6 * px;
+    if (this._isometric) {
+      // By the right corner of the tile
+      lx = this._toDeviceX(IsoView.isoX((label.x + 1) * TILE_SIZE, label.y * TILE_SIZE)) + 6 * px;
+      ly = this._toDeviceY(IsoView.isoY((label.x + 1) * TILE_SIZE, label.y * TILE_SIZE)) - boxH - 6 * px;
+    }
 
     // Keep the label on screen
     lx = Math.round(MiscUtils.clamp(lx, 4 * px, Math.max(4 * px, this._canvas.width - boxW - 4 * px)));
@@ -725,8 +855,9 @@ GameCanvas.prototype._paintParticles = function(ctx, life, glow) {
     var g = Math.round(p.c0[1] + (p.c1[1] - p.c0[1]) * t);
     var b = Math.round(p.c0[2] + (p.c1[2] - p.c0[2]) * t);
     var colour = 'rgba(' + r + ',' + g + ',' + b + ',' + alpha.toFixed(3) + ')';
-    var x = Math.round(p.x - size / 2);
-    var y = Math.round(p.y - size / 2);
+    var at = this._isometric ? IsoView.particlePosition(p) : p;
+    var x = Math.round(at.x - size / 2);
+    var y = Math.round(at.y - size / 2);
 
     if (size < 4) {
       this._worldRect(ctx, x, y, size, size, colour);
@@ -905,6 +1036,13 @@ GameCanvas.prototype.paint = function(overlay, sprites, isPaused, dataOverlay, l
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.imageSmoothingEnabled = false;
 
+  if (this._isometric && IsoView.getImages()) {
+    this._paintIsometric(ctx, overlay, sprites, isPaused, dataOverlay, life);
+    this._viewX -= shakeX;
+    this._viewY -= shakeY;
+    return;
+  }
+
   this._paintTiles(ctx, isPaused);
 
   var sky = life ? life.getSky() : null;
@@ -935,6 +1073,48 @@ GameCanvas.prototype.paint = function(overlay, sprites, isPaused, dataOverlay, l
 
   this._viewX -= shakeX;
   this._viewY -= shakeY;
+};
+
+
+// Paints the isometric view (see IsoView): the same layers as the view from above
+GameCanvas.prototype._paintIsometric = function(ctx, overlay, sprites, isPaused, dataOverlay, life) {
+  var sky = life ? life.getSky() : null;
+  var frame = new IsoView.Frame(this, ctx, this._viewX, this._viewY, this._scale, this._canvas.width,
+                                this._canvas.height);
+  this._isoFrame = frame;
+
+  IsoView.paintMap(frame, {sprites: sprites, life: life, isPaused: isPaused,
+                           night: sky !== null && sky.lights >= 0.02});
+
+  if (life)
+    this._paintParticles(ctx, life, false);
+
+  IsoView.paintAbove(frame, this._spriteSheet);
+
+  if (life) {
+    if (sky.tint !== null) {
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = 'rgb(' + Math.round(sky.tint[0]) + ',' + Math.round(sky.tint[1]) + ',' +
+                      Math.round(sky.tint[2]) + ')';
+      ctx.fillRect(0, 0, this._canvas.width, this._canvas.height);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    IsoView.paintLights(frame, sky.lights);
+  }
+
+  if (dataOverlay)
+    IsoView.paintDataOverlay(frame, dataOverlay, this._map);
+
+  if (life) {
+    var alpha = 0.11 * (1 - sky.lights);
+    if (alpha >= 0.005)
+      IsoView.paintCloudShadows(frame, life, alpha);
+    IsoView.paintBirds(frame, life);
+    this._paintParticles(ctx, life, true);
+  }
+
+  if (overlay)
+    this._paintOverlay(ctx, overlay);
 };
 
 

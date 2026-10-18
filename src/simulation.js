@@ -26,6 +26,7 @@ import { MapScanner } from './mapScanner.js';
 import * as Messages from './messages.ts';
 import { MiscTiles } from './miscTiles.js';
 import { MiscUtils } from './miscUtils.js';
+import { Neighbours } from './neighbours.js';
 import { PowerManager } from './powerManager.js';
 import { RepairManager } from './repairManager.js';
 import { Residential } from './residential.js';
@@ -72,6 +73,9 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame) {
   this._repairManager = new RepairManager(this._map);
   this._traffic = new Traffic(this._map, this.spriteManager);
   this.disasterManager = new DisasterManager(this._map, this.spriteManager, this._gameLevel);
+
+  // KawaCity: the cities around this one, and the deals made with them
+  this.neighbours = new Neighbours(this._map);
 
   this.blockMaps = {
     // Holds a "distance score" for the block from the city centre, range  -64 to 64
@@ -130,6 +134,7 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame) {
     // As in the original game, harder levels start with less money
     this.budget.setFunds([20000, 10000, 5000][this._gameLevel] || 20000);
     this._census.totalPop = 1;
+    this.neighbours.generate();
   }
 
   this.init();
@@ -191,6 +196,7 @@ Simulation.prototype.save = function(saveData) {
   this._valves.save(saveData);
   this.budget.save(saveData);
   this._census.save(saveData);
+  this.neighbours.save(saveData);
 };
 
 
@@ -205,6 +211,7 @@ Simulation.prototype.load = function(saveData) {
   this._valves.load(saveData);
   this.budget.load(saveData);
   this._census.load(saveData);
+  this.neighbours.load(saveData);
 };
 
 
@@ -330,7 +337,7 @@ Simulation.prototype.init = function() {
 
   var simData = this._constructSimData();
   this._mapScanner.mapScan(0, this._map.width, simData);
-  this._powerManager.doPowerScan(this._census);
+  this._scanPower();
   BlockMapUtils.pollutionTerrainLandValueScan(this._map, this._census, this.blockMaps);
   BlockMapUtils.crimeScan(this._census, this.blockMaps);
   BlockMapUtils.populationDensityScan(this._map, this.blockMaps);
@@ -362,7 +369,7 @@ var simulate = function(simData) {
       this._cityTime++;
 
       if ((this._simCycle & 1) === 0)
-        this._valves.setValves(this._gameLevel, this._census, this.budget);
+        this._valves.setValves(this._gameLevel, this._census, this.budget, this.neighbours.demandBonus());
 
       this._clearCensus();
       break;
@@ -382,14 +389,16 @@ var simulate = function(simData) {
     case 9:
       this._snapshotCensus();
 
-      if (this._cityTime % CENSUS_FREQUENCY_10 === 0)
+      if (this._cityTime % CENSUS_FREQUENCY_10 === 0) {
         this._census.take10Census(this.budget);
+        this.neighbours.countMonth();
+      }
 
       if (this._cityTime % CENSUS_FREQUENCY_120 === 0)
         this._census.take120Census(this.budget);
 
       if (this._cityTime % TAX_FREQUENCY === 0)  {
-        this.budget.collectTax(this._gameLevel, this._census);
+        this.budget.collectTax(this._gameLevel, this._census, this.neighbours.closeYear());
         this.evaluation.cityEvaluation(simData);
       }
 
@@ -405,7 +414,7 @@ var simulate = function(simData) {
 
     case 11:
       if ((this._simCycle % speedPowerScan[speedIndex]) === 0)
-        this._powerManager.doPowerScan(this._census);
+        this._scanPower();
       break;
 
     case 12:
@@ -435,6 +444,14 @@ var simulate = function(simData) {
 
   // Go on the the next phase.
   this._phaseCycle = (this._phaseCycle + 1) & 15;
+};
+
+
+// Scans the power grid, with the power bought from the neighbouring cities, then delivers the power sold to them
+Simulation.prototype._scanPower = function() {
+  this.neighbours.findLinks();
+  this._powerManager.doPowerScan(this._census, this.neighbours.powerSupply());
+  this.neighbours.deliverPower(this._powerManager.powerGridMap, this._powerManager.spare);
 };
 
 
@@ -508,7 +525,7 @@ Simulation.prototype._sendMessages = function() {
       break;
 
     case 22:
-      if (totalZonePop > 10 && powerPop === 0)
+      if (totalZonePop > 10 && powerPop === 0 && this.neighbours.powerSupply().capacity === 0)
         this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.NEED_ELECTRICITY});
       break;
 
@@ -830,13 +847,23 @@ Simulation.prototype.getCityStatus = function() {
     monster: spriteLocation(this.spriteManager.getSprite(SPRITE_MONSTER)),
     tornado: spriteLocation(this.spriteManager.getSprite(SPRITE_TORNADO)),
     flooding: this.disasterManager.isFlooding(),
-    pollutionMax: {x: this._map.pollutionMaxX, y: this._map.pollutionMaxY}
+    pollutionMax: {x: this._map.pollutionMaxX, y: this._map.pollutionMaxY},
+    powerBought: this.neighbours.powerSupply().capacity,
+    dealsOnHold: this.neighbours.dealsOnHold().map(function(deal) {
+      return Object.assign(deal, this.neighbours.edgeCentre(deal.side));
+    }, this)
   };
 };
 
 
 Simulation.prototype.getCityTime = function() {
   return this._cityTime;
+};
+
+
+// The city time of the last census: the census of a time unit is only taken in phase 9 of its step
+Simulation.prototype.getHistoryTime = function() {
+  return this._phaseCycle >= 1 && this._phaseCycle <= 9 ? Math.max(0, this._cityTime - 1) : this._cityTime;
 };
 
 

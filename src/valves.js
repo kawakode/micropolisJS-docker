@@ -51,7 +51,8 @@ Valves.prototype.load = function(saveData) {
 };
 
 
-Valves.prototype.setValves = function(gameLevel, census, budget) {
+// KawaCity: bonus is what the deals with the neighbouring cities add to the demand, {res, com, ind} (see Neighbours)
+Valves.prototype.setValves = function(gameLevel, census, budget, bonus) {
   var resPopDenom = 8;
   var birthRate = 0.02;
   var labourBaseMax = 1.3;
@@ -125,6 +126,12 @@ Valves.prototype.setValves = function(gameLevel, census, budget) {
   resRatio = (resRatio - 1) * taxTableScale + taxTable[z];
   comRatio = (comRatio - 1) * taxTableScale + taxTable[z];
   indRatio = (indRatio - 1) * taxTableScale + taxTable[z];
+
+  if (bonus) {
+    resRatio += bonus.res;
+    comRatio += bonus.com;
+    indRatio += bonus.ind;
+  }
 
   this.resValve = MiscUtils.clamp(this.resValve + Math.trunc(resRatio), -RES_VALVE_RANGE, RES_VALVE_RANGE);
   this.comValve = MiscUtils.clamp(this.comValve + Math.trunc(comRatio), -COM_VALVE_RANGE, COM_VALVE_RANGE);

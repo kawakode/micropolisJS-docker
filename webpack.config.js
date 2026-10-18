@@ -39,6 +39,8 @@ function copyStaticAssets() {
       recursivelyCopy('sprites'),
       'LICENSE',
       'COPYING',
+      'favicon.ico',
+      'manifest.webmanifest',
     ]
   });
 }

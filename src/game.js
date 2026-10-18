@@ -15,6 +15,7 @@ import $ from "jquery";
 
 import { BaseTool } from './baseTool.js';
 import { BudgetWindow } from './budgetWindow.js';
+import { CityPicture } from './cityPicture.js';
 import { Config } from './config.js';
 import { CongratsWindow } from './congratsWindow.js';
 import { DebugWindow } from './debugWindow.js';
@@ -28,15 +29,16 @@ import { GameCanvas } from './gameCanvas.js';
 import { GameMap } from './gameMap.js';
 import { InfoBar } from './infoBar.js';
 import { InputStatus } from './inputStatus.js';
+import { IsoView } from './isoView.js';
 import * as Messages from './messages.ts';
 import { MonsterTV } from './monsterTV.js';
 import { NagWindow } from './nagWindow.js';
+import { NeighboursWindow } from './neighboursWindow.js';
 import { Notification } from './notification.js';
 import { QueryWindow } from './queryWindow.js';
 import { Random } from './random.ts';
 import { RCI } from './rci.js';
 import { SaveWindow } from './saveWindow.js';
-import { ScreenshotLinkWindow } from './screenshotLinkWindow.js';
 import { ScreenshotWindow } from './screenshotWindow.js';
 import { SettingsWindow } from './settingsWindow.js';
 import { Simulation } from './simulation.js';
@@ -92,15 +94,17 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   // Note: must init canvas before inputStatus
   this.gameCanvas = new GameCanvas('canvasContainer');
   this.gameCanvas.init(this.gameMap, this.tileSet, spriteSheet);
+  this.gameCanvas.setIsometric(IsoView.isPreferred());
 
-  // Modern screens are large: start zoomed in when there is room
-  if (this.gameCanvas.cssWidth >= 1000 && this.gameCanvas.cssHeight >= 600)
+  // Modern screens are large: start zoomed in when there is room (the isometric view's tiles are already twice as
+  // wide)
+  if (this.gameCanvas.cssWidth >= 1000 && this.gameCanvas.cssHeight >= 600 && !this.gameCanvas.isIsometric())
     this.gameCanvas.setZoom(2);
   this.gameCanvas.centreOn(Math.floor(this.gameMap.width / 2), Math.floor(this.gameMap.height / 2));
 
   // The tool bar: categories, and their palettes of tools
   Toolbar.build();
-  ToolIcons.decorateToolButtons(tileSet);
+  ToolIcons.decorateToolButtons();
   this.inputStatus = new InputStatus(this.gameMap, this.gameCanvas);
   Toolbar.bind(this.inputStatus.selectTool.bind(this.inputStatus));
   Toolbar.refresh(null);
@@ -144,6 +148,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
 
   // Initialise monsterTV
   this.monsterTV = new MonsterTV(this.gameMap, tileSet, spriteSheet, null);
+  this.monsterTV.canvas.setIsometric(this.gameCanvas.isIsometric());
 
   var opacityLayerID = 'opaque';
 
@@ -160,7 +165,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
 
   // ... the graphs window
   this.handleGraphsRequest = makeWindowOpenHandler('graphs', function() {
-    return [{census: this.simulation.getCensus(), cityTime: this.simulation.getCityTime(),
+    return [{census: this.simulation.getCensus(), historyTime: this.simulation.getHistoryTime(),
              startingYear: this.simulation.getStartingYear()}];
   }.bind(this));
 
@@ -179,7 +184,8 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
       policeRate: Math.floor(this.simulation.budget.policePercent * 100),
       taxRate: this.simulation.budget.cityTax,
       totalFunds: this.simulation.budget.totalFunds,
-      taxesCollected: this.simulation.budget.taxFund
+      taxesCollected: this.simulation.budget.taxFund,
+      dealsFund: this.simulation.budget.dealsFund
     };
 
     return [budgetData];
@@ -194,6 +200,15 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.disasterWindow.addEventListener(Messages.DISASTER_WINDOW_CLOSED, this.handleDisasterWindowClosure.bind(this));
   this.inputStatus.addEventListener(Messages.DISASTER_REQUESTED, this.handleDisasterRequest.bind(this));
 
+  // ... the deals with the neighbouring cities
+  this.handleNeighboursRequest = makeWindowOpenHandler('neighbours', function() {
+    return [this.simulation.neighbours.describe()];
+  }.bind(this));
+  this.neighboursWindow = new NeighboursWindow(opacityLayerID, 'neighboursWindow');
+  this.neighboursWindow.addEventListener(Messages.NEIGHBOURS_WINDOW_CLOSED,
+                                         this.handleNeighboursWindowClosure.bind(this));
+  this.inputStatus.addEventListener(Messages.NEIGHBOURS_REQUESTED, this.handleNeighboursRequest.bind(this));
+
   // ... the debug window
   this.debugWindow = new DebugWindow(opacityLayerID, 'debugWindow');
   this.debugWindow.addEventListener(Messages.DEBUG_WINDOW_CLOSED, this.handleDebugWindowClosure.bind(this));
@@ -203,20 +218,21 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.handleSettingsRequest = makeWindowOpenHandler('settings', function() {
     return [{autoBudget: this.simulation.budget.autoBudget, autoBulldoze: BaseTool.getAutoBulldoze(),
              speed: this.defaultSpeed, disasters: this.simulation.disasterManager.disastersEnabled,
-             dayNight: this.ambientLife.dayNight, level: this.simulation.getLevel(), language: I18n.getLanguage()}];
+             dayNight: this.ambientLife.dayNight, level: this.simulation.getLevel(), language: I18n.getLanguage(),
+             isometric: this.gameCanvas.isIsometric()}];
   }.bind(this));
   this.settingsWindow = new SettingsWindow(opacityLayerID, 'settingsWindow');
   this.settingsWindow.addEventListener(Messages.SETTINGS_WINDOW_CLOSED, this.handleSettingsWindowClosure.bind(this));
   this.inputStatus.addEventListener(Messages.SETTINGS_WINDOW_REQUESTED, this.handleSettingsRequest.bind(this));
 
-  // ... the screenshot window
+  // ... the window to share a picture of the city
+  this.handleScreenshotRequest = makeWindowOpenHandler('screenshot', function() {
+    this.tickerNews.record('picture');
+    return [this.getPictureData()];
+  }.bind(this));
   this.screenshotWindow = new ScreenshotWindow(opacityLayerID, 'screenshotWindow');
-  this.screenshotWindow.addEventListener(Messages.SCREENSHOT_WINDOW_CLOSED, this.handleScreenshotWindowClosure.bind(this));
+  this.screenshotWindow.addEventListener(Messages.SCREENSHOT_WINDOW_CLOSED, this.genericDialogClosure);
   this.inputStatus.addEventListener(Messages.SCREENSHOT_WINDOW_REQUESTED, this.handleScreenshotRequest.bind(this));
-
-  // ... the screenshot link window
-  this.screenshotLinkWindow = new ScreenshotLinkWindow(opacityLayerID, 'screenshotLinkWindow');
-  this.screenshotLinkWindow.addEventListener(Messages.SCREENSHOT_LINK_CLOSED, this.genericDialogClosure);
 
   // ... the save confirmation window
   this.saveWindow = new SaveWindow(opacityLayerID, 'saveWindow');
@@ -296,6 +312,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
 
   // Decorative cars, people, boats, birds, smoke, clouds, and the cycle of day and night
   this.ambientLife = new AmbientLife(this.gameMap, this.simulation);
+  this.ambientLife.setIsometric(this.gameCanvas.isIsometric());
   if (savedGame) {
     if (typeof(savedGame.disastersEnabled) === 'boolean')
       this.simulation.disasterManager.disastersEnabled = savedGame.disastersEnabled;
@@ -595,10 +612,39 @@ Game.prototype.handleSettingsWindowClosure = function(actions) {
         I18n.setLanguage(a.data);
         break;
 
+      case SettingsWindow.VIEW:
+        this.setIsometric(a.data);
+        break;
+
       default:
         console.warn('Unexpected action', a);
     }
   }
+};
+
+
+// Switches between the isometric view and the view from above, at the same scale, and remembers the choice
+Game.prototype.setIsometric = function(isometric) {
+  IsoView.setPreferred(isometric);
+  if (isometric === this.gameCanvas.isIsometric())
+    return;
+
+  var zoom = this.gameCanvas.getZoom();
+  this.gameCanvas.setIsometric(isometric);
+  this.gameCanvas.setZoom(isometric ? zoom / 2 : zoom * 2);
+  this.monsterTV.canvas.setIsometric(isometric);
+  this.ambientLife.setIsometric(isometric);
+};
+
+
+// Signs or ends the deals chosen in the window of the neighbouring cities: [{side, kind, signed}]
+Game.prototype.handleNeighboursWindowClosure = function(changes) {
+  this.genericDialogClosure();
+
+  changes.forEach(function(change) {
+    this.simulation.neighbours.setDeal(change.side, change.kind, change.signed);
+    this.tickerNews.record(change.signed ? 'deal' : 'dealEnded');
+  }, this);
 };
 
 
@@ -620,23 +666,22 @@ Game.prototype.handleDebugWindowClosure = function(actions) {
 };
 
 
-Game.prototype.handleScreenshotWindowClosure = function(action) {
-  this.dialogOpen = false;
+// What the picture window needs (see ScreenshotWindow): how to take the picture, and the city's name and figures
+Game.prototype.getPictureData = function() {
+  var date = this.simulation.getDate();
+  var population = this.simulation.getPopulation() || this.simulation.evaluation.cityPop;
+  var details = [I18n.t(Text.cityClass[this.simulation.evaluation.classify(population)]),
+                 I18n.t(Text.months[date.month]) + ' ' + date.year,
+                 I18n.t('Population {n}', {n: I18n.formatNumber(population)})];
 
-  if (action === null)
-    return;
-
-  this.tickerNews.record('picture');
-
-  var dataURI;
-  if (action === ScreenshotWindow.SCREENSHOT_VISIBLE)
-    dataURI = this.gameCanvas.screenshotVisible();
-  else if (action === ScreenshotWindow.SCREENSHOT_ALL)
-    dataURI = this.gameCanvas.screenshotMap();
-
-  this.dialogOpen = true;
-  this._openWindow = 'screenshotLinkWindow';
-  this.screenshotLinkWindow.open(dataURI);
+  return {
+    take: function(area) {
+      return this.gameCanvas.takePicture(area === 'visible');
+    }.bind(this),
+    caption: {name: this.name, details: details.join(' \u00b7 ')},
+    fileName: CityPicture.fileName(this.name, date.year),
+    shareText: I18n.t('My city, {city}, in KawaCity.', {city: this.name})
+  };
 };
 
 
@@ -706,7 +751,6 @@ var makeWindowOpenHandler = function(winName, customFn) {
 Game.prototype.handleDebugRequest = makeWindowOpenHandler('debug');
 Game.prototype.handleDisasterRequest = makeWindowOpenHandler('disaster');
 Game.prototype.handleQueryRequest = makeWindowOpenHandler('query');
-Game.prototype.handleScreenshotRequest = makeWindowOpenHandler('screenshot');
 
 
 Game.prototype.handleMandatoryBudget = function() {

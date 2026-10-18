@@ -21,7 +21,7 @@ var strings = {
   'Budget': 'Budget',
   'Evaluation': 'Bilan',
   'Graphs': 'Courbes',
-  'More ▾': 'Plus ▾',
+  'More': 'Plus',
   'Disasters': 'Catastrophes',
   'Picture': 'Photo',
   'About': 'À propos',
@@ -272,6 +272,54 @@ var strings = {
   'Period': 'Période',
   '10 years': '10 ans',
   '120 years': '120 ans',
+  'Year to date': 'Depuis janvier',
+  'Since January': 'Depuis le 1er janvier de cette année',
+  'Custom': 'Personnalisée',
+  'From': 'De',
+  'to': 'à',
+  'Drag across the graph to look at those years.': 'Faites glisser sur le graphique pour regarder ces années de plus près.',
+
+  // The neighbouring cities
+  'Neighbours': 'Voisins',
+  'Neighbouring cities': 'Villes voisines',
+  'Neighbour deals': 'Accords avec les voisins',
+  'Make deals with the cities around yours. Most need a link reaching their edge of the map: build it, and the deal comes into force.':
+    'Passez des accords avec les villes autour de la vôtre. La plupart demandent une liaison jusqu\'à leur bord de la carte : construisez-la, et l\'accord entre en vigueur.',
+  'North': 'Nord',
+  'East': 'Est',
+  'South': 'Sud',
+  'West': 'Ouest',
+  'edge|north': 'nord',
+  'edge|east': 'est',
+  'edge|south': 'sud',
+  'edge|west': 'ouest',
+  'Trade agreement': 'Accord commercial',
+  'Buy electricity': 'Achat d\'électricité',
+  'Sell electricity': 'Vente d\'électricité',
+  'Twinning': 'Jumelage',
+  'Shops and factories find more customers: more demand for commercial and industrial zones.':
+    'Commerces et usines trouvent plus de clients : la demande de zones commerciales et industrielles augmente.',
+  'Their power enters your grid by the power line at their edge: as much as a gas power plant gives.':
+    'Leur électricité entre dans votre réseau par la ligne électrique à leur bord : autant qu\'une centrale à gaz.',
+  'Your spare power goes to them by the power line at their edge: as much as a gas power plant gives.':
+    'Votre surplus d\'électricité part chez eux par la ligne électrique à leur bord : autant qu\'une centrale à gaz.',
+  'Exchanges between the two cities make yours better known: more people want to move in. No link needed.':
+    'Les échanges entre les deux villes font connaître la vôtre : plus de gens veulent s\'y installer. Aucune liaison nécessaire.',
+  'Deals are paid with the yearly budget, for the months they were in force. Bigger cities make bigger deals.':
+    'Les accords sont réglés avec le budget annuel, pour les mois où ils étaient en vigueur. Plus la ville voisine est grande, plus l\'accord est important.',
+  '{n} inhabitants': '{n} habitants',
+  'Road or railway': 'Route ou voie ferrée',
+  'linked': 'reliée',
+  'not linked': 'non reliée',
+  '{amount} a year': '{amount} par an',
+  'In force': 'En vigueur',
+  'On hold: build a road or a railway to this edge.': 'En attente : construisez une route ou une voie ferrée jusqu\'à ce bord.',
+  'Needs a road or a railway to this edge.': 'Demande une route ou une voie ferrée jusqu\'à ce bord.',
+  'On hold: build a power line to this edge.': 'En attente : construisez une ligne électrique jusqu\'à ce bord.',
+  'Needs a power line to this edge.': 'Demande une ligne électrique jusqu\'à ce bord.',
+  'Not delivered: the grid does not reach this edge, or has no power to spare.':
+    'Non livrée : le réseau n\'atteint pas ce bord, ou n\'a pas d\'électricité en trop.',
+  'Deals in force: {amount}.': 'Accords en vigueur : {amount}.',
 
   // The query window
   'Zone': 'Zone',
@@ -331,11 +379,23 @@ var strings = {
   'Tornado': 'Tornade',
   'Earthquake': 'Séisme',
   'Unleash': 'Déchaîner',
-  'Take picture': 'Prendre une photo',
+  'Share a picture': 'Partager une photo',
+  'Caption': 'Légende',
+  'Name and figures': 'Nom et chiffres',
+  'The picture of the city': 'La photo de la ville',
+  'To share or copy the picture straight away, the game must be served over HTTPS.':
+    'Pour partager ou copier la photo directement, le jeu doit être servi en HTTPS.',
+  'Share…': 'Partager…',
+  'Copy': 'Copier',
+  'Download': 'Télécharger',
+  'The picture could not be shared: download it instead.': 'La photo n\'a pas pu être partagée : téléchargez-la plutôt.',
+  'Picture copied: paste it into a message or a post.': 'Photo copiée : collez-la dans un message ou une publication.',
+  'The picture could not be copied: download it instead.': 'La photo n\'a pas pu être copiée : téléchargez-la plutôt.',
+  'Picture saved as {file}.': 'Photo enregistrée sous {file}.',
+  'My city, {city}, in KawaCity.': 'Ma ville, {city}, dans KawaCity.',
   'Area to take a picture of': 'Zone à photographier',
   'Visible map': 'Partie visible',
   'Full map': 'Carte entière',
-  'pictureReady': 'Votre image est prête : <a id="screenshotLink" target="_blank" rel="noopener" download="kawacity.png">téléchargez-la</a>.',
   'Game saved! Choose "Load saved game" on the title screen to carry on later.':
     'Partie sauvée ! Choisissez « Charger la partie sauvée » sur l\'écran titre pour la reprendre plus tard.',
   'Sorry, the game could not be saved in this browser: it may be blocking storage, or it may be full. You can still keep it as a file.':
@@ -349,6 +409,9 @@ var strings = {
   'Speed': 'Vitesse',
   'Random disasters': 'Catastrophes aléatoires',
   'Day and night': 'Jour et nuit',
+  'View': 'Vue',
+  'Isometric': 'Isométrique',
+  'From above': 'De dessus',
   'Language': 'Langue',
   'Add funds': 'Ajouter des fonds',
   'Yes': 'Oui',
@@ -532,6 +595,14 @@ var strings = {
     'Les habitants réclament un stade : sans lui, les logements ne se développeront plus.',
   'Commerce needs an airport to grow any further.': 'Le commerce a besoin d\'un aéroport pour continuer à grandir.',
   'Industry needs a seaport to grow any further.': 'L\'industrie a besoin d\'un port pour continuer à grandir.',
+  'The trade agreement with {name} is on hold: build a road or a railway to the {side} edge of the map.':
+    'L\'accord commercial avec {name} est en attente : construisez une route ou une voie ferrée jusqu\'au bord {side} de la carte.',
+  'The electricity bought from {name} is on hold: build a power line to the {side} edge of the map.':
+    'L\'achat d\'électricité à {name} est en attente : construisez une ligne électrique jusqu\'au bord {side} de la carte.',
+  'The electricity sold to {name} is on hold: build a power line to the {side} edge of the map.':
+    'La vente d\'électricité à {name} est en attente : construisez une ligne électrique jusqu\'au bord {side} de la carte.',
+  '{name} gets none of the electricity it buys: link the power line at the {side} edge to the grid, or build another power plant.':
+    '{name} ne reçoit pas l\'électricité achetée : reliez au réseau la ligne électrique du bord {side}, ou construisez une autre centrale.',
   'Citizens demand a police station: crime grows unchecked without one.':
     'Les habitants réclament un commissariat : sans lui, la criminalité prospère.',
   'Citizens demand a fire station: nothing would stop a fire today.':
@@ -799,6 +870,16 @@ var jokes = {
   picture: [
     'Le maire prend encore une photo de la ville. Les ventes de cartes postales s\'envolent.',
     'La dernière photo de la ville par le maire fait le buzz. Enfin, sa famille a aimé.'
+  ],
+  deal: [
+    'Le maire signe un accord avec une ville voisine. Chaque camp jure avoir roulé l\'autre.',
+    'Nouveau partenariat avec les voisins : la poignée de main du maire aurait duré onze minutes.',
+    'Diplomatie à la mairie : échange de cadeaux avec le maire d\'à côté. Le nôtre a reçu un porte-clés.',
+    'Déjà {n} accords avec les voisins. Le maire se verrait bien ministre des Affaires étrangères.'
+  ],
+  dealEnded: [
+    'Le maire déchire un accord avec les voisins. Les voisins gardent le porte-clés.',
+    'Fin d\'un partenariat. Le maire aux voisins : « Ce n\'est pas vous, c\'est nous. »'
   ],
   idle: [
     'Le maire n\'a pas été vu depuis un moment. La mairie parle d\'« observation stratégique ».',

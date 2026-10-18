@@ -113,6 +113,15 @@ button:disabled {
 
 /* Utilities */
 
+/* A picture of the interface, cut from its sheet (see PixelIcons), enlarged without smoothing */
+.pixelIcon {
+  display: inline-block;
+  flex: none;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  vertical-align: middle;
+}
+
 .awaitGeneration, .hidden, .initialHidden, .imageData {
   display: none;
 }
@@ -538,6 +547,18 @@ fieldset {
   white-space: nowrap;
 }
 
+.hudButton[data-icon] {
+  gap: 6px;
+}
+
+/* Where room is short, the menu's buttons show only their icon (their title tells what they do), but in the menu of
+   less used buttons */
+@media (min-width: 1301px) and (max-width: 1600px), (max-width: 600px) {
+  .hudMenu > .hudButton[data-icon] > [data-i18n] {
+    display: none;
+  }
+}
+
 a.hudButton, a.hudButton:visited {
   color: var(--text);
 }
@@ -649,8 +670,11 @@ a.hudButton, a.hudButton:visited {
 .toolIcon {
   width: 32px;
   height: 32px;
-  image-rendering: pixelated;
-  border: 1px solid var(--win-outline);
+}
+
+.toolPalette .toolIcon {
+  width: 64px;
+  height: 64px;
 }
 
 .toolName {
@@ -1017,8 +1041,29 @@ a.hudButton, a.hudButton:visited {
 }
 
 .splashTitle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
   text-align: center;
   margin-bottom: 22px;
+}
+
+/* The game's island, as on its icon */
+.splashArt {
+  flex: none;
+  width: 128px;
+  height: 128px;
+  margin: -14px 0;
+  image-rendering: pixelated;
+}
+
+@media (max-width: 600px) {
+  .splashArt {
+    width: 64px;
+    height: 64px;
+    margin: 0;
+  }
 }
 
 .splashTitle .logo {
@@ -1168,6 +1213,17 @@ a.hudButton, a.hudButton:visited {
   vertical-align: 2px;
 }
 
+/* A window with an icon has it instead of the arrow */
+.modalHeader[data-icon] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modalHeader[data-icon]::before {
+  content: none;
+}
+
 #disasterHeader { color: #ff8a70; }
 #congratsHeader { color: #8cf09c; }
 
@@ -1190,7 +1246,7 @@ a.hudButton, a.hudButton:visited {
   text-shadow: 2px 2px 0 var(--win-outline);
 }
 
-#nagMessage, #disasterLabel, #screenshotLinkMessage, #saveMessage {
+#nagMessage, #disasterLabel, #saveMessage {
   font-size: 16px;
   line-height: 1.5;
 }
@@ -1262,7 +1318,8 @@ a.hudButton, a.hudButton:visited {
   color: var(--muted);
 }
 
-.budgetSummary span {
+/* The figure, after its label */
+.budgetSummary span:last-child {
   float: right;
   color: var(--text);
   font-weight: 700;
@@ -1335,7 +1392,7 @@ a.hudButton, a.hudButton:visited {
   display: none;
 }
 
-@media (max-width: 1450px) {
+@media (max-width: 2000px) {
   .moreButton {
     display: inline-flex;
   }
@@ -1372,14 +1429,14 @@ a.hudButton, a.hudButton:visited {
   }
 }
 
-@media (max-width: 1380px) {
+@media (max-width: 1420px) {
   .optionalStat {
     display: none;
   }
 }
 
 /* The statistics get a row of their own */
-@media (max-width: 1180px) {
+@media (max-width: 1300px) {
   #hud {
     flex-wrap: wrap;
     gap: 6px 10px;
@@ -1578,6 +1635,22 @@ a.hudButton, a.hudButton:visited {
     gap: 2px;
   }
 
+  /* The menu of less used buttons is only an arrow, and the buttons are closer */
+  .moreLabel {
+    display: none;
+  }
+
+  .hudButton {
+    padding: 3px 5px;
+  }
+}
+
+/* On the smallest screens, the speed is chosen in the settings: only the pause button stays */
+@media (max-width: 380px) {
+  .speedButton {
+    display: none;
+  }
+
   .hudMenu {
     flex: 1 1 0;
     min-width: 0;
@@ -1738,6 +1811,284 @@ kbd {
 }
 
 
+/* Neighbouring cities */
+
+#neighboursWindow {
+  width: 820px;
+}
+
+.neighboursIntro {
+  margin: 0 0 14px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.neighboursList {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.neighbour {
+  padding: 10px 12px;
+  border: 2px solid var(--win-outline);
+  background: var(--win-inset);
+  box-shadow: inset 2px 2px 0 #050820, inset -2px -2px 0 var(--win-inset-light);
+}
+
+.neighbourTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.neighbourInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.neighbourHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.neighbourSide {
+  font-family: var(--title-font);
+  font-size: 10px;
+  color: var(--gold);
+  text-transform: uppercase;
+  text-shadow: 1px 1px 0 var(--win-outline);
+}
+
+.neighbourName {
+  font-size: 16px;
+}
+
+.neighbourPopulation {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.neighbourLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* A light: green when the link reaches the neighbour's edge */
+.neighbourLink::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  border: 2px solid var(--win-outline);
+  background: #4a527e;
+}
+
+.neighbourLink.yes {
+  color: var(--text);
+}
+
+.neighbourLink.yes::before {
+  background: var(--green);
+}
+
+.deals {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.deal input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.deal label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* A pixel check box */
+.deal label::before {
+  content: '';
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--win-outline);
+  background: var(--win-bottom);
+  box-shadow: inset 2px 2px 0 #050820;
+}
+
+.deal input:checked + label {
+  background: var(--win-inset-light);
+  box-shadow: inset 2px 2px 0 #7f95ec, inset -2px -2px 0 #1d2c78;
+}
+
+.deal input:checked + label::before {
+  background: var(--gold);
+  box-shadow: inset 2px 2px 0 var(--gold-light), inset -2px -2px 0 var(--gold-dark);
+}
+
+.deal input:focus-visible + label {
+  outline: 2px dashed var(--gold);
+  outline-offset: 2px;
+}
+
+.dealName {
+  flex: 1;
+}
+
+.dealAmount {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dealAmount.income, .neighboursBalance.income {
+  color: #8cf09c;
+}
+
+.dealAmount.cost, .neighboursBalance.cost {
+  color: #ffb4a8;
+}
+
+.dealState {
+  margin: 2px 8px 4px 30px;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.dealState.good {
+  color: #8cf09c;
+}
+
+.dealState.warning {
+  color: var(--gold);
+}
+
+.dealState.muted {
+  color: var(--muted);
+}
+
+.dealsLegend {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  margin: 16px 0 0;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.dealsLegend dt {
+  color: var(--gold);
+}
+
+.dealsLegend dd {
+  margin: 0;
+  color: var(--muted);
+}
+
+.neighboursBalance {
+  margin: 14px 0 0;
+  font-size: 16px;
+  text-align: right;
+}
+
+.neighboursNote {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: right;
+}
+
+#dealsInfo {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+  .neighboursList, .dealsLegend {
+    grid-template-columns: 1fr;
+  }
+
+  .dealsLegend dd {
+    margin-bottom: 6px;
+  }
+}
+
+/* Sharing a picture */
+
+.pictureOptions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  column-gap: 16px;
+}
+
+.pictureOptions .choice {
+  margin: 0 0 14px;
+}
+
+.picturePreview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  padding: 6px;
+  background: var(--win-inset);
+  box-shadow: inset 2px 2px 0 #050820, inset -2px -2px 0 var(--win-inset-light);
+  border: 2px solid var(--win-outline);
+}
+
+.picturePreview img {
+  display: block;
+  max-width: 100%;
+  max-height: 45vh;
+  transition: opacity 0.15s;
+}
+
+.picturePreview img:not([src]) {
+  visibility: hidden;
+}
+
+.picturePreview.busy img {
+  opacity: 0.4;
+}
+
+.pictureStatus, .pictureSecure {
+  margin: 10px 0 0;
+  font-size: 14px;
+  text-align: center;
+}
+
+.pictureStatus:empty {
+  display: none;
+}
+
+.pictureSecure {
+  color: var(--muted);
+}
+
+#screenshotWindow .modalButtons .hidden {
+  display: none;
+}
+
 /* Graphs */
 
 .visuallyHidden {
@@ -1757,6 +2108,32 @@ kbd {
   margin: 0 auto;
   border: 2px solid var(--win-outline);
   image-rendering: pixelated;
+  cursor: crosshair;
+  touch-action: pan-y;
+}
+
+.graphsCustom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 0 14px;
+}
+
+.graphsCustom.hidden {
+  display: none;
+}
+
+.graphsCustom select {
+  width: auto;
+  min-width: 100px;
+}
+
+.graphsHint {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
 }
 
 .graphsLegend label {
@@ -2088,7 +2465,7 @@ kbd {
   width: auto;
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 36px 1fr auto;
+  grid-template-columns: 64px 1fr auto;
   grid-template-rows: auto auto;
   align-items: center;
   column-gap: 8px;

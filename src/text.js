@@ -58,6 +58,12 @@ problems[Evaluation.FIRE] = 'Fire';
 var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+// KawaCity: the neighbouring cities, on each side of the map (in a sentence: "the north edge"), and the deals made
+// with them (see Neighbours)
+var sides = {north: 'North', east: 'East', south: 'South', west: 'West'};
+var edges = {north: 'edge|north', east: 'edge|east', south: 'edge|south', west: 'edge|west'};
+var deals = {trade: 'Trade agreement', buyPower: 'Buy electricity', sellPower: 'Sell electricity', twinning: 'Twinning'};
+
 // Tool strings
 var toolMessages = {
   noMoney: 'Insufficient funds to build that',
@@ -158,7 +164,9 @@ var Text = {
   badMessages: badMessages,
   cityClass: cityClass,
   crimeStrings: crimeStrings,
+  deals: deals,
   densityStrings: densityStrings,
+  edges: edges,
   gameLevel: gameLevel,
   goodMessages: goodMessages,
   landValueStrings: landValueStrings,
@@ -168,6 +176,7 @@ var Text = {
   problems: problems,
   pollutionStrings: pollutionStrings,
   rateStrings: rateStrings,
+  sides: sides,
   toolMessages: toolMessages,
   zoneTypes: zoneTypes
 };

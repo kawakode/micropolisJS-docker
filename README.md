@@ -38,6 +38,8 @@ npm run lint    # type check
 - `docker build -t kawacity .` builds the image.
 - The texts are written in English; `src/lang/fr.js` translates them into French (see `src/i18n.js`). `npm test` checks that every text has its translation.
 - `python3 tools/pixelart/generate.py` regenerates the tiles and sprites in `images/` from the original artwork (needs Pillow and numpy).
+- `python3 tools/icon/generate.py` draws, in pixel art, the favicon and the icons in `images/icons/`, and the interface's pictures in `images/ui/` with their places in `src/uiIcons.js` (needs Pillow).
+- `python3 tools/icon/map_atlas.py` draws the isometric view of the map in the same style: the ground, buildings, vehicles and their night lights in `images/iso/`, with their places in `src/isoArt.js` (needs Pillow). `src/isoTiles.js` says what is drawn for each tile, and `src/isoView.js` draws the map. The view from above, drawn from the tiles of `tools/pixelart`, can still be chosen in the settings.
 
 **Releasing**: push a version tag. The tests run, then the image is published with the tag's version (`1.2.3`, `1.2`, `1`) and as `latest` (except pre-releases such as `v1.2.3-rc.1`).
 
@@ -49,7 +51,9 @@ git push origin v1.2.3
 ## Playing ##
 
 - **Start**: a new city, one of the eight scenarios of the original game, a sample city, or a saved file (`.kawacity`, or `.cty` from the original game).
-- **Build**: zones, transport, power, services, leisure and terrain tools. The budget, evaluation, graphs and map overlays show how the city is doing.
+- **Build**: zones, transport, power, services, leisure and terrain tools. The budget, evaluation, graphs (the last 10 or 120 years, the year to date, or the years you choose: drag across the graph) and map overlays show how the city is doing.
+- **Neighbours**: a city lies beyond each edge of the map. Sign trade agreements, buy or sell electricity, or twin your city with them: most deals need a road, railway or power line reaching their edge, and are paid with the yearly budget.
+- **Pictures**: take a picture of the visible map or of the whole map, captioned with the city's name and figures, and share, copy or download it (sharing and copying need the game to be served over HTTPS).
 - **Languages**: English and French. The game starts in the browser's language, and Settings change it.
 - **News**: the ticker along the bottom of the screen tells how the city is doing (at least one item in three: disasters, what needs fixing), between jokes about what the mayor has been doing.
 - **Controls**: click to build, drag for roads, lines and areas. Right-drag, arrows or WASD to move; wheel, pinch or `+`/`-` to zoom.

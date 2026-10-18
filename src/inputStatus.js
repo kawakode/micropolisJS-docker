@@ -156,6 +156,7 @@ var InputStatus = EventEmitter(function(map, gameCanvas) {
   $('#budgetRequest').click(budgetHandler.bind(this));
   $('#evalRequest').click(evalHandler.bind(this));
   $('#graphsRequest').click(graphsHandler.bind(this));
+  $('#neighboursRequest').click(neighboursHandler.bind(this));
   $('#disasterRequest').click(disasterHandler.bind(this));
   $('#pauseRequest').click(this.speedChangeHandler.bind(this));
   $('#screenshotRequest').click(screenshotHandler.bind(this));
@@ -747,6 +748,7 @@ var debugHandler = makeHandler('DEBUG_WINDOW_REQUESTED');
 var disasterHandler = makeHandler('DISASTER_REQUESTED');
 var evalHandler = makeHandler('EVAL_REQUESTED');
 var graphsHandler = makeHandler('GRAPHS_REQUESTED');
+var neighboursHandler = makeHandler('NEIGHBOURS_REQUESTED');
 var screenshotHandler = makeHandler('SCREENSHOT_WINDOW_REQUESTED');
 var settingsHandler = makeHandler('SETTINGS_WINDOW_REQUESTED');
 var saveHandler = makeHandler('SAVE_REQUESTED');

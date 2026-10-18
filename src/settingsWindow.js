@@ -38,6 +38,8 @@ var disastersYesID = '#disastersYes';
 var disastersNoID = '#disastersNo';
 var dayNightYesID = '#dayNightYes';
 var dayNightNoID = '#dayNightNo';
+var viewIsometricID = '#viewIsometric';
+var viewTopID = '#viewTop';
 
 
 SettingsWindow.prototype.close = function(actions) {
@@ -82,6 +84,7 @@ var submit = function(e) {
     shouldEnableDisasters = false;
   actions.push({action: SettingsWindow.DISASTERS_CHANGED, data: shouldEnableDisasters});
 
+  actions.push({action: SettingsWindow.VIEW, data: $('.viewSetting:checked').val() === 'isometric'});
   actions.push({action: SettingsWindow.DAY_NIGHT, data: $('.dayNightSetting:checked').val() === 'true'});
   actions.push({action: SettingsWindow.LEVEL, data: $('.levelSetting:checked').val() - 0});
   actions.push({action: SettingsWindow.LANGUAGE, data: $('.languageSetting:checked').val()});
@@ -112,6 +115,8 @@ SettingsWindow.prototype.open = function(settingsData) {
     $(disastersYesID).prop('checked', true);
   else
     $(disastersNoID).prop('checked', true);
+
+  $(settingsData.isometric ? viewIsometricID : viewTopID).prop('checked', true);
 
   if (settingsData.dayNight)
     $(dayNightYesID).prop('checked', true);
@@ -147,6 +152,7 @@ defineAction('DISASTERS_CHANGED');
 defineAction('DAY_NIGHT');
 defineAction('LEVEL');
 defineAction('LANGUAGE');
+defineAction('VIEW');
 
 
 export { SettingsWindow };

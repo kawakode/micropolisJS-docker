@@ -38,6 +38,9 @@ var PowerManager = EventEmitter(function(map) {
   this._map = map;
   this._powerStack = [];
   this.powerGridMap = new BlockMap(this._map.width, this._map.height, 1);
+
+  // The power left over at the last scan
+  this.spare = 0;
 });
 
 
@@ -77,7 +80,10 @@ PowerManager.prototype.testForConductive = function(pos, testDir) {
 // Note: the algorithm is buggy: if you have two adjacent power
 // plants, the second will be regarded as drawing power from the first
 // rather than as a power source itself
-PowerManager.prototype.doPowerScan = function(census) {
+//
+// KawaCity: supply is the power bought from the neighbouring cities, {capacity, sources} (see Neighbours), if any: it
+// enters the grid by the power lines at their edges of the map. The power left over is noted in spare.
+PowerManager.prototype.doPowerScan = function(census, supply) {
   // Clear power this._map.
   this.powerGridMap.clear();
 
@@ -88,7 +94,13 @@ PowerManager.prototype.doPowerScan = function(census) {
                  census.solarPowerPop * SOLAR_POWER_STRENGTH +
                  census.windPowerPop * WIND_POWER_STRENGTH;
 
+  if (supply) {
+    maxPower += supply.capacity;
+    supply.sources.forEach(pos => this._powerStack.push(new Position(pos.x, pos.y)));
+  }
+
   var powerConsumption = 0; // Amount of power used.
+  this.spare = 0;
 
   while (this._powerStack.length > 0) {
     var pos = this._powerStack.pop();
@@ -122,6 +134,8 @@ PowerManager.prototype.doPowerScan = function(census) {
         this._powerStack.push(new Position(pos.x, pos.y));
     } while (conNum);
   }
+
+  this.spare = maxPower - powerConsumption;
 };
 
 
