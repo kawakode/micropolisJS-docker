@@ -17,6 +17,7 @@ import { BaseTool } from './baseTool.js';
 import { BudgetWindow } from './budgetWindow.js';
 import { CityPicture } from './cityPicture.js';
 import { Config } from './config.js';
+import { Achievements } from './achievements.js';
 import { CongratsWindow } from './congratsWindow.js';
 import { DebugWindow } from './debugWindow.js';
 import { DisasterWindow } from './disasterWindow.js';
@@ -321,6 +322,14 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
     this.ambientLife.celebrate(this.gameCanvas.getVisibleWorldRect());
   }.bind(this));
 
+  // The next goal of the city, and the list of all of them when its title is clicked
+  this._goalListOpen = false;
+  this._goalPanelKey = null;
+  $('#goalPanelToggle').on('click', function() {
+    this._goalListOpen = !this._goalListOpen;
+    this.updateGoalPanel();
+  }.bind(this));
+
   // Unhide controls
   this.revealControls();
 
@@ -460,6 +469,57 @@ Game.prototype.handleScenarioWindowClosure = function(data) {
       window.location.reload();
       break;
   }
+};
+
+
+// A goal of the city was met: the game says so, without stopping the city, and celebrates with fireworks. A shared
+// city's goals are met on the server: its copy here learns them from the message.
+Game.prototype._achievementMet = function(data, d) {
+  var achievement = data ? Achievements.byId(data.id) : null;
+  if (achievement === null)
+    return;
+
+  this.simulation.achievements |= 1 << achievement.bit;
+  this.updateGoalPanel();
+
+  if (this.lastBadMessageTime === null || d - this.lastBadMessageTime > disasterTimeout) {
+    this.lastBadMessageTime = null;
+    this._notificationBar.showText(I18n.t('Goal met: {name}', {name: I18n.t(achievement.name)}), 'good');
+  }
+
+  this.ambientLife.celebrate(this.gameCanvas.getVisibleWorldRect());
+};
+
+
+// Keeps the goal panel up to date: the next goal, how many are met, and the list of all of them when it is open. It
+// is hidden while a scenario runs, which has a goal of its own (see updateScenarioPanel).
+Game.prototype.updateGoalPanel = function() {
+  var mask = this.simulation.achievements;
+  var hidden = this._scenarioPanelText !== '';
+  var key = hidden ? 'hidden' : mask + '|' + this._goalListOpen;
+  if (key === this._goalPanelKey)
+    return;
+
+  this._goalPanelKey = key;
+  $('#goalPanel').toggleClass('hidden', hidden);
+  if (hidden)
+    return;
+
+  var next = Achievements.next(mask);
+  $('#goalPanelCount').text(Achievements.count(mask) + '/' + Achievements.LIST.length);
+  $('#goalPanelName').text(I18n.t(next ? next.name : 'All goals met!'));
+  $('#goalPanelText').text(next ? I18n.t(next.goal) : '');
+  $('#goalPanelToggle').attr('aria-expanded', String(this._goalListOpen));
+
+  var list = $('#goalList').empty().toggleClass('hidden', !this._goalListOpen);
+  if (!this._goalListOpen)
+    return;
+
+  Achievements.LIST.forEach(function(achievement) {
+    var met = Achievements.isMet(mask, achievement);
+    $('<li>').toggleClass('met', met).attr('title', I18n.t(achievement.goal))
+      .text((met ? '\u2713 ' : '\u2022 ') + I18n.t(achievement.name)).appendTo(list);
+  });
 };
 
 
@@ -941,6 +1001,11 @@ Game.prototype.processFrontEndMessage = function(message) {
 
   this.tickerNews.report(subject, message.data);
 
+  if (subject === Messages.ACHIEVEMENT_MET) {
+    this._achievementMet(message.data, d);
+    return;
+  }
+
   if (Text.goodMessages[subject] !== undefined) {
     var cMessage = null;
 
@@ -1219,6 +1284,7 @@ var commonAnimate = function(timestamp) {
                          !this.isPaused && (this.remote || !this.dialogOpen));
   this.updateClock();
   this.updateScenarioPanel();
+  this.updateGoalPanel();
   this.ticker.update(elapsed);
 
   var sprites = this.calculateSpritesForPaint(this.gameCanvas);

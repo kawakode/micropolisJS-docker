@@ -2431,6 +2431,63 @@ kbd {
 .swatchCrime { background: #e04836; }
 .swatchPollution { background: #b08850; }
 
+/* The city's goals (see Game.updateGoalPanel) */
+
+#goalPanel {
+  padding: 8px 10px 10px;
+}
+
+#goalPanel.hidden,
+#goalList.hidden {
+  display: none;
+}
+
+.goalPanelToggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.goalPanelCount {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+#goalPanelName {
+  margin: 4px 0 2px;
+  font-size: 14px;
+  color: var(--gold);
+}
+
+#goalPanelText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.goalList {
+  max-height: 30vh;
+  overflow-y: auto;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.goalList li.met {
+  color: var(--green);
+}
+
 /* Scenarios */
 
 #scenarioPanel {

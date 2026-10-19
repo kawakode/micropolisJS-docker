@@ -11,6 +11,7 @@
  *
  */
 
+import { Achievements } from './achievements.js';
 import { BlockMap } from './blockMap.ts';
 import { BlockMapUtils } from './blockMapUtils.js';
 import { Budget } from './budget.js';
@@ -56,6 +57,11 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame, op
   // The scenario being played, if any (see Scenarios)
   this._scenario = null;
   this._messageLast = undefined;
+
+  // KawaCity: the goals the city met (a mask, see Achievements). Those a saved city already meets when it opens are
+  // met without a word.
+  this.achievements = 0;
+  this._achievementsQuiet = !!savedGame;
   this._startingYear = 1900;
 
   // Last date sent to front end
@@ -198,6 +204,7 @@ Simulation.prototype.save = function(saveData) {
     saveData[saveProps[i]] = this[saveProps[i]];
 
   saveData.scenario = this._scenario ? Object.assign({}, this._scenario) : null;
+  saveData.achievements = this.achievements;
 
   this._map.save(saveData);
   this.evaluation.save(saveData);
@@ -213,6 +220,7 @@ Simulation.prototype.load = function(saveData) {
     this[saveProps[i]] = saveData[saveProps[i]];
 
   this._scenario = saveData.scenario ? Object.assign({}, saveData.scenario) : null;
+  this.achievements = Achievements.clean(saveData.achievements);
 
   this._map.load(saveData);
   this.evaluation.load(saveData);
@@ -522,6 +530,7 @@ Simulation.prototype._sendMessages = function() {
   }
 
   this._checkGrowth();
+  this._checkAchievements();
 
   var totalZonePop = this._census.resZonePop + this._census.comZonePop +
                      this._census.indZonePop;
@@ -658,6 +667,29 @@ Simulation.prototype._sendMessages = function() {
       this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.TRAFFIC_JAMS});
     break;
   }
+};
+
+
+// What the goals are checked on (see Achievements)
+Simulation.prototype._achievementFacts = function() {
+  return {census: this._census, population: this._cityPopLast, funds: this.budget.totalFunds,
+          tax: this.budget.cityTax, score: this.evaluation.cityScore, deals: this.neighbours.activeDeals()};
+};
+
+
+// Once a month, the goals the city now meets are told, one message each
+Simulation.prototype._checkAchievements = function() {
+  if ((this._cityTime & 3) !== 0)
+    return;
+
+  var met = Achievements.newlyMet(this.achievements, this._achievementFacts());
+  for (var i = 0; i < met.length; i++) {
+    this.achievements |= 1 << met[i].bit;
+    if (!this._achievementsQuiet)
+      this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.ACHIEVEMENT_MET, data: {id: met[i].id}});
+  }
+
+  this._achievementsQuiet = false;
 };
 
 

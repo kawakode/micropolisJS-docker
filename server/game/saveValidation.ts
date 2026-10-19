@@ -71,6 +71,7 @@ const RULES: Readonly<Record<string, Rule>> = {
   _cityTime: {type: 'integer', min: 0, max: INT32_MAX},
   _speed: {type: 'integer', min: 0, max: 3},
   _gameLevel: {type: 'integer', min: 0, max: 2, optional: true},
+  achievements: {type: 'integer', min: 0, max: INT32_MAX, optional: true},
 
   // GameMap (the tiles are checked apart)
   cityCentreX: {type: 'integer', min: 0, max: CITY_WIDTH - 1},

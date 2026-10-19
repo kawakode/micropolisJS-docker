@@ -728,6 +728,16 @@
           <div class="scenarioBar"><div id="scenarioPanelBar"></div></div>
           <div class="scenarioFigures"><span id="scenarioPanelValue"></span><span id="scenarioPanelTime"></span></div>
         </div>
+        <!-- The city's goals outside the scenarios (see Achievements): the next one, and all of them when opened -->
+        <div id="goalPanel" class="panel hidden" aria-live="polite">
+          <button type="button" id="goalPanelToggle" class="goalPanelToggle" aria-expanded="false" aria-controls="goalList"
+                  title="Show all the goals" data-i18n-title>
+            <span class="panelTitle" data-i18n>Next goal</span><span id="goalPanelCount" class="goalPanelCount"></span>
+          </button>
+          <p id="goalPanelName"></p>
+          <p id="goalPanelText"></p>
+          <ul id="goalList" class="goalList hidden"></ul>
+        </div>
         <!-- What the query tool found: beside the map, which carries on (see QueryWindow) -->
         <div id="queryWindow" class="panel queryPanel hidden" role="region" aria-labelledby="queryHeader" aria-live="polite">
           <div class="queryPanelHeader">

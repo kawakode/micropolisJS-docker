@@ -20,7 +20,7 @@ const ID3 = D(2);
 // The keys the server takes in the save of a new city (see server/game/saveValidation.ts): any other is refused
 const SERVER_KEYS = new Set([
     "name", "_reachedTown", "_reachedCity", "_reachedCapital", "_reachedMetropolis", "_reachedMegalopolis", "dayNight",
-    "disastersEnabled", "timeOfDay", "autoBulldoze", "_cityTime", "_speed", "_gameLevel", "cityCentreX", "cityCentreY",
+    "disastersEnabled", "timeOfDay", "autoBulldoze", "_cityTime", "_speed", "_gameLevel", "achievements", "cityCentreX", "cityCentreY",
     "pollutionMaxX", "pollutionMaxY", "width", "height", "cityClass", "cityScore", "cityPop", "resValve", "comValve",
     "indValve", "autoBudget", "totalFunds", "policePercent", "roadPercent", "firePercent", "roadSpend", "policeSpend",
     "fireSpend", "roadMaintenanceBudget", "policeMaintenanceBudget", "fireMaintenanceBudget", "cityTax", "roadEffect",
