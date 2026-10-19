@@ -983,7 +983,7 @@ describe('The account', () => {
       // The shared cities' sections (see game/gameRoutes.ts), and the one added here
       cities: [],
       regions: [],
-      memberships: {cities: [], regions: []},
+      memberships: {cities: [], regions: [], removedFrom: []},
       invitations: {received: [], sent: []},
       extra: [{owner: 'me'}],
     });

@@ -272,13 +272,14 @@ var loadLobby = function() {
   $('#lobbyCard').attr('aria-busy', 'true');
   $('#lobbyStatus').text(I18n.t('Loading…'));
 
-  return Promise.all([Api.get('/api/cities'), Api.get('/api/regions')]).then(function(answers) {
+  return Promise.all([Api.get('/api/cities'), Api.get('/api/regions'), Api.get('/api/public-regions')])
+    .then(function(answers) {
     if (generation !== generations.lobby)
       return;
 
     $('#lobbyCard').attr('aria-busy', null);
     $('#lobbyStatus').text('');
-    lobby = LobbyData.lobby(answers[0], answers[1]);
+    lobby = LobbyData.lobby(answers[0], answers[1], answers[2]);
     keepFocus('#lobbyCard', '#lobbyTitle', renderLobby);
   }, function(error) {
     if (generation !== generations.lobby)
@@ -411,14 +412,18 @@ var regionFacts = function(entry) {
     facts.push(document.createTextNode(I18n.t('Your region')));
   else
     facts.push(sentence($('<span>'), I18n.t('Owner: {name}'), {name: entry.ownerName}));
+  if (entry.public)
+    facts.push(document.createTextNode(I18n.t('Open to every player')));
   facts.push(document.createTextNode(I18n.t('{columns} × {rows} places', {columns: entry.width, rows: entry.height})));
-  if (entry.cities === 0)
-    facts.push(document.createTextNode(I18n.t('No city yet')));
-  else if (entry.cities === 1)
-    facts.push(document.createTextNode(I18n.t('1 city')));
-  else
-    facts.push(document.createTextNode(I18n.t('{count} cities', {count: entry.cities})));
+  facts.push(document.createTextNode(cityCount(entry.cities)));
   return facts;
+};
+
+
+var cityCount = function(cities) {
+  if (cities === 0)
+    return I18n.t('No city yet');
+  return cities === 1 ? I18n.t('1 city') : I18n.t('{count} cities', {count: cities});
 };
 
 
@@ -442,10 +447,82 @@ var renderRegions = function() {
 };
 
 
+// The public regions the player may join, each with its owner, size, cities and members
+var renderPublicRegions = function() {
+  var list = $('#lobbyPublicRegions').empty();
+  $('#lobbyNoPublicRegion').toggle(lobby.publicRegions.length === 0);
+
+  lobby.publicRegions.forEach(function(entry, i) {
+    var nameId = 'lobbyPublicRegion' + i;
+    var item = $('<li class="lobbyItem">');
+    var main = $('<div class="lobbyItemMain">').appendTo(item);
+    $('<bdi class="lobbyItemName">').attr('id', nameId).text(entry.name).appendTo(main);
+    main.append(factsLine([
+      sentence($('<span>'), I18n.t('Owner: {name}'), {name: entry.ownerName}),
+      document.createTextNode(I18n.t('{columns} × {rows} places', {columns: entry.width, rows: entry.height})),
+      document.createTextNode(cityCount(entry.cities)),
+      document.createTextNode(entry.members === 1 ? I18n.t('1 member') :
+                                I18n.t('{count} members', {count: entry.members}))
+    ]));
+
+    var buttons = $('<div class="lobbyItemButtons">').appendTo(item);
+    button(I18n.t('Join'), 'primary', nameId, 'join-' + entry.id).on('click', function(e) {
+      joinRegion(e.currentTarget, entry);
+    }).appendTo(buttons);
+    list.append(item);
+  });
+};
+
+
+// What the server says when the player does not join a public region
+var joinError = function(error) {
+  switch (error.code) {
+    case 'not_found':
+      return I18n.t('This region is no longer open to every player.');
+    case 'forbidden':
+      return I18n.t('The owner of this region removed you from it: only an invitation from them lets you back in.');
+    case 'limit_reached':
+      return I18n.t('This region has as many members as it can have.');
+    case 'conflict':
+      return I18n.t('You are already a member of this region.');
+    default:
+      return errorText(error);
+  }
+};
+
+
+// Joins a public region, then shows its card (the lobby is loaded again when the card closes)
+var joinRegion = function(element, entry) {
+  element = $(element);
+  if (element.attr('aria-disabled') === 'true')
+    return;
+
+  $('#lobbyError').text('');
+  element.attr('aria-disabled', 'true').addClass('busy');
+  $('#lobbyCard').attr('aria-busy', 'true');
+  Api.post('/api/regions/' + encodeURIComponent(entry.id) + '/join', {}).then(function() {
+    element.attr('aria-disabled', null).removeClass('busy');
+    $('#lobbyCard').attr('aria-busy', null);
+    AccountScreens.openCard('regionCard', element[0], {id: entry.id, name: entry.name});
+    setNote('#regionNote', I18n.t('You joined the region {region}.'), {region: entry.name});
+  }, function(error) {
+    element.attr('aria-disabled', null).removeClass('busy');
+    $('#lobbyCard').attr('aria-busy', null);
+    if (error && error.code === 'unauthenticated') {
+      sessionEnded();
+      return;
+    }
+    $('#lobbyError').text(joinError(error || Api.failure('internal')));
+    loadLobby().then(function() { focusList('#lobbyPublicRegions', '#lobbyTitle'); });
+  });
+};
+
+
 var renderLobby = function() {
   renderInvitations();
   renderCities();
   renderRegions();
+  renderPublicRegions();
 };
 
 
@@ -462,11 +539,13 @@ var submitRegion = function(e) {
 
   var width = parseInt($('#regionCreateWidth').val(), 10);
   var height = parseInt($('#regionCreateHeight').val(), 10);
+  var open = $('#regionCreatePublic').prop('checked');
   forms.run(form, function() {
-    return Api.post('/api/regions', {name: name.text, width: width, height: height}, {status: 201});
+    return Api.post('/api/regions', {name: name.text, width: width, height: height, public: open}, {status: 201});
   }, function(answer) {
     var created = LobbyData.region(answer && answer.region);
     $('#regionCreateName').val('');
+    $('#regionCreatePrivate').prop('checked', true);
     $('#regionCreateSection').prop('open', false);
     loadLobby();
     if (created !== null)
@@ -483,14 +562,15 @@ var submitRegion = function(e) {
 var lobbyCard = {
   open: function(options) {
     setAddress(true);
-    lobby = {cities: [], invitations: [], regions: []};
-    $('#lobbyInvitations, #lobbyCities, #lobbyRegions').empty();
-    $('#lobbyInvitationsSection, #lobbyNoCity, #lobbyNoRegion').hide();
+    lobby = {cities: [], invitations: [], regions: [], publicRegions: []};
+    $('#lobbyInvitations, #lobbyCities, #lobbyRegions, #lobbyPublicRegions').empty();
+    $('#lobbyInvitationsSection, #lobbyNoCity, #lobbyNoRegion, #lobbyNoPublicRegion').hide();
     setNote('#lobbyNote', options.note || '', options.values);
     $('#lobbyError').text('');
     $('#regionCreateSection').prop('open', false);
     forms.clearErrors($('#regionCreateForm'));
     $('#regionCreateName').val('');
+    $('#regionCreatePrivate').prop('checked', true);
     loadLobby();
   },
   close: function() {
@@ -945,10 +1025,13 @@ var renderRegion = function() {
     facts.push(document.createTextNode(I18n.t('Your region')));
   else
     facts.push(sentence($('<span>'), I18n.t('Owner: {name}'), {name: detail.ownerName}));
+  facts.push(document.createTextNode(detail.public ? I18n.t('Open to every player') : I18n.t('On invitation only')));
   facts.push(document.createTextNode(I18n.t('{columns} × {rows} places', {columns: detail.width, rows: detail.height})));
   $('#regionFacts').empty().append(factsLine(facts).children());
 
-  $('#regionInviteSection, #regionRenameSection, #regionDeleteSection').toggle(mine);
+  $('#regionInviteSection, #regionRenameSection, #regionVisibilitySection, #regionDeleteSection').toggle(mine);
+  if (!$('#regionVisibilitySection').prop('open'))
+    $(detail.public ? '#regionVisibilityPublic' : '#regionVisibilityPrivate').prop('checked', true);
   $('#regionLeaveSection').toggle(!mine);
   $('#regionInvitationsSection').toggle(mine && region.invitations !== null && region.invitations.length > 0);
   if (!$('#regionRenameSection').prop('open'))
@@ -1047,6 +1130,32 @@ var submitRegionRename = function(e) {
 };
 
 
+// The owner opens the region to every player, or keeps it to the players they invite
+var submitRegionVisibility = function(e) {
+  e.preventDefault();
+  var form = $('#regionVisibilityForm');
+  if (forms.isBusy(form) || region === null)
+    return;
+
+  forms.clearErrors(form);
+  var open = $('#regionVisibilityPublic').prop('checked');
+  forms.run(form, function() {
+    return Api.request('PATCH', '/api/regions/' + encodeURIComponent(regionId), {public: open});
+  }, function() {
+    $('#regionVisibilitySection').prop('open', false);
+    setNote('#regionNote', open ? I18n.t('Every player can now join this region from their lobby.') :
+                                  I18n.t('Only the players you invite can now join this region.'));
+    loadRegion();
+    $('#regionVisibilitySection summary').trigger('focus');
+  }, function(error) {
+    if (error.code === 'unauthenticated')
+      sessionEnded();
+    else
+      forms.showError(form, error, {});
+  });
+};
+
+
 var leaveRegion = function(e) {
   var me = myId();
   if (region === null || me === null)
@@ -1080,10 +1189,12 @@ var regionCard = {
     region = null;
     $('#regionName').text(options.name || '');
     $('#regionFacts, #regionGrid, #regionMembers, #regionInvitations').empty();
-    $('#regionInviteSection, #regionRenameSection, #regionDeleteSection, #regionLeaveSection, #regionInvitationsSection')
-      .hide();
+    $('#regionInviteSection, #regionRenameSection, #regionVisibilitySection, #regionDeleteSection, #regionLeaveSection, ' +
+      '#regionInvitationsSection').hide();
     $('#regionCard details').prop('open', false);
-    ['#regionInviteForm', '#regionRenameForm'].forEach(function(form) { forms.clearErrors($(form)); });
+    ['#regionInviteForm', '#regionRenameForm', '#regionVisibilityForm'].forEach(function(form) {
+      forms.clearErrors($(form));
+    });
     $('#regionInviteName').val('');
     setNote('#regionNote', '');
     $('#regionError').text('');
@@ -1256,6 +1367,7 @@ var boot = function() {
 
   $('#regionInviteForm').on('submit', submitRegionInvite);
   $('#regionRenameForm').on('submit', submitRegionRename);
+  $('#regionVisibilityForm').on('submit', submitRegionVisibility);
   $('#regionLeave').on('click', leaveRegion);
   $('#regionDelete').on('click', deleteRegion);
 

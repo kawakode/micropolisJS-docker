@@ -99,6 +99,7 @@ export function registerGameRoutes(context: AppContext, options: Partial<GameOpt
     name: region.name,
     width: region.width,
     height: region.height,
+    public: region.is_public === 1,
     createdAt: isoTime(region.created_at),
     members: regions.members(region.id).map(member => ({id: member.public_id, username: member.username})),
   })));
@@ -114,6 +115,12 @@ export function registerGameRoutes(context: AppContext, options: Partial<GameOpt
       `SELECT r.public_id, r.name, m.joined_at FROM region_members m JOIN regions r ON r.id = m.region_id
        WHERE m.user_id = ? ORDER BY m.joined_at`, userId).map(row => ({
       id: row.public_id, name: row.name, joinedAt: isoTime(row.joined_at),
+    })),
+    // The regions whose owner removed the player: they do not join them again without an invitation
+    removedFrom: db.all<{public_id: string; name: string; removed_at: number}>(
+      `SELECT r.public_id, r.name, x.removed_at FROM region_removals x JOIN regions r ON r.id = x.region_id
+       WHERE x.user_id = ? ORDER BY x.removed_at`, userId).map(row => ({
+      id: row.public_id, name: row.name, removedAt: isoTime(row.removed_at),
     })),
   }));
 

@@ -79,7 +79,7 @@ describe('Regions in the lobby', () => {
     const made = await ruth.post('/api/regions', {name: ' Riverlands​ ', width: 4, height: 3});
     expect(made.status).toBe(201);
     expect(made.json.region).toEqual({id: expect.stringMatching(/^[A-Za-z0-9_-]{22}$/), name: 'Riverlands',
-                                      ownerName: 'Ruth', width: 4, height: 3, mine: true, cities: 0});
+                                      ownerName: 'Ruth', width: 4, height: 3, public: false, mine: true, cities: 0});
     for (let i = 1; i < REGION_LIMITS.ownedRegions; i++)
       expect((await ruth.post('/api/regions', {name: 'R' + i, width: 2, height: 2})).status).toBe(201);
     expect(await fails({name: 'One more', width: 2, height: 2}))
@@ -122,7 +122,8 @@ describe('Regions in the lobby', () => {
     expect(view.invitations).toEqual([]);
     expect((await member.get(`/api/regions/${id}`)).json.slots[1].city.role).toBe('owner');
     expect((await member.get('/api/regions')).json.regions).toEqual([{id, name: 'Riverlands', ownerName: 'Ruth',
-                                                                       width: 2, height: 2, cities: 1, mine: false}]);
+                                                                       width: 2, height: 2, public: false, cities: 1,
+                                                                       mine: false}]);
     expect((await member.get('/api/cities')).json.cities[0].region).toEqual({id, name: 'Riverlands', x: 1, y: 0});
 
     expect((await owner.patch(`/api/regions/${id}`, {name: 'Hills'})).json.region.name).toBe('Hills');
@@ -181,6 +182,93 @@ describe('Regions in the lobby', () => {
       .toMatchObject({id, x: 1, y: 0});
     expect((await owner.post(`/api/regions/${id}/slots/1/0/clear`, {city: newcomer.id})).status).toBe(204);
     expect((await owner.get(`/api/regions/${id}`)).json.region.cities).toBe(0);
+  });
+  test('Public regions: listed for every player, joined without an invitation', async () => {
+    const ruth = addPlayer(t, 'Ruth');
+    const max = addPlayer(t, 'Max');
+    const fails = async (body: unknown) => (await ruth.post('/api/regions', body)).json;
+    expect(await fails({name: 'A', width: 2, height: 2, public: 'yes'}))
+      .toEqual({error: {code: 'invalid_input', fields: {public: 'invalid'}}});
+
+    const open = (await ruth.post('/api/regions', {name: 'Open plains', width: 2, height: 2, public: true})).json.region;
+    expect(open).toMatchObject({name: 'Open plains', public: true, mine: true});
+    const closed = (await ruth.post('/api/regions', {name: 'Closed hills', width: 2, height: 2})).json.region;
+    expect(closed.public).toBe(false);
+
+    // Listed for the others, not for its members; joined once
+    expect((await ruth.get('/api/public-regions')).json.regions).toEqual([]);
+    expect((await max.get('/api/public-regions')).json.regions).toEqual([{id: open.id, name: 'Open plains',
+      ownerName: 'Ruth', width: 2, height: 2, public: true, mine: false, cities: 0, members: 1}]);
+    expect((await max.post(`/api/regions/${closed.id}/join`)).status).toBe(404);
+    expect((await max.post(`/api/regions/nope/join`)).status).toBe(404);
+    expect((await max.post(`/api/regions/${open.id}/join`, {x: 1})).status).toBe(400);
+    const joined = await max.post(`/api/regions/${open.id}/join`);
+    expect(joined.status).toBe(200);
+    expect(joined.json.region).toMatchObject({id: open.id, public: true, mine: false});
+    expect((await max.post(`/api/regions/${open.id}/join`)).json).toEqual({error: {code: 'conflict'}});
+    expect((await max.get('/api/public-regions')).json.regions).toEqual([]);
+    expect((await max.get(`/api/regions/${open.id}`)).json.members.map((m: any) => m.username)).toEqual(['Ruth', 'Max']);
+    await createCity(max, {name: 'Maxton', region: {id: open.id, x: 0, y: 0}});
+
+    // Only its owner opens or closes it; members stay when it closes
+    expect((await max.patch(`/api/regions/${open.id}`, {public: false})).status).toBe(403);
+    expect((await ruth.patch(`/api/regions/${open.id}`, {})).status).toBe(400);
+    expect((await ruth.patch(`/api/regions/${open.id}`, {public: 1})).json)
+      .toEqual({error: {code: 'invalid_input', fields: {public: 'invalid'}}});
+    const tess = addPlayer(t, 'Tess');
+    expect((await tess.get('/api/public-regions')).json.regions.map((r: any) => r.cities)).toEqual([1]);
+    expect((await ruth.patch(`/api/regions/${open.id}`, {public: false})).json.region).toMatchObject({public: false,
+                                                                                                    name: 'Open plains'});
+    expect((await tess.get('/api/public-regions')).json.regions).toEqual([]);
+    expect((await tess.post(`/api/regions/${open.id}/join`)).status).toBe(404);
+    expect((await max.get(`/api/regions/${open.id}`)).status).toBe(200);
+    expect((await ruth.patch(`/api/regions/${closed.id}`, {name: 'Open hills', public: true})).json.region)
+      .toMatchObject({name: 'Open hills', public: true});
+    expect((await tess.get('/api/public-regions')).json.regions.map((r: any) => r.name)).toEqual(['Open hills']);
+  });
+
+  test('Public regions: full ones are not listed, and a member the owner removed does not join again', async () => {
+    const ruth = addPlayer(t, 'Ruth');
+    const max = addPlayer(t, 'Max');
+    const open = (await ruth.post('/api/regions', {name: 'Open plains', width: 2, height: 2, public: true})).json.region;
+    expect((await max.post(`/api/regions/${open.id}/join`)).status).toBe(200);
+
+    // Leaving: they may come back
+    expect((await max.post(`/api/regions/${open.id}/members/${max.publicId}/remove`)).status).toBe(204);
+    expect((await max.get('/api/public-regions')).json.regions.length).toBe(1);
+    expect((await max.post(`/api/regions/${open.id}/join`)).status).toBe(200);
+
+    // Removed by the owner: not listed for them, not joined, until the owner invites them again
+    expect((await ruth.post(`/api/regions/${open.id}/members/${max.publicId}/remove`)).status).toBe(204);
+    expect((await max.get('/api/public-regions')).json.regions).toEqual([]);
+    expect((await max.post(`/api/regions/${open.id}/join`)).json).toEqual({error: {code: 'forbidden'}});
+    expect((await ruth.post(`/api/regions/${open.id}/invitations`, {username: 'Max'})).status).toBe(201);
+    const invitation = (await max.get('/api/cities')).json.invitations[0];
+    expect((await max.post(`/api/invitations/${invitation.id}/accept`)).status).toBe(200);
+    expect((await max.post(`/api/regions/${open.id}/members/${max.publicId}/remove`)).status).toBe(204);
+    expect((await max.post(`/api/regions/${open.id}/join`)).status).toBe(200);
+
+    // Joining drops an invitation to the region
+    const tess = addPlayer(t, 'Tess');
+    expect((await ruth.post(`/api/regions/${open.id}/invitations`, {username: 'Tess'})).status).toBe(201);
+    expect((await tess.post(`/api/regions/${open.id}/join`)).status).toBe(200);
+    expect((await tess.get('/api/cities')).json.invitations).toEqual([]);
+
+    // Every place built: no longer listed
+    const ann = addPlayer(t, 'Ann');
+    for (const [player, x, y] of [[ruth, 0, 0], [max, 1, 0], [tess, 0, 1], [tess, 1, 1]] as const)
+      await createCity(player, {region: {id: open.id, x, y}});
+    expect((await ann.get('/api/public-regions')).json.regions).toEqual([]);
+  });
+
+  test('Public regions: no more members than a region holds', async () => {
+    const ruth = addPlayer(t, 'Ruth');
+    const open = (await ruth.post('/api/regions', {name: 'Open plains', width: 4, height: 4, public: true})).json.region;
+    for (let i = 1; i < REGION_LIMITS.members; i++)
+      expect((await addPlayer(t).post(`/api/regions/${open.id}/join`)).status).toBe(200);
+    const late = addPlayer(t);
+    expect((await late.get('/api/public-regions')).json.regions).toEqual([]);
+    expect((await late.post(`/api/regions/${open.id}/join`)).json).toEqual({error: {code: 'limit_reached'}});
   });
 });
 

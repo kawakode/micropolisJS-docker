@@ -17,9 +17,11 @@ import { TextRules } from './textRules.js';
 //
 // The lobby's routes (DESIGN §5.3; every id is a public id):
 // - GET /api/cities: {cities: [city], invitations: [invitation]}; GET /api/regions: {regions: [region]}
+// - GET /api/public-regions: {regions: [region + members]}, the public regions the player may join
+// - POST /api/regions/:id/join: {region}
 // - city = {id, name, role, ownerName, population, year, online, region: {id, name, x, y} | null}
 // - invitation = {id, kind: 'city' | 'region', target: {id, name}, inviterId, inviterName, role (null for a region)}
-// - region = {id, name, ownerName, width, height, mine, cities}
+// - region = {id, name, ownerName, width, height, public, mine, cities}
 // - GET /api/cities/:id: {city, members: [{id, username, role, colour, online}], invitations (owner only):
 //   [{id, username, userId, role, createdAt}]}
 // - GET /api/regions/:id: {region, slots: [{x, y, city: {id, name, ownerName, population, role} | null}],
@@ -160,7 +162,7 @@ var invitation = function(entry) {
 };
 
 
-// A region of the list: {id, name, ownerName, width, height, mine, cities}, or null
+// A region of the list: {id, name, ownerName, width, height, public, mine, cities}, or null
 var region = function(entry) {
   if (!isObject(entry) || !isPublicId(entry.id) || REGION_SIZES.indexOf(entry.width) === -1 ||
       REGION_SIZES.indexOf(entry.height) === -1)
@@ -172,9 +174,20 @@ var region = function(entry) {
     ownerName: shownName(entry.ownerName),
     width: entry.width,
     height: entry.height,
+    public: entry.public === true,
     mine: entry.mine === true,
     cities: count(entry.cities)
   };
+};
+
+
+// A public region the player may join: a region of the list and its number of members, or null
+var publicRegion = function(entry) {
+  var checked = region(entry);
+  if (checked === null)
+    return null;
+
+  return Object.assign(checked, {members: count(entry.members)});
 };
 
 
@@ -193,14 +206,17 @@ var listOf = function(list, check) {
 };
 
 
-// The lobby, from the answers of GET /api/cities and GET /api/regions: {cities, invitations, regions}
-var lobby = function(citiesAnswer, regionsAnswer) {
+// The lobby, from the answers of GET /api/cities, GET /api/regions and GET /api/public-regions: {cities, invitations,
+// regions, publicRegions}
+var lobby = function(citiesAnswer, regionsAnswer, publicAnswer) {
   var cities = isObject(citiesAnswer) ? citiesAnswer : {};
   var regions = isObject(regionsAnswer) ? regionsAnswer : {};
+  var open = isObject(publicAnswer) ? publicAnswer : {};
   return {
     cities: listOf(cities.cities, city),
     invitations: listOf(cities.invitations, invitation),
-    regions: listOf(regions.regions, region)
+    regions: listOf(regions.regions, region),
+    publicRegions: listOf(open.regions, publicRegion)
   };
 };
 
@@ -472,6 +488,7 @@ var LobbyData = {
   city: city,
   invitation: invitation,
   region: region,
+  publicRegion: publicRegion,
   lobby: lobby,
   invitationGroups: invitationGroups,
   cityDetail: cityDetail,
