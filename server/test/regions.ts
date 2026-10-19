@@ -10,7 +10,7 @@ import { decodeState } from '../game/cityStore';
 import { freshCitySave, sampleCity } from '../gameTesting';
 import { REGION_LIMITS } from '../game/regionStore';
 import type { Room } from '../game/room';
-import { addPlayer, createCity, flushSockets, join, Player, runFrames, sync, TestSocket,
+import { addMember, addPlayer, createCity, flushSockets, join, Player, runFrames, sync, TestSocket,
          until } from '../multiplayerTesting';
 import { cleanUp, startTestApp, TestApp } from '../testing';
 
@@ -183,6 +183,69 @@ describe('Regions in the lobby', () => {
     expect((await owner.post(`/api/regions/${id}/slots/1/0/clear`, {city: newcomer.id})).status).toBe(204);
     expect((await owner.get(`/api/regions/${id}`)).json.region.cities).toBe(0);
   });
+  // The next tests give their cities a save, so that the cities made by later tests keep their maps (see createCity)
+  test('Moving a city to a free place of a region its owner is a member of', async () => {
+    const {owner, member, id} = await region(t);
+    const other = (await owner.post('/api/regions', {name: 'Hills', width: 2, height: 2})).json.region;
+    const loose = await createCity(member, {save: freshCitySave(), name: 'Loose'});
+    const placed = await createCity(owner, {save: freshCitySave(), name: 'Placed', region: {id, x: 0, y: 0}});
+    const move = (player: Player, cityId: string, region: unknown) =>
+      player.post(`/api/cities/${cityId}/place`, {region});
+
+    expect((await move(owner, loose.id, {id, x: 1, y: 0})).status).toBe(404);
+    expect((await move(member, loose.id, {id: other.id, x: 0, y: 0})).status).toBe(404);
+    expect((await move(member, loose.id, {id, x: 2, y: 0})).json)
+      .toEqual({error: {code: 'invalid_input', fields: {region: 'invalid'}}});
+    expect((await move(member, loose.id, null)).status).toBe(400);
+    expect((await move(member, loose.id, {id, x: 0, y: 0})).json).toEqual({error: {code: 'conflict'}});
+
+    // A city of no region enters one; another moves within its region, then to another region
+    const entered = await move(member, loose.id, {id, x: 1, y: 0});
+    expect(entered.status).toBe(200);
+    expect(entered.json.city.region).toEqual({id, name: 'Riverlands', x: 1, y: 0});
+    expect((await move(owner, placed.id, {id, x: 0, y: 0})).json).toEqual({error: {code: 'conflict'}});
+    expect((await move(owner, placed.id, {id, x: 0, y: 1})).json.city.region).toMatchObject({x: 0, y: 1});
+    expect((await move(owner, placed.id, {id: other.id, x: 1, y: 1})).json.city.region)
+      .toEqual({id: other.id, name: 'Hills', x: 1, y: 1});
+    expect((await owner.get(`/api/regions/${id}`)).json.slots.filter((s: any) => s.city).map((s: any) => s.city.name))
+      .toEqual(['Loose']);
+  });
+
+  test('Moving a city ends its deals with the cities beside it, before and after', async () => {
+    const {owner, member, id} = await region(t, 3, 2);
+    const left = await createCity(owner, {save: freshCitySave(), name: 'Left', region: {id, x: 0, y: 0}});
+    const right = await createCity(member, {save: freshCitySave(), name: 'Right', region: {id, x: 1, y: 0}});
+    const below = await createCity(owner, {save: freshCitySave(), name: 'Below', region: {id, x: 2, y: 1}});
+    const l = await join(t, owner, left.id);
+    const r = await join(t, member, right.id);
+    await command(l.socket, {t: 'deal', seq: 1, side: 'east', kind: 'twinning', signed: true});
+    await command(r.socket, {t: 'deal', seq: 1, side: 'west', kind: 'twinning', signed: true});
+    expect(deal(roomOf(t, left.id), 'east', 'twinning')).toMatchObject({signed: true, state: 'active'});
+
+    expect((await member.post(`/api/cities/${right.id}/place`, {region: {id, x: 2, y: 0}})).status).toBe(200);
+    // Back to the neighbours of their saves where no city is beside them
+    expect(neighbour(roomOf(t, left.id), 'east').name).not.toBe('Right');
+    expect(neighbour(roomOf(t, right.id), 'west').name).not.toBe('Left');
+    expect(neighbour(roomOf(t, right.id), 'south').name).toBe('Below');
+    expect(roomOf(t, left.id).edge.east.signed.twinning).toBe(false);
+    expect(roomOf(t, right.id).edge.west.signed.twinning).toBe(false);
+    expect(storedNeighbour(t, below.id, 'north').edge.signed.twinning).toBe(false);
+    await Promise.all([l.socket.close(), r.socket.close()]);
+  });
+
+  test('Handing a city of a region over: only to a member of the region', async () => {
+    const {owner, member, id} = await region(t);
+    const outsider = addPlayer(t, 'Olga');
+    const city = await createCity(owner, {save: freshCitySave(), name: 'Shared', region: {id, x: 0, y: 0}});
+    await addMember(owner, city.id, outsider, 'player');
+    await addMember(owner, city.id, member, 'player');
+    expect((await owner.post(`/api/cities/${city.id}/owner`, {member: outsider.publicId})).json)
+      .toEqual({error: {code: 'conflict'}});
+    expect((await owner.post(`/api/cities/${city.id}/owner`, {member: member.publicId})).status).toBe(200);
+    expect((await owner.get(`/api/regions/${id}`)).json.slots[0].city).toMatchObject({name: 'Shared', ownerName: 'Max',
+                                                                                     role: 'player'});
+  });
+
   test('Public regions: listed for every player, joined without an invitation', async () => {
     const ruth = addPlayer(t, 'Ruth');
     const max = addPlayer(t, 'Max');

@@ -308,6 +308,16 @@ export class RoomManager {
       this.guard(room, () => room.membersChanged(this.deps.cities.members(cityId), this.deps.clock.now()));
   }
 
+  // The city has another owner: its members (and their roles) are read again
+  ownerChanged(cityId: number, ownerName: string): void {
+    const room = this.rooms.get(cityId);
+    if (room)
+      this.guard(room, () => {
+        room.ownerName = ownerName;
+        room.membersChanged(this.deps.cities.members(cityId), this.deps.clock.now());
+      });
+  }
+
   renamed(cityId: number, name: string): void {
     const room = this.rooms.get(cityId);
     if (room)

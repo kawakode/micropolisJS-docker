@@ -660,6 +660,11 @@ var renderCityMembers = function() {
         confirmIn(controls, sentence($('<span>'), I18n.t('Remove {name} from the city?'), {name: member.username}),
                   I18n.t('Remove'), function(yes) { removeMember(yes, member); });
       }).appendTo(controls);
+      button(I18n.t('Hand over'), '', nameId, 'owner-' + member.id).on('click', function() {
+        confirmIn(controls, sentence($('<span>'), I18n.t('Hand {city} over to {name}? You will stay a player of it.'),
+                                     {city: city.city.name, name: member.username}),
+                  I18n.t('Hand it over'), function(yes) { handOver(yes, member); });
+      }).appendTo(controls);
     } else {
       controls.append($('<span class="memberRoleText">').text(PlayersPanel.roleText(member.role)));
     }
@@ -715,6 +720,47 @@ var removeMember = function(element, member) {
     setNote('#cityNote', I18n.t('{name} is no longer a member of this city.'), {name: member.username});
     loadCity().then(function() { focusList('#cityMembers', '#cityTitle'); });
   }, '#cityError');
+};
+
+
+// What the server says when the city is not handed over to member
+var handOverError = function(error, member) {
+  switch (error.code) {
+    case 'limit_reached':
+      return I18n.t('{name} owns as many shared cities as they can.', {name: member.username});
+    case 'conflict':
+      return I18n.t('{name} is not a member of the region of this city: its owner must invite them first.',
+                    {name: member.username});
+    default:
+      return errorText(error);
+  }
+};
+
+
+// Hands the city over to one of its members: the player stays, as a player
+var handOver = function(element, member) {
+  element = $(element);
+  if (element.attr('aria-disabled') === 'true' || city === null)
+    return;
+
+  var name = city.city.name;
+  $('#cityError').text('');
+  element.attr('aria-disabled', 'true').addClass('busy');
+  $('#cityCard').attr('aria-busy', 'true');
+  Api.post('/api/cities/' + encodeURIComponent(cityId) + '/owner', {member: member.id}).then(function() {
+    $('#cityCard').attr('aria-busy', null);
+    setNote('#cityNote', I18n.t('{name} is now the owner of {city}.'), {name: member.username, city: name});
+    loadCity().then(function() { focusList('#cityMembers', '#cityTitle'); });
+  }, function(error) {
+    element.attr('aria-disabled', null).removeClass('busy');
+    $('#cityCard').attr('aria-busy', null);
+    if (error && error.code === 'unauthenticated') {
+      sessionEnded();
+      return;
+    }
+    $('#cityError').text(handOverError(error || Api.failure('internal'), member));
+    loadCity();
+  });
 };
 
 
@@ -967,7 +1013,7 @@ var renderRegionMap = function() {
       }
       if (cell.clear) {
         button(I18n.t('Take out of the region'), '', nameId, 'clear-' + cell.x + '-' + cell.y).on('click', function() {
-          confirmIn(controls, sentence($('<span>'), I18n.t('Take {city} out of the region? It cannot come back to this place.'),
+          confirmIn(controls, sentence($('<span>'), I18n.t('Take {city} out of the region? Its deals with the cities beside it end.'),
                                        {city: cell.city.name}),
                     I18n.t('Take it out'), function(yes) { clearSlot(yes, cell); });
         }).appendTo(controls);
@@ -978,6 +1024,21 @@ var renderRegionMap = function() {
         if (!refuseCreation('#regionError'))
           startCreation({region: {id: region.region.id, name: region.region.name}, x: cell.x, y: cell.y});
       }).appendTo(controls);
+      var movable = lobby.cities.filter(function(entry) { return entry.role === 'owner'; });
+      if (movable.length > 0) {
+        button(I18n.t('Move a city here'), '', placeId, 'move-' + cell.x + '-' + cell.y).on('click', function() {
+          var choice = $('<select class="memberRole">').attr('aria-label', I18n.t('City to move here'));
+          movable.forEach(function(entry) {
+            $('<option>').val(entry.id).text(entry.name).appendTo(choice);
+          });
+          var question = $('<span>').text(I18n.t('Move one of your cities here? Its deals with the cities beside it end.'));
+          confirmIn(controls, question.add(choice), I18n.t('Move it'), function(yes) {
+            var moving = movable.filter(function(entry) { return entry.id === choice.val(); })[0];
+            if (moving)
+              moveCity(yes, cell, moving);
+          });
+        }).appendTo(controls);
+      }
     }
 
     item.append(controls);
@@ -1061,6 +1122,19 @@ var clearSlot = function(element, cell) {
               {city: cell.city.name});
     else
       setNote('#regionNote', I18n.t('{city} left the region.'), {city: cell.city.name});
+    loadRegion().then(function() { focusList('#regionGrid', '#regionTitle'); });
+  }, '#regionError');
+};
+
+
+// Moves one of the player's cities to a free place of the region
+var moveCity = function(element, cell, moving) {
+  act(element, '#regionCard', function() {
+    return Api.post('/api/cities/' + encodeURIComponent(moving.id) + '/place',
+                    {region: {id: regionId, x: cell.x, y: cell.y}});
+  }, function() {
+    setNote('#regionNote', I18n.t('{city} moved to row {row}, column {column}.'),
+            {city: moving.name, row: cell.row, column: cell.column});
     loadRegion().then(function() { focusList('#regionGrid', '#regionTitle'); });
   }, '#regionError');
 };

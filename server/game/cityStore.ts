@@ -285,6 +285,13 @@ export class CityStore {
                 'owner');
   }
 
+  // The city goes to another of its members: the owner before stays, as a player
+  setOwner(cityId: number, oldOwnerId: number, newOwnerId: number, now: number): void {
+    this.db.run('UPDATE cities SET owner_id = ?, updated_at = ? WHERE id = ?', newOwnerId, now, cityId);
+    this.db.run(`UPDATE city_members SET role = 'player' WHERE city_id = ? AND user_id = ?`, cityId, oldOwnerId);
+    this.db.run(`UPDATE city_members SET role = 'owner' WHERE city_id = ? AND user_id = ?`, cityId, newOwnerId);
+  }
+
   removeMember(cityId: number, userId: number): void {
     this.db.run('DELETE FROM city_members WHERE city_id = ? AND user_id = ?', cityId, userId);
   }
