@@ -20,6 +20,23 @@ describe("The budget", () => {
         expect(told).toEqual([2147483000, 2147483647, 0]);
     });
 
+    it("spends nothing on services, and never less, when the deals cost more than the city has", () => {
+        const budget = new (Budget as any)();
+        budget.setFunds(100);
+        budget.taxFund = 50;
+        budget.dealsFund = -500;
+        budget.roadMaintenanceBudget = 200;
+        budget.fireMaintenanceBudget = 100;
+        budget.policeMaintenanceBudget = 100;
+
+        const costs = budget._calculateBestPercentages();
+
+        expect(costs).toEqual({road: 0, fire: 0, police: 0});
+        expect([budget.roadPercent, budget.firePercent, budget.policePercent]).toEqual([0, 0, 0]);
+        budget.doBudgetSpend(costs.road, costs.fire, costs.police);
+        expect([budget.roadEffect, budget.fireEffect, budget.policeEffect]).toEqual([0, 0, 0]);
+    });
+
     it("shows each rate as it is: 29% stays 29% (0.29 * 100 is 28.999...)", () => {
         for (let percent = 0; percent <= 100; percent++)
             expect([percent, (BudgetWindow as any).rateOf(percent / 100)]).toEqual([percent, percent]);
