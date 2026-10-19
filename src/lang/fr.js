@@ -526,6 +526,14 @@ var strings = {
   'Goal reached: {goal}.': 'Objectif atteint : {goal}.',
   'Goal missed: {goal}.': 'Objectif manqué : {goal}.',
 
+  // A region's standings (see LobbyData.regionStandings)
+  'Standings': 'Classement',
+  'Together, {total} inhabitants: every goal of the region is reached!':
+    'Ensemble, {total} habitants : tous les objectifs de la région sont atteints !',
+  'Common goal: {goal} inhabitants together. {total} so far (goals reached: {met} of {goals}).':
+    'Objectif commun : {goal} habitants ensemble. {total} pour l\'instant (objectifs atteints : {met} sur {goals}).',
+  '{population} inhabitants, score {score}': '{population} habitants, score {score}',
+
   // Loans (see Budget.borrow)
   'Loans': 'Emprunts',
   'Loan repayment': 'Remboursement des emprunts',

@@ -51,7 +51,7 @@ import { prepareCity, SaveError } from './saveValidation';
 //                                                       join, newest first, at most 50
 //   POST /api/regions {name, width, height, public?}   201 {region}
 //   GET  /api/regions/:id                              {region, slots: [{x, y, city: {id, name, ownerName,
-//                                                       population, role} | null}], members: [{id, username,
+//                                                       population, score, role} | null}], members: [{id, username,
 //                                                       owner}], invitations (owner only)}
 //   PATCH /api/regions/:id {name?, public?}            region owner: {region}
 //   POST /api/regions/:id/join {}                      a public region: {region}; 409 conflict already a member; 403
@@ -267,7 +267,8 @@ export function registerLobbyRoutes(context: AppContext, lobby: Lobby): void {
     const {row, touched} = db.transaction(() => {
       const region = checkCreation(user.id, slot);
       const created = cities.create({
-        ownerId: user.id, name, state, population: prepared.population, cityTime: prepared.cityTime,
+        ownerId: user.id, name, state, population: prepared.population, score: prepared.score,
+        cityTime: prepared.cityTime,
         paused: prepared.paused, edgeState: prepared.edgeState, now,
         region: region && slot ? {id: region.id, x: slot.x, y: slot.y} : null,
       });
@@ -661,6 +662,7 @@ export function registerLobbyRoutes(context: AppContext, lobby: Lobby): void {
           name: slot.name,
           ownerName: slot.owner_name,
           population: room ? room.city.population : slot.population,
+          score: room ? room.city.score : slot.score,
           role: cities.member(slot.city_id, user.id)?.role ?? null,
         } : null});
       }

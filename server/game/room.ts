@@ -712,6 +712,7 @@ export class Room {
     const saved = this.deps.cities.saveState(this.id, {
       state: encodeState(this.city.saveText()),
       population: this.city.population,
+      score: this.city.score,
       cityTime: this.city.cityTime,
       paused: this.city.paused,
       edgeState: this.edge,

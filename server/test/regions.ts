@@ -113,7 +113,8 @@ describe('Regions in the lobby', () => {
                                        cities: 1});
     expect(view.slots).toEqual([
       {x: 0, y: 0, city: null},
-      {x: 1, y: 0, city: {id: city.id, name: 'Maxton', ownerName: 'Max', population: expect.any(Number), role: null}},
+      {x: 1, y: 0, city: {id: city.id, name: 'Maxton', ownerName: 'Max', population: expect.any(Number),
+                          score: expect.any(Number), role: null}},
       {x: 0, y: 1, city: null},
       {x: 1, y: 1, city: null},
     ]);

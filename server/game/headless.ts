@@ -460,6 +460,11 @@ export class HeadlessCity {
     return this.hud.population;
   }
 
+  // The score as the game shows it (see hud)
+  get score(): number {
+    return this.hud.score;
+  }
+
   get cityTime(): number {
     return this.simulation.getCityTime();
   }

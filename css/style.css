@@ -2535,6 +2535,39 @@ kbd {
   color: var(--green);
 }
 
+/* A region's common goal and its ranking (see Lobby) */
+.regionGoal {
+  margin: 0 0 6px;
+}
+
+.regionGoalBar {
+  margin-bottom: 10px;
+}
+
+#regionGoalBar {
+  height: 100%;
+  width: 0;
+  background: var(--gold);
+}
+
+.regionRanking {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rankNumber {
+  min-width: 1.5em;
+  color: var(--gold);
+}
+
+.regionRank {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  padding: 4px 0;
+}
+
 /* Scenarios */
 
 #scenarioPanel {

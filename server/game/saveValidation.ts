@@ -372,6 +372,7 @@ export function validateSave(input: unknown): CitySave {
 export interface PreparedCity {
   saveText: string;
   population: number;
+  score: number;
   cityTime: number;
   paused: boolean;
   edgeState: Record<string, EdgeState>;
@@ -396,7 +397,8 @@ export function prepareCity(input: unknown, options: PrepareOptions): PreparedCi
     const city = createHeadlessCity(save);
     city.recount();
     const saveText = city.saveText();
-    const prepared = {saveText, population: city.population, cityTime: city.cityTime, paused: city.paused,
+    const prepared = {saveText, population: city.population, score: city.score, cityTime: city.cityTime,
+                      paused: city.paused,
                       edgeState: city.edgeState()};
 
     const trial = createHeadlessCity(JSON.parse(saveText) as CitySave, {paused: false});

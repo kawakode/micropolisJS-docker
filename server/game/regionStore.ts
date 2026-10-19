@@ -58,6 +58,7 @@ export interface SlotRow {
   owner_id: number;
   owner_name: string;
   population: number;
+  score: number;
   region_x: number;
   region_y: number;
 }
@@ -176,7 +177,7 @@ export class RegionStore {
   slots(regionId: number): SlotRow[] {
     return this.db.all<SlotRow>(
       `SELECT c.id AS city_id, c.public_id AS city_public_id, c.name, c.owner_id, u.username AS owner_name,
-              c.population, c.region_x, c.region_y
+              c.population, c.score, c.region_x, c.region_y
        FROM cities c JOIN users u ON u.id = c.owner_id WHERE c.region_id = ? ORDER BY c.region_y, c.region_x`,
       regionId);
   }
