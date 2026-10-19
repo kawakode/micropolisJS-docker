@@ -446,6 +446,52 @@ def fire_post():
     return [box(4, 6, 24, 26, 10, doors), box(24, 18, 30, 26, 18, tower)], [], [], []
 
 
+BRONZE = ((214, 178, 92), (170, 134, 62), (120, 92, 44))
+
+
+def statue():
+    def paving(u, v):
+        return (226, 214, 186) if (int(u) // 2 + int(v) // 2) % 2 else (196, 184, 158)
+
+    stone = plain((236, 230, 214), (206, 198, 180), (236, 230, 214))
+    figure = ['.b.', '.B.', 'bBb', 'bBb', '.B.', '.B.', 'B.B']
+    return [flat(0, 0, 16, 16, paving), box(5, 5, 11, 11, 3, stone)], \
+        [Sprite(8, 8, 3, big(figure), {'b': BRONZE[0], 'B': BRONZE[1]})], [], []
+
+
+def town_hall():
+    walls_ = facade((246, 240, 226), (206, 198, 182), (220, 214, 200), (110, 160, 220), 3, 5, 2, trim=(RED, 13),
+                    door=((110, 74, 44), 40, 20), seed=97)
+    clock = facade((246, 240, 226), (206, 198, 182), (220, 214, 200), None, 3, 5, 2, trim=(RED, 34), seed=97)
+
+    def square(u, v):
+        if (u - 24) ** 2 + (v - 40) ** 2 <= 20:
+            return WATER_LIGHT if int(u + v) % 4 == 0 else (90, 170, 230)
+        return (226, 214, 186) if (int(u) // 3 + int(v) // 3) % 2 else (196, 184, 158)
+
+    shapes = [flat(0, 30, 48, 48, square), box(4, 4, 44, 26, 15, walls_),
+              roof(4, 4, 44, 26, 15, 5, ((200, 80, 60), (160, 60, 44)), (206, 198, 182)),
+              box(19, 10, 29, 20, 36, clock), roof(19, 10, 29, 20, 36, 7, ((200, 80, 60), (160, 60, 44)), (206, 198, 182))]
+    lines = [Line((2, 30, 0), (2, 30, 22), GREY_LIGHT)]
+    return shapes, [Sprite(4, 30, 22, ['bbbb', 'bbbb', 'bbb.'], {'b': (60, 110, 220)}), tree(10, 42), tree(42, 42)], \
+        lines, []
+
+
+def tower():
+    steel = ((236, 238, 246), (196, 200, 214), (150, 154, 172))
+
+    def paving(u, v):
+        return (226, 214, 186) if (int(u) // 2 + int(v) // 2) % 2 else (196, 184, 158)
+
+    def shaft(z):
+        return 4.5 - 2.5 * min(z, 60) / 60
+
+    shapes = [flat(0, 0, 32, 32, paving), tank(16, 16, shaft, 70, steel, (210, 212, 222)),
+              tank(16, 16, 7, 5, steel, (220, 222, 232), 58), dome(16, 16, 63, 7, steel, 0.4),
+              tank(16, 16, 1, 16, steel, WHITE, 64)]
+    return shapes, [Sprite(16, 16, 80, ['r'], {'r': RED})], [], []
+
+
 def stadium(full):
     cx, cy, rx, ry = 32, 32, 28, 24
 
@@ -727,7 +773,7 @@ def objects():
         out.append(('worship%d' % kind, 3, lambda k=kind: worship(k)))
     out += [('fire_station', 3, fire_station), ('police', 3, police), ('school', 3, school),
             ('university', 4, university), ('library', 2, library), ('police_post', 2, police_post),
-            ('fire_post', 2, fire_post), ('stadium', 4, lambda: stadium(False)), ('stadium_full', 4, lambda: stadium(True)),
+            ('fire_post', 2, fire_post), ('statue', 1, statue), ('town_hall', 3, town_hall), ('tower', 2, tower), ('stadium', 4, lambda: stadium(False)), ('stadium_full', 4, lambda: stadium(True)),
             ('port', 4, port), ('airport', 6, airport), ('coal', 4, coal), ('nuclear', 4, nuclear), ('gas', 3, gas),
             ('solar', 3, solar), ('bigpark', 3, bigpark), ('garden', 1, garden), ('plaza', 1, lambda: fountain(True)),
             ('fountain', 1, lambda: fountain(False))]

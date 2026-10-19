@@ -401,6 +401,32 @@ def fire_post():
     return compact(paint)
 
 
+def statue():
+    def paving(x, y):
+        return (226, 214, 186) if (x + y) % 2 else (196, 184, 158)
+
+    figure = ['.b.', '.B.', 'bBb', 'bBb', '.B.', '.B.', 'B.B']
+    plinth = Box(4.5, 4.5, 0, 8.5, 8.5, 2.5, walls((236, 230, 214), (206, 198, 182), (236, 230, 214)))
+    return [land(paving, edge=None), plinth], [Sprite(6.5, 6.5, 2.5, figure, {'b': (214, 178, 92), 'B': (170, 134, 62)})], []
+
+
+def town_hall():
+    hall = walls((246, 240, 226), (206, 198, 182), (220, 214, 200), ((110, 160, 220), 2, 3))
+    red = ((200, 80, 60), (160, 60, 44))
+    shapes = [land(grass), Box(1, 2, 0, 12, 8, 5, hall), gable(1, 2, 12, 8, 5, 2, red, (206, 198, 182), 'x'),
+              Box(5, 3, 0, 8, 6, 9, walls((246, 240, 226), (206, 198, 182), (220, 214, 200))),
+              gable(5, 3, 8, 6, 9, 2.5, red, (206, 198, 182), 'x')]
+    return shapes, [], []
+
+
+def tower():
+    steel = ((236, 238, 246), (196, 200, 214), (150, 154, 172))
+    shapes = [land(grass), cylinder(6.5, 6.5, 0, 16, 1.2, steel, (210, 212, 222)),
+              cylinder(6.5, 6.5, 13, 15, 2.6, steel, (220, 222, 232)), sphere(6.5, 6.5, 15, 2.6, steel),
+              cylinder(6.5, 6.5, 16, 20, 0.4, steel, WHITE)]
+    return shapes, [], []
+
+
 def park():
     def path(x, y):
         return (214, 196, 150) if abs(x - y) <= 1 else grass(x, y)
@@ -556,6 +582,9 @@ ICONS = [
     ('library', library),
     ('policepost', police_post),
     ('firepost', fire_post),
+    ('statue', statue),
+    ('townhall', town_hall),
+    ('tower', tower),
 ]
 
 

@@ -8,6 +8,7 @@
 import $ from "jquery";
 
 import { I18n } from './i18n.js';
+import { Monuments } from './monuments.js';
 import { ToolIcons } from './toolIcons.js';
 
 // The tool bar: the zones and the query tool are always at hand; everything else is grouped in categories (the
@@ -80,6 +81,12 @@ var TOOLS = {
           description: 'A paved square with a fountain, for city centres.'},
   bigpark: {name: 'Big park', size: 3, cost: 400, colour: '#22c55e',
             description: 'Lawns, trees and a pond: a boost to land values around it.'},
+  statue: {name: 'Statue', size: 1, cost: 1000, colour: '#ca8a04',
+           description: 'A monument to the founders: the land around it is worth more.'},
+  townhall: {name: 'Town hall', size: 3, cost: 5000, colour: '#b91c1c',
+             description: 'The pride of a city: the land around it is worth much more. $200 a year.'},
+  tower: {name: 'Tower', size: 2, cost: 15000, colour: '#e2e8f0',
+          description: 'Seen from everywhere: the land around it is worth far more. $400 a year.'},
   stadium: {name: 'Stadium', size: 4, cost: 5000, colour: '#a78bfa',
             description: 'Residents need one as the city grows.'},
 
@@ -102,7 +109,8 @@ var CATEGORIES = [
   {id: 'power', name: 'Power', key: '6', code: 'Digit6', tools: ['wire', 'wind', 'solar', 'gas', 'coal', 'nuclear']},
   {id: 'services', name: 'Services', key: '8', code: 'Digit8',
    tools: ['police', 'policepost', 'fire', 'firepost', 'school', 'library', 'hospital', 'university']},
-  {id: 'leisure', name: 'Leisure', key: '7', code: 'Digit7', tools: ['park', 'garden', 'plaza', 'bigpark', 'stadium']},
+  {id: 'leisure', name: 'Leisure', key: '7', code: 'Digit7', 
+   tools: ['park', 'garden', 'plaza', 'bigpark', 'stadium', 'statue', 'townhall', 'tower']},
   {id: 'terrain', name: 'Terrain', key: 'T', code: 'KeyT', tools: ['trees', 'water', 'landfill']}
 ];
 
@@ -127,6 +135,8 @@ var makeToolButton = function(toolName) {
     button.attr('data-key', tool.key);
   if (tool.brush)
     button.attr('data-brush', tool.brush);
+  if (Monuments.requiredPopulation(toolName) > 0)
+    button.attr('data-unlock', Monuments.requiredPopulation(toolName));
   return button;
 };
 
@@ -180,6 +190,15 @@ var refresh = function(currentTool) {
 
     button.toggleClass('selected', !!inCategory).toggleClass('unselected', !inCategory);
     button.attr('title', button.find('.toolName').text() + ': ' + I18n.t(TOOLS[shown].name));
+  });
+};
+
+
+// Shows the monuments the city is too small for as locked
+var setPopulation = function(population) {
+  $('.toolButton[data-unlock]').each(function() {
+    var button = $(this);
+    button.toggleClass('locked', Monuments.isLocked(button.attr('data-tool'), population));
   });
 };
 
@@ -247,6 +266,7 @@ var Toolbar = {
   build: build,
   bind: bind,
   refresh: refresh,
+  setPopulation: setPopulation,
   closeFlyout: closeFlyout,
   cycles: cycles,
   TOOLS: TOOLS,

@@ -30,7 +30,7 @@ var zoneTypes = ['Clear', 'Water', 'Trees', 'Rubble', 'Flood', 'Radioactive Wast
                  'Radar Dish', 'Fountain', 'Industrial', 'Steelers 38  Bears 3',
                  'Draw Bridge', 'Ur 238', 'Church', 'Clear', 'Wind Power', 'Gas Power', 'Solar Power',
                  'School', 'University', 'Park', 'Garden', 'Plaza', 'Library',
-                 'Police Department', 'Fire Department', 'Clear'];
+                 'Police Department', 'Fire Department', 'Statue', 'Town hall', 'Tower', 'Clear'];
 
 // Evaluation window
 var gameLevel = {};
@@ -69,7 +69,8 @@ var deals = {trade: 'Trade agreement', buyPower: 'Buy electricity', sellPower: '
 var toolMessages = {
   noMoney: 'Insufficient funds to build that',
   needsDoze: 'Area must be bulldozed first',
-  needsDozeManual: 'Bulldoze first (automatic bulldozing is off)'
+  needsDozeManual: 'Bulldoze first (automatic bulldozing is off)',
+  locked: 'Your city needs {n} inhabitants to build this'
 };
 
 // Message strings

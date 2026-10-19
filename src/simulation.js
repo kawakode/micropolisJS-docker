@@ -130,6 +130,10 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame, op
     healthMap: new BlockMap(this._map.width, this._map.height, 8),
     healthEffectMap: new BlockMap(this._map.width, this._map.height, 8),
 
+    // KawaCity: the prestige of the monuments, then spread over the neighbourhood
+    landmarkMap: new BlockMap(this._map.width, this._map.height, 8),
+    landmarkEffectMap: new BlockMap(this._map.width, this._map.height, 8),
+
     // Holds a value representing the rate of growth of a neighbourhood in the range -200 to +200
     rateOfGrowthMap: new BlockMap(this._map.width, this._map.height, 8),
 
@@ -307,6 +311,7 @@ Simulation.prototype._clearCensus = function() {
   this.blockMaps.policeStationMap.clear();
   this.blockMaps.educationMap.clear();
   this.blockMaps.healthMap.clear();
+  this.blockMaps.landmarkMap.clear();
 };
 
 

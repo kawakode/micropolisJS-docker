@@ -263,6 +263,8 @@ RemoteController.prototype._toolDone = function(toolName, error, reply) {
     game.showToolOutput(LocalController.needsDozeText());
   else if (applied === 0 && reason === 'failed')
     game.showToolOutput(I18n.t(TOOL_TEXTS.failed));
+  else if (applied === 0 && reason === 'locked')
+    game.showToolOutput(LocalController.lockedText(toolName));
   else
     game.showToolOutput(null);
 };

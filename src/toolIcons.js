@@ -49,6 +49,10 @@ var decorateToolButtons = function() {
     if (button.attr('data-description'))
       button.append($('<span class="toolDescription"></span>'));
 
+    // What a locked tool waits for (see Toolbar.setPopulation)
+    if (button.attr('data-unlock'))
+      button.append($('<span class="toolLock"></span>'));
+
     button.attr('aria-pressed', 'false');
   });
 
@@ -68,6 +72,10 @@ var labelToolButtons = function() {
     button.find('.toolName').text(I18n.t(button.attr('data-name')));
     button.find('.toolCost').text(cost);
     button.find('.toolDescription').text(description);
+    if (button.attr('data-unlock')) {
+      button.find('.toolLock').text(I18n.t('From {n} inhabitants',
+                                           {n: I18n.formatNumber(Number(button.attr('data-unlock')))}));
+    }
 
     var title = label + (cost ? ' (' + cost + ')' : '') + (key ? ' [' + key + ']' : '') + (description ? ': ' + description : '');
     button.attr('title', title);

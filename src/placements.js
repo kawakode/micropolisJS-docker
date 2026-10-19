@@ -59,6 +59,9 @@ var SIZES = {
   library: 2,
   policepost: 2,
   firepost: 2,
+  statue: 1,
+  townhall: 3,
+  tower: 2,
   university: 4,
   bigpark: 3
 };

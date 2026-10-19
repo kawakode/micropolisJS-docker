@@ -278,6 +278,10 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
   // Listen for budget messages
   this.simulation.addEventListener(Messages.BUDGET_NEEDED, this.handleMandatoryBudget.bind(this));
 
+  // The monuments unlock as the city grows (before the first count, with the population it was saved with)
+  Toolbar.setPopulation(this.simulation.getPopulation() || this.simulation.evaluation.cityPop);
+  this.simulation.addEventListener(Messages.POPULATION_UPDATED, Toolbar.setPopulation);
+
   // Listen for tools being applied
   this.inputStatus.addEventListener(Messages.TOOL_APPLY, this.handleTool.bind(this));
   this.inputStatus.addEventListener(Messages.TOOL_CHANGED, function() { this._preview = null; }.bind(this));

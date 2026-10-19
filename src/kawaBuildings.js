@@ -14,13 +14,18 @@ import * as TileValues from "./tileValues.ts";
 // Schools and universities educate the neighbourhood: they add to the education map, which, once smoothed (see
 // BlockMapUtils.crimeScan), raises land values and lowers crime around them. Like police stations, they work at
 // half strength without power or without a road. Hospitals do the same with the health map, which makes homes grow
-// better and raises land values (see Residential.evalResidential). Libraries are small schools. Parks, gardens and plazas count as green space for land values
+// better and raises land values (see Residential.evalResidential). Libraries are small schools. Monuments add their
+// prestige to the landmark map, which raises land values more than anything. Parks, gardens and plazas count as green space for land values
 // (see BlockMapUtils.pollutionTerrainLandValueScan).
 
 var SCHOOL_STRENGTH = 800;
 var UNIVERSITY_STRENGTH = 1600;
 var HOSPITAL_STRENGTH = 1000;
 var LIBRARY_STRENGTH = 400;
+// The prestige of the monuments (see Monuments)
+var STATUE_PRESTIGE = 400;
+var TOWNHALL_PRESTIGE = 1200;
+var TOWER_PRESTIGE = 2400;
 
 
 // Whether there is a road or rail along the edge of a building of the given size, whose centre is at (x, y)
@@ -94,17 +99,20 @@ var isGreenSpace = function(tileValue) {
 var getZoneSize = function(tileValue) {
   switch (tileValue) {
     case TileValues.WINDTURBINE:
+    case TileValues.STATUE:
       return 1;
 
     case TileValues.LIBRARY:
     case TileValues.POLICEPOST:
     case TileValues.FIREPOST:
+    case TileValues.TOWER:
       return 2;
 
     case TileValues.GASPLANT:
     case TileValues.SOLARPLANT:
     case TileValues.SCHOOL:
     case TileValues.BIGPARK:
+    case TileValues.TOWNHALL:
       return 3;
 
     case TileValues.UNIVERSITY:
@@ -129,6 +137,9 @@ var KawaBuildings = {
     mapScanner.addAction(TileValues.LIBRARY, makeServiceHandler('libraryPop', LIBRARY_STRENGTH, 2, 'educationMap'));
     mapScanner.addAction(TileValues.POLICEPOST, makePostHandler('policePostPop', 'policeEffect', 'policeStationMap'));
     mapScanner.addAction(TileValues.FIREPOST, makePostHandler('firePostPop', 'fireEffect', 'fireStationMap'));
+    mapScanner.addAction(TileValues.STATUE, makeServiceHandler('statuePop', STATUE_PRESTIGE, 1, 'landmarkMap'));
+    mapScanner.addAction(TileValues.TOWNHALL, makeServiceHandler('townHallPop', TOWNHALL_PRESTIGE, 3, 'landmarkMap'));
+    mapScanner.addAction(TileValues.TOWER, makeServiceHandler('towerPop', TOWER_PRESTIGE, 2, 'landmarkMap'));
     mapScanner.addAction(TileValues.BIGPARK, parkFound);
 
     repairManager.addAction(TileValues.SCHOOL, 15, 3);
@@ -137,6 +148,8 @@ var KawaBuildings = {
     repairManager.addAction(TileValues.LIBRARY, 15, 2);
     repairManager.addAction(TileValues.POLICEPOST, 7, 2);
     repairManager.addAction(TileValues.FIREPOST, 7, 2);
+    repairManager.addAction(TileValues.TOWNHALL, 15, 3);
+    repairManager.addAction(TileValues.TOWER, 15, 2);
     repairManager.addAction(TileValues.BIGPARK, 15, 3);
   }
 };

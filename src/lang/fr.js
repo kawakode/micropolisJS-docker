@@ -164,6 +164,18 @@ var strings = {
   'Raises land values and lowers crime nearby. $100 a year.':
     'Fait monter les prix fonciers et baisser la criminalité alentour. 100 $ par an.',
   'Hospital': 'Hôpital',
+  'Statue': 'Statue',
+  'A monument to the founders: the land around it is worth more.':
+    'Un monument aux fondateurs : le terrain alentour vaut plus cher.',
+  'Town hall': 'Mairie',
+  'The pride of a city: the land around it is worth much more. $200 a year.':
+    'La fierté d\'une ville : le terrain alentour vaut bien plus cher. 200 $ par an.',
+  'Tower': 'Tour',
+  'Seen from everywhere: the land around it is worth far more. $400 a year.':
+    'Visible de partout : le terrain alentour vaut beaucoup plus cher. 400 $ par an.',
+  'From {n} inhabitants': 'Dès {n} habitants',
+  'Your city needs {n} inhabitants to build this': 'Votre ville doit compter {n} habitants pour construire ceci',
+  'Your city is too small to build this': 'Votre ville est trop petite pour construire ceci',
   'Police post': 'Poste de police',
   'A small police station for dense neighbourhoods: half as strong. $50 a year.':
     'Un petit commissariat pour les quartiers denses : deux fois moins efficace. 50 $ par an.',

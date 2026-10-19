@@ -12,7 +12,8 @@
  */
 
 import { Tile } from "./tile.ts";
-import { BIGPARK, FLOOD } from "./tileValues.ts";
+import { FLOOD } from "./tileValues.ts";
+import { TileUtils } from "./tileUtils.js";
 
 // Tile to be filled to avoid creating lots of GC-able objects
 var tile = new Tile();
@@ -49,9 +50,9 @@ MapScanner.prototype.mapScan = function(startX, maxX, simData) {
       if (tile.isZone()) {
         simData.repairManager.checkTile(x, y, simData.cityTime);
 
-        // The power was set just above: read it from the map, not from our copy of the tile. Parks need no power:
+        // The power was set just above: read it from the map, not from our copy of the tile. Parks and statues need no power:
         // they don't count among the zones that have it or not
-        if (tileValue !== BIGPARK) {
+        if (TileUtils.needsPower(tileValue)) {
           if (this._map.getTile(x, y).isPowered())
             simData.census.poweredZoneCount += 1;
           else

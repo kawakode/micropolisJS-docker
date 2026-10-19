@@ -242,6 +242,49 @@ def fire_post():
     return a
 
 
+def statue():
+    a = Art(1, 'lgrey')
+    # A statue on its plinth, in the middle of a small paved square with flower beds in the corners
+    a.frame(0, 0, 16, 16, 'grey')
+    for x, y in ((1, 1), (12, 1), (1, 12), (12, 12)):
+        a.rect(x, y, 3, 3, 'dgreen').pixel(x + 1, y + 1, 'red')
+    a.rect(5, 9, 6, 4, 'grey').rect(5, 9, 6, 1, 'white')
+    a.rect(7, 3, 2, 7, 'olive').disc(8, 3, 1.5, 'olive').rect(6, 5, 4, 1, 'olive')
+    return a
+
+
+def town_hall():
+    a = Art(3, 'lgrey')
+    # A grand hall with two wings, a clock tower and a flag, over a paved square
+    a.rect(3, 4, 42, 22, 'white').rect(3, 4, 42, 4, 'red')
+    for x in range(6, 43, 4):
+        a.rect(x, 12, 2, 4, 'water').rect(x, 19, 2, 4, 'water')
+    a.rect(18, 2, 12, 26, 'white').rect(18, 2, 12, 3, 'red')
+    a.disc(24, 10, 4, 'lgrey').disc(24, 10, 3, 'white').line(24, 10, 24, 8, 'dgrey').line(24, 10, 26, 10, 'dgrey')
+    a.rect(21, 20, 6, 8, 'brown')
+    a.rect(16, 28, 16, 3, 'grey')
+    # The square: paving, a fountain and lawns
+    for x in range(0, 48, 6):
+        a.rect(x, 33, 1, 15, 'grey')
+    a.disc(24, 40, 5, 'grey').disc(24, 40, 4, 'water').disc(24, 40, 1.5, 'white')
+    a.rect(3, 34, 12, 12, 'dgreen').rect(33, 34, 12, 12, 'dgreen')
+    a.tree(9, 40, 3).tree(39, 40, 3)
+    a.rect(44, 0, 1, 10, 'dgrey').rect(45, 0, 3, 3, 'blue')
+    return a
+
+
+def tower():
+    a = Art(2, 'lgrey')
+    # A tall tower seen from above: its round observation deck and antenna, its long shadow on the plaza
+    a.frame(0, 0, 32, 32, 'grey')
+    a.rect(16, 17, 14, 4, 'dgrey').rect(20, 21, 10, 3, 'dgrey')
+    a.disc(15, 15, 10, 'white').disc(15, 15, 8, 'lgrey').disc(15, 15, 6, 'water').disc(15, 15, 3, 'white')
+    a.rect(14, 14, 3, 3, 'red')
+    for x, y in ((3, 28), (28, 3)):
+        a.tree(x, y, 2)
+    return a
+
+
 # Tile numbers: keep in sync with src/tileValues.ts. Each entry: (first tile, size, drawing)
 WIND = 1024
 WIND_FRAMES = [1025, 1026, 1027]
@@ -255,6 +298,9 @@ PLAZA = 1081
 LIBRARYBASE = 1082
 POLICEPOSTBASE = 1086
 FIREPOSTBASE = 1090
+STATUE = 1094
+TOWNHALLBASE = 1095
+TOWERBASE = 1104
 
 BUILDINGS = [
     (WIND, 1, lambda: wind_turbine(0)),
@@ -271,6 +317,9 @@ BUILDINGS = [
     (LIBRARYBASE, 2, library),
     (POLICEPOSTBASE, 2, police_post),
     (FIREPOSTBASE, 2, fire_post),
+    (STATUE, 1, statue),
+    (TOWNHALLBASE, 3, town_hall),
+    (TOWERBASE, 2, tower),
 ]
 
 

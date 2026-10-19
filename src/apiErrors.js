@@ -70,7 +70,9 @@ var KICK_TEXTS = {
 var TOOL_TEXTS = {
   no_money: 'Insufficient funds to build that',
   needs_bulldoze: 'Area must be bulldozed first',
-  failed: 'That cannot be built there'
+  failed: 'That cannot be built there',
+  // A monument the city is too small for (the game says how many people it needs: see LocalController.lockedText)
+  locked: 'Your city is too small to build this'
 };
 
 // The codes only the game reports

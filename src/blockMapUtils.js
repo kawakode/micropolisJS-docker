@@ -276,6 +276,9 @@ var pollutionTerrainLandValueScan = function(map, census, blockMaps, pollutionFa
         // ... and so is a hospital
         landValue += Math.min(25, Math.floor(blockMaps.healthEffectMap.worldGet(worldX, worldY) / 8));
 
+        // ... and nothing beats a view of a monument
+        landValue += Math.min(60, Math.floor(blockMaps.landmarkEffectMap.worldGet(worldX, worldY) / 4));
+
         // Clamp in range 1-250 (0 represents undeveloped land)
         landValue = MiscUtils.clamp(landValue, 1, 250);
         landValueMap.set(x, y, landValue);
@@ -364,6 +367,13 @@ var crimeScan = function(census, blockMaps, crimeFactor) {
   smoothMap(healthMap, healthEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
   smoothMap(healthEffectMap, healthMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
   smoothMap(healthMap, healthEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+
+  // And monuments
+  var landmarkMap = blockMaps.landmarkMap;
+  var landmarkEffectMap = blockMaps.landmarkEffectMap;
+  smoothMap(landmarkMap, landmarkEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  smoothMap(landmarkEffectMap, landmarkMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  smoothMap(landmarkMap, landmarkEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
 
   var totalCrime = 0;
   var crimeZoneCount = 0;

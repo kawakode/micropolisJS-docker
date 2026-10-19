@@ -340,7 +340,12 @@ export const POLICEPOSTBASE = 1086; // Compact police station (tiles 1086--1089)
 export const POLICEPOST     = 1089;
 export const FIREPOSTBASE   = 1090; // Compact fire station (tiles 1090--1093)
 export const FIREPOST       = 1093;
-export const KAWALAST       = 1093;
+export const STATUE         = 1094; // A 1x1 monument, its own centre
+export const TOWNHALLBASE   = 1095; // Town hall (tiles 1095--1103)
+export const TOWNHALL       = 1099;
+export const TOWERBASE      = 1104; // Tower (tiles 1104--1107)
+export const TOWER          = 1107;
+export const KAWALAST       = 1107;
 
 export const TILE_COUNT     = 2048;
 

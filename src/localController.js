@@ -20,6 +20,7 @@ import { BaseTool } from './baseTool.js';
 import { DebugWindow } from './debugWindow.js';
 import { DisasterWindow } from './disasterWindow.js';
 import { I18n } from './i18n.js';
+import { Monuments } from './monuments.js';
 import { SettingsWindow } from './settingsWindow.js';
 import { Simulation } from './simulation.js';
 import { Storage } from './storage.js';
@@ -32,6 +33,12 @@ import { Text } from './text.js';
 // The warning for a tool that can't act until the land is bulldozed: hint at the setting when it is off
 var needsDozeText = function() {
   return I18n.t(BaseTool.getAutoBulldoze() ? Text.toolMessages.needsDoze : Text.toolMessages.needsDozeManual);
+};
+
+
+// The warning for a monument the city is too small for (see Monuments)
+var lockedText = function(toolName) {
+  return I18n.t(Text.toolMessages.locked, {n: I18n.formatNumber(Monuments.requiredPopulation(toolName))});
 };
 
 
@@ -48,6 +55,12 @@ LocalController.prototype.applyTool = function(data) {
   var tool = game.inputStatus.gameTools[data.toolName];
   if (tool === undefined || game.dialogOpen)
     return;
+
+  if (Monuments.isLocked(data.toolName, game.simulation.getPopulation() || game.simulation.evaluation.cityPop)) {
+    game._preview = null;
+    $('#toolOutput').text(LocalController.lockedText(data.toolName));
+    return;
+  }
 
   var budget = game.simulation.budget;
   var blockMaps = game.simulation.blockMaps;
@@ -316,6 +329,7 @@ LocalController.prototype.save = function() {
 
 
 LocalController.needsDozeText = needsDozeText;
+LocalController.lockedText = lockedText;
 
 
 export { LocalController };

@@ -13,7 +13,7 @@
 
 import { ANIMBIT, BIT_MASK, POWERBIT, ZONEBIT } from './tileFlags.ts';
 import { TileHistory } from './tileHistory.js';
-import { BIGPARK, LASTTINYEXP, LIGHTNINGBOLT, TILE_COUNT, TILE_INVALID } from "./tileValues.ts";
+import { LASTTINYEXP, LIGHTNINGBOLT, TILE_COUNT, TILE_INVALID } from "./tileValues.ts";
 import { TileUtils } from './tileUtils.js';
 
 
@@ -116,7 +116,7 @@ AnimationManager.prototype.getTiles = function(tileValues, offsetX, offsetY, xBo
         continue;
 
       // Unpowered zones blink (a park needs no power)
-      if (shouldBlink && (tile & ZONEBIT) && !(tile & POWERBIT) && (tile & BIT_MASK) !== BIGPARK) {
+      if (shouldBlink && (tile & ZONEBIT) && !(tile & POWERBIT) && TileUtils.needsPower(tile & BIT_MASK)) {
         tileValues[index] = LIGHTNINGBOLT;
         continue;
       }

@@ -111,6 +111,9 @@ Evaluation.prototype.getAssessedValue = function(census) {
   value += census.libraryPop * 600;
   value += census.policePostPop * 400;
   value += census.firePostPop * 400;
+  value += census.statuePop * 1000;
+  value += census.townHallPop * 5000;
+  value += census.towerPop * 15000;
   value += census.parkPop * 300;
 
   this.cityAssessedValue = value * 1000;

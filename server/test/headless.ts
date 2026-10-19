@@ -297,6 +297,20 @@ describe('The tools of a headless city', () => {
     expect(city.map.getRoadClass(at.x, at.y + 1)).toBe((GameMap as any).ROAD_AVENUE);
   });
 
+  test('build a monument only in a city large enough for it', () => {
+    const city = createHeadlessCity(emptyLand(), {random: seededRandom(2)});
+    const at = findDirt(city, 4, 4);
+    const centre = {x: at.x + 1, y: at.y + 1};
+
+    expect(city.applyTool('statue', centre, centre)).toEqual({applied: 0, failed: 1, reason: 'locked', cost: 0,
+                                                              placements: [centre]});
+    expect(tileValue(city, centre.x, centre.y)).toBe(TileValues.DIRT);
+
+    city.hud.population = 2000;
+    expect(city.applyTool('statue', centre, centre)).toMatchObject({applied: 1, reason: null, cost: 1000});
+    expect(tileValue(city, centre.x, centre.y)).toBe(TileValues.STATUE);
+  });
+
   test('act as the game\'s tools do, random numbers included', () => {
     const save = sampleCity('kowloon');
     const city = createHeadlessCity(save, {random: seededRandom(9)});
