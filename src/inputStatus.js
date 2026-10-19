@@ -90,6 +90,8 @@ var InputStatus = EventEmitter(function(map, gameCanvas) {
   // Keyboard movement
   this._keysHeld = {up: false, down: false, left: false, right: false};
   this._toolCycles = {KeyB: BULLDOZER_SIZES};
+  // A finger (or pen) moves the map, whatever the tool (see the button #panLockRequest)
+  this.panLock = false;
   this._lastShortcut = null;
 
   // The last known position of the mouse over the canvas, in CSS pixels relative to the canvas (or null)
@@ -161,6 +163,12 @@ var InputStatus = EventEmitter(function(map, gameCanvas) {
   $('#debugRequest').click(debugHandler.bind(this));
   $('#zoomInRequest').click(function(e) { e.preventDefault(); self._gameCanvas.zoomIn(); });
   $('#zoomOutRequest').click(function(e) { e.preventDefault(); self._gameCanvas.zoomOut(); });
+  // On a touch screen, one finger builds with the tool in hand: this button makes it move the map instead
+  $('#panLockRequest').click(function(e) {
+    e.preventDefault();
+    self.panLock = !self.panLock;
+    $(this).toggleClass('pressed', self.panLock).attr('aria-pressed', String(self.panLock));
+  });
 });
 
 
@@ -353,7 +361,8 @@ var pointerDownHandler = function(e) {
     return;
 
   var panButton = e.button === 1 || e.button === 2;
-  if (panButton || this.currentTool === null) {
+  var panLocked = this.panLock && e.pointerType !== 'mouse';
+  if (panButton || panLocked || this.currentTool === null) {
     this._gesture = {type: 'pan', pointerId: e.pointerId, button: e.button, start: coords, last: coords, moved: false};
   } else if (e.button === 0) {
     var tile = this._dragTileAt(coords);

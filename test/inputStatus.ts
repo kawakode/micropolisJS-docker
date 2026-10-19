@@ -107,3 +107,23 @@ describe("A category's key", () => {
         expect(chosen).toEqual(["bulldozer3"]);
     });
 });
+
+describe("Moving the map with a finger", () => {
+    it("pans instead of building once the hand button is pressed, but a mouse still builds", () => {
+        const input = new InputStatus({width: 120, height: 100}, {canvasCoordinateToTileCoordinate: () => ({x: 5, y: 5})});
+        input.currentTool = {};
+        input.toolName = "road";
+        const down = (id: number, type: string) => handlers.pointerdown({isPrimary: true, pointerId: id, pointerType: type,
+                                                                        button: 0, clientX: 200, clientY: 300,
+                                                                        preventDefault: () => undefined});
+
+        down(1, "touch");
+        expect(input._gesture.type).toBe("tool");
+
+        input.panLock = true;
+        down(2, "touch");
+        expect(input._gesture.type).toBe("pan");
+        down(3, "mouse");
+        expect(input._gesture.type).toBe("tool");
+    });
+});

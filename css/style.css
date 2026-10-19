@@ -810,6 +810,23 @@ a.hudButton, a.hudButton:visited {
   display: none;
 }
 
+/* Only on touch screens, where one finger builds */
+.mapButton.panLock {
+  display: none;
+  font-size: 20px;
+}
+
+@media (pointer: coarse) {
+  .mapButton.panLock {
+    display: block;
+  }
+}
+
+.mapButton.panLock.pressed {
+  background: var(--gold);
+  box-shadow: inset 3px 3px 0 #22328a, inset -3px -3px 0 #4c66d2;
+}
+
 .mapButton {
   width: 42px;
   height: 42px;
