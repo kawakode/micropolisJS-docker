@@ -107,6 +107,7 @@ const RULES: Readonly<Record<string, Rule>> = {
   policeEffect: {type: 'integer', min: 0, max: 1000},
   fireEffect: {type: 'integer', min: 0, max: 1000},
   dealsFund: {type: 'integer', min: INT32_MIN, max: INT32_MAX, optional: true},
+  upkeepFund: {type: 'integer', min: INT32_MIN, max: 0, optional: true},
 
   // Census (the histories are checked apart)
   resPop: {type: 'integer', min: 0, max: INT32_MAX},

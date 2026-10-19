@@ -61,6 +61,19 @@ describe("The budget", () => {
         expect(heard).toEqual(["broke"]);
     });
 
+    it("pays for the upkeep of schools and universities every year", () => {
+        const budget = new (Budget as any)();
+        budget.setFunds(1000);
+        budget.collectTax(0, {totalPop: 0, schoolPop: 2, universityPop: 1, policeStationPop: 0, fireStationPop: 0,
+                              roadTotal: 0, railTotal: 0, landValueAverage: 0}, 0);
+        expect(budget.upkeepFund).toBe(-450);
+        expect(budget.totalFunds).toBe(550);
+
+        const saved: any = {};
+        budget.save(saved);
+        expect(saved.upkeepFund).toBe(-450);
+    });
+
     it("shows each rate as it is: 29% stays 29% (0.29 * 100 is 28.999...)", () => {
         for (let percent = 0; percent <= 100; percent++)
             expect([percent, (BudgetWindow as any).rateOf(percent / 100)]).toEqual([percent, percent]);

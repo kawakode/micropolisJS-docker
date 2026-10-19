@@ -145,14 +145,18 @@ BudgetWindow.prototype.open = function(budgetData) {
 
   // KawaCity: what the deals with the neighbouring cities earned or cost this year
   var dealsFund = budgetData.dealsFund || 0;
+  // And what the upkeep of its schools and universities cost
+  var upkeepFund = budgetData.upkeepFund || 0;
 
-  var cashFlow = taxesCollected + dealsFund - this.roadMaintenanceBudget - this.fireMaintenanceBudget -
+  var cashFlow = taxesCollected + dealsFund + upkeepFund - this.roadMaintenanceBudget - this.fireMaintenanceBudget -
                  this.policeMaintenanceBudget;
   var currentFunds = previousFunds + cashFlow;
   var money = I18n.money;
   $('#taxesCollected').text(money(taxesCollected));
   $('#dealsFund').text(money(dealsFund));
   $('#dealsInfo').toggleClass('hidden', dealsFund === 0);
+  $('#upkeepFund').text(money(upkeepFund));
+  $('#upkeepInfo').toggleClass('hidden', upkeepFund === 0);
   $('#cashFlow').text(money(cashFlow));
   $('#previousFunds').text(money(previousFunds));
   $('#currentFunds').text(money(currentFunds));

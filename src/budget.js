@@ -18,6 +18,9 @@ import { MiscUtils } from './miscUtils.js';
 // Cost of maintaining 1 police station
 var policeMaintenanceCost = 100;
 
+// KawaCity: the yearly upkeep of the buildings that aren't funded by a slider (see collectTax)
+var UPKEEP = {schoolPop: 100, universityPop: 250};
+
 // Cost of maintaining 1 fire station
 var fireMaintenanceCost = 100;
 
@@ -50,6 +53,8 @@ var Budget = EventEmitter(function() {
 
   // KawaCity: what the deals with the neighbouring cities earned (or cost, if negative) this year (see Neighbours)
   this.dealsFund = 0;
+  // And what the upkeep of its schools and universities cost this year (negative)
+  this.upkeepFund = 0;
 
   // These values denote how much money is required to fully maintain the relevant services
   this.roadMaintenanceBudget = 0;
@@ -75,7 +80,8 @@ var Budget = EventEmitter(function() {
 
 var saveProps = ['autoBudget', 'totalFunds', 'policePercent', 'roadPercent', 'firePercent', 'roadSpend',
                  'policeSpend', 'fireSpend', 'roadMaintenanceBudget', 'policeMaintenanceBudget',
-                 'fireMaintenanceBudget', 'cityTax', 'roadEffect', 'policeEffect', 'fireEffect', 'dealsFund'];
+                 'fireMaintenanceBudget', 'cityTax', 'roadEffect', 'policeEffect', 'fireEffect', 'dealsFund',
+                 'upkeepFund'];
 
 Budget.prototype.save = function(saveData) {
   for (var i = 0, l = saveProps.length; i < l; i++)
@@ -87,8 +93,9 @@ Budget.prototype.load = function(saveData) {
   for (var i = 0, l = saveProps.length; i < l; i++)
     this[saveProps[i]] = saveData[saveProps[i]];
 
-  // Saved before there were deals
+  // Saved before there were deals, or upkeep
   this.dealsFund = this.dealsFund || 0;
+  this.upkeepFund = this.upkeepFund || 0;
 
   this._emitEvent(Messages.AUTOBUDGET_CHANGED, this.autoBudget);
   this._emitEvent(Messages.FUNDS_CHANGED, this.totalFunds);
@@ -132,7 +139,7 @@ Budget.prototype._calculateBestPercentages = function() {
   var policeCost = 0;
 
   // Deals that cost more than the city has can leave nothing to spend, but never less than nothing
-  var cashRemaining = Math.max(0, this.totalFunds + this.taxFund + this.dealsFund);
+  var cashRemaining = Math.max(0, this.totalFunds + this.taxFund + this.otherFunds());
 
   // Spending priorities: road, fire, police
   if (cashRemaining >= this.roadSpend)
@@ -201,7 +208,7 @@ Budget.prototype.doBudgetNow = function(fromWindow) {
   var policeCost = costs.police;
   var fireCost = costs.fire;
   var totalCost = roadCost + policeCost + fireCost;
-  var cashRemaining = this.totalFunds + this.taxFund + this.dealsFund - totalCost;
+  var cashRemaining = this.totalFunds + this.taxFund + this.otherFunds() - totalCost;
 
   // Autobudget
   if ((cashRemaining > 0 && this.autoBudget) || fromWindow) {
@@ -225,7 +232,7 @@ Budget.prototype.doBudgetSpend = function(roadValue, fireValue, policeValue) {
   this.policeSpend = policeValue;
   var total = this.roadSpend + this.fireSpend + this.policeSpend;
 
-  this.spend(-(this.taxFund + this.dealsFund - total));
+  this.spend(-(this.taxFund + this.otherFunds() - total));
   this.updateFundEffects();
 };
 
@@ -252,10 +259,20 @@ Budget.prototype.updateFundEffects = function() {
 };
 
 
+// What the city earned or paid this year besides taxes and the services of the sliders: its deals and its upkeep
+Budget.prototype.otherFunds = function() {
+  return this.dealsFund + this.upkeepFund;
+};
+
+
 // dealsFund: what the deals with the neighbouring cities earned (or cost) over the year
 Budget.prototype.collectTax = function(gameLevel, census, dealsFund) {
   this.cashFlow = 0;
   this.dealsFund = dealsFund || 0;
+  var upkeep = Object.keys(UPKEEP).reduce(function(total, counter) {
+    return total + (census[counter] || 0) * UPKEEP[counter];
+  }, 0);
+  this.upkeepFund = upkeep > 0 ? -upkeep : 0;
 
   // How much would it cost to fully fund every service?
   this.policeMaintenanceBudget = census.policeStationPop * policeMaintenanceCost;
@@ -268,7 +285,7 @@ Budget.prototype.collectTax = function(gameLevel, census, dealsFund) {
   this.taxFund = Math.floor(Math.floor(census.totalPop * census.landValueAverage / 120) * this.cityTax * FLevels[gameLevel]);
 
   if (census.totalPop > 0) {
-    this.cashFlow = this.taxFund + this.dealsFund -
+    this.cashFlow = this.taxFund + this.otherFunds() -
                     (this.policeMaintenanceBudget + this.fireMaintenanceBudget + this.roadMaintenanceBudget);
     this.doBudgetNow(false);
   } else {
@@ -278,8 +295,8 @@ Budget.prototype.collectTax = function(gameLevel, census, dealsFund) {
     this.policeEffect = this.MAX_POLICESTATION_EFFECT;
     this.fireEffect   = this.MAX_FIRESTATION_EFFECT;
 
-    // The deals are settled all the same
-    this.spend(-this.dealsFund);
+    // The deals and the upkeep are settled all the same
+    this.spend(-this.otherFunds());
   }
 };
 

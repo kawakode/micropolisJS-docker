@@ -42,6 +42,7 @@ var strings = {
   'Zoom out (-)': 'Dézoomer (-)',
   'Live': 'En direct',
   'Close': 'Fermer',
+  'Schools upkeep': 'Entretien des écoles',
   'Move the map with one finger, even with a tool in hand': 'Déplacer la carte d\'un doigt, même avec un outil en main',
   'Move the map': 'Déplacer la carte',
   'Press this key again and again to go through these tools': 'Appuyez plusieurs fois sur cette touche pour passer d\'un outil à l\'autre',
@@ -159,9 +160,11 @@ var strings = {
   'Fire station': 'Caserne',
   'Puts fires out faster around it. $100 a year.': 'Éteint plus vite les incendies alentour. 100 $ par an.',
   'School': 'École',
-  'Raises land values and lowers crime nearby.': 'Fait monter les prix fonciers et baisser la criminalité alentour.',
+  'Raises land values and lowers crime nearby. $100 a year.':
+    'Fait monter les prix fonciers et baisser la criminalité alentour. 100 $ par an.',
   'University': 'Université',
-  'Like a school, twice as strong and further reaching.': 'Comme une école, deux fois plus efficace, et de plus loin.',
+  'Like a school, twice as strong and further reaching. $250 a year.':
+    'Comme une école, deux fois plus efficace, et de plus loin. 250 $ par an.',
   'Park': 'Parc',
   'A few trees or a fountain: raises land values.': 'Quelques arbres ou une fontaine : fait monter les prix fonciers.',
   'Garden': 'Jardin',

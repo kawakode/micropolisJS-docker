@@ -195,7 +195,8 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
       taxRate: this.simulation.budget.cityTax,
       totalFunds: this.simulation.budget.totalFunds,
       taxesCollected: this.simulation.budget.taxFund,
-      dealsFund: this.simulation.budget.dealsFund
+      dealsFund: this.simulation.budget.dealsFund,
+      upkeepFund: this.simulation.budget.upkeepFund
     };
 
     this._windowShown = budgetData;

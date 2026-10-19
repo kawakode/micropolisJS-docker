@@ -41,7 +41,8 @@ var EVALUATION_FIELDS = ['cityYes', 'cityPop', 'cityPopDelta', 'cityAssessedValu
                          'cityScoreDelta'];
 var BUDGET_FIELDS = ['policePercent', 'roadPercent', 'firePercent', 'roadSpend', 'policeSpend', 'fireSpend',
                      'roadMaintenanceBudget', 'policeMaintenanceBudget', 'fireMaintenanceBudget', 'cityTax',
-                     'roadEffect', 'policeEffect', 'fireEffect', 'dealsFund', 'taxFund', 'cashFlow'];
+                     'roadEffect', 'policeEffect', 'fireEffect', 'dealsFund', 'upkeepFund', 'taxFund',
+                     'cashFlow'];
 var CENSUS_FIELDS = ['resPop', 'comPop', 'indPop', 'crimeRamp', 'pollutionRamp', 'landValueAverage',
                      'pollutionAverage', 'crimeAverage', 'totalPop'];
 var HISTORY_FIELDS = ['resHist10', 'resHist120', 'comHist10', 'comHist120', 'indHist10', 'indHist120', 'crimeHist10',

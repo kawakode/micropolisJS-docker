@@ -60,9 +60,9 @@ var TOOLS = {
   fire: {name: 'Fire station', size: 3, cost: 500, colour: '#dc2626', key: '9',
          description: 'Puts fires out faster around it. $100 a year.'},
   school: {name: 'School', size: 3, cost: 1000, colour: '#f97316',
-           description: 'Raises land values and lowers crime nearby.'},
+           description: 'Raises land values and lowers crime nearby. $100 a year.'},
   university: {name: 'University', size: 4, cost: 3000, colour: '#38bdf8',
-               description: 'Like a school, twice as strong and further reaching.'},
+               description: 'Like a school, twice as strong and further reaching. $250 a year.'},
 
   park: {name: 'Park', size: 1, cost: 10, colour: '#16a34a', key: '7',
          description: 'A few trees or a fountain: raises land values.'},
