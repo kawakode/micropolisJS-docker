@@ -255,8 +255,9 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
   this.simulation.addEventListener(Messages.SCENARIO_ENDED, this.handleScenarioEnded.bind(this));
 
   // ... and finally the query window
-  this.queryWindow = new QueryWindow(opacityLayerID, 'queryWindow');
-  this.queryWindow.addEventListener(Messages.QUERY_WINDOW_CLOSED, this.genericDialogClosure);
+  this.queryWindow = new QueryWindow();
+  // A game before this one may have left it open
+  this.queryWindow.close();
   this.inputStatus.addEventListener(Messages.QUERY_WINDOW_NEEDED, this.handleQueryRequest.bind(this));
 
   // Listen for clicks on the save button
@@ -708,7 +709,10 @@ var makeWindowOpenHandler = function(winName, customFn) {
 
 Game.prototype.handleDebugRequest = makeWindowOpenHandler('debug');
 Game.prototype.handleDisasterRequest = makeWindowOpenHandler('disaster');
-Game.prototype.handleQueryRequest = makeWindowOpenHandler('query');
+// The query tool's panel doesn't stop the city: it is not a dialog
+Game.prototype.handleQueryRequest = function() {
+  this.queryWindow.open();
+};
 
 
 Game.prototype.handleMandatoryBudget = function() {
@@ -921,6 +925,8 @@ Game.prototype.handleEscape = function() {
     this.dialogOpen = false;
     this._openWindow = null;
     win.close();
+  } else if (this.queryWindow.isOpen()) {
+    this.queryWindow.close();
   } else {
     this.inputStatus.clearTool();
   }

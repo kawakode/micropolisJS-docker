@@ -727,6 +727,65 @@
           <div class="scenarioBar"><div id="scenarioPanelBar"></div></div>
           <div class="scenarioFigures"><span id="scenarioPanelValue"></span><span id="scenarioPanelTime"></span></div>
         </div>
+        <!-- What the query tool found: beside the map, which carries on (see QueryWindow) -->
+        <div id="queryWindow" class="panel queryPanel hidden" role="region" aria-labelledby="queryHeader" aria-live="polite">
+          <div class="queryPanelHeader">
+            <span id="queryHeader" class="panelTitle" data-i18n>Query</span>
+            <button type="button" id="queryClose" class="queryClose" title="Close" aria-label="Close" data-i18n-title data-i18n-aria-label>&times;</button>
+          </div>
+          <div class="queryList">
+            <dl class="keyValueList">
+              <dt data-i18n>Zone</dt><dd id="queryZoneType"></dd>
+              <dt data-i18n>Density</dt><dd id="queryDensity"></dd>
+              <dt data-i18n>Value</dt><dd id="queryLandValue"></dd>
+              <dt data-i18n>Crime</dt><dd id="queryCrime"></dd>
+              <dt data-i18n>Pollution</dt><dd id="queryPollution"></dd>
+              <dt data-i18n>Growth</dt><dd id="queryRate"></dd>
+            </dl>
+            <div id="queryDebugList" class="queryDebug hidden">
+              <dl class="keyValueList">
+                <dt>Tile</dt><dd id="queryTile"></dd>
+                <dt>TileValue</dt><dd id="queryTileValue"></dd>
+                <dt>FireStation</dt><dd id="queryFireStationRaw"></dd>
+                <dt>FireStationEffect</dt><dd id="queryFireStationEffectRaw"></dd>
+                <dt>TerrainDensity</dt><dd id="queryTerrainDensityRaw"></dd>
+                <dt>PoliceStation</dt><dd id="queryPoliceStationRaw"></dd>
+                <dt>PoliceStationEffect</dt><dd id="queryPoliceStationEffectRaw"></dd>
+                <dt>ComRate</dt><dd id="queryComRateRaw"></dd>
+                <dt>RateOfGrowth</dt><dd id="queryRateRaw"></dd>
+                <dt>Pollution</dt><dd id="queryPollutionRaw"></dd>
+                <dt>Crime</dt><dd id="queryCrimeRaw"></dd>
+                <dt>LandValue</dt><dd id="queryLandValueRaw"></dd>
+                <dt>Traffic Density</dt><dd id="queryTrafficDensityRaw"></dd>
+                <dt>Density</dt><dd id="queryDensityRaw"></dd>
+              </dl>
+            </div>
+          </div>
+          <div id="queryDebugTable" class="queryDebug hidden">
+            <table id="flagsTable">
+              <thead>
+                <tr>
+                  <th>Burn</th>
+                  <th>Bull</th>
+                  <th>Cond</th>
+                  <th>Anim</th>
+                  <th>Pow</th>
+                  <th>Zone</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td id="queryTileBurnable"></td>
+                  <td id="queryTileBulldozable"></td>
+                  <td id="queryTileCond"></td>
+                  <td id="queryTileAnim"></td>
+                  <td id="queryTilePowered"></td>
+                  <td id="queryTileZone"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </aside>
 
       <div class="hidden modal" id="budget" role="dialog" aria-labelledby="budgetHeader">
@@ -876,67 +935,6 @@
               <button id="disasterCancel" class="button cancel" data-i18n>Cancel</button>
               <input type="submit" id="disasterOK" class="button danger dialogOK" value="Unleash" data-i18n-value>
             </div>
-          </form>
-        </div>
-      </div>
-
-      <div class="hidden modal" id="queryWindow" role="dialog" aria-labelledby="queryHeader">
-        <header id="queryHeader" class="modalHeader" data-icon="query"><span data-i18n>Query</span></header>
-        <div id="queryContainer" class="modalBody">
-          <div class="queryList">
-            <dl class="keyValueList">
-              <dt data-i18n>Zone</dt><dd id="queryZoneType"></dd>
-              <dt data-i18n>Density</dt><dd id="queryDensity"></dd>
-              <dt data-i18n>Value</dt><dd id="queryLandValue"></dd>
-              <dt data-i18n>Crime</dt><dd id="queryCrime"></dd>
-              <dt data-i18n>Pollution</dt><dd id="queryPollution"></dd>
-              <dt data-i18n>Growth</dt><dd id="queryRate"></dd>
-            </dl>
-            <div id="queryDebugList" class="queryDebug hidden">
-              <dl class="keyValueList">
-                <dt>Tile</dt><dd id="queryTile"></dd>
-                <dt>TileValue</dt><dd id="queryTileValue"></dd>
-                <dt>FireStation</dt><dd id="queryFireStationRaw"></dd>
-                <dt>FireStationEffect</dt><dd id="queryFireStationEffectRaw"></dd>
-                <dt>TerrainDensity</dt><dd id="queryTerrainDensityRaw"></dd>
-                <dt>PoliceStation</dt><dd id="queryPoliceStationRaw"></dd>
-                <dt>PoliceStationEffect</dt><dd id="queryPoliceStationEffectRaw"></dd>
-                <dt>ComRate</dt><dd id="queryComRateRaw"></dd>
-                <dt>RateOfGrowth</dt><dd id="queryRateRaw"></dd>
-                <dt>Pollution</dt><dd id="queryPollutionRaw"></dd>
-                <dt>Crime</dt><dd id="queryCrimeRaw"></dd>
-                <dt>LandValue</dt><dd id="queryLandValueRaw"></dd>
-                <dt>Traffic Density</dt><dd id="queryTrafficDensityRaw"></dd>
-                <dt>Density</dt><dd id="queryDensityRaw"></dd>
-              </dl>
-            </div>
-          </div>
-          <div id="queryDebugTable" class="queryDebug hidden">
-            <table id="flagsTable">
-              <thead>
-                <tr>
-                  <th>Burn</th>
-                  <th>Bull</th>
-                  <th>Cond</th>
-                  <th>Anim</th>
-                  <th>Pow</th>
-                  <th>Zone</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td id="queryTileBurnable"></td>
-                  <td id="queryTileBulldozable"></td>
-                  <td id="queryTileCond"></td>
-                  <td id="queryTileAnim"></td>
-                  <td id="queryTilePowered"></td>
-                  <td id="queryTileZone"></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <form id="queryForm" class="modalButtons">
-            <input type="submit" id="queryOK" class="button primary dialogOK" value="OK">
           </form>
         </div>
       </div>

@@ -2458,6 +2458,40 @@ kbd {
   color: var(--muted);
 }
 
+/* The query tool's panel, beside the map */
+.queryPanel {
+  padding: 8px 10px 10px;
+  max-height: 45vh;
+  overflow-y: auto;
+}
+
+.queryPanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.queryClose {
+  margin: -4px -4px 0 0;
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.queryClose:hover, .queryClose:focus-visible {
+  color: var(--gold);
+}
+
+.queryPanel .keyValueList {
+  gap: 3px 10px;
+  font-size: 13px;
+}
+
 #scenarioWindow {
   width: 540px;
 }
