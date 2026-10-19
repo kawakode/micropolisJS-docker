@@ -25,7 +25,7 @@ var hasRoadAlongside = function(map, x, y, size) {
   var left = x - 1;
   var top = y - 1;
 
-  for (var i = -1; i <= size; i++) {
+  for (var i = 0; i < size; i++) {
     var edges = [[left + i, top - 1], [left + i, top + size], [left - 1, top + i], [left + size, top + i]];
     for (var j = 0; j < edges.length; j++) {
       var ex = edges[j][0];

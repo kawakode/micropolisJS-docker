@@ -189,15 +189,21 @@ var findCoveringZone = function(map, x, y) {
 var fireZone = function(map, x, y, blockMaps) {
   var tileValue = map.getTileValue(x, y);
   var zoneSize = 2;
+  var first = -1;
 
   // A zone being on fire naturally hurts growth
   var value = blockMaps.rateOfGrowthMap.worldGet(x, y);
   value = MiscUtils.clamp(value - 20, -200, 200);
   blockMaps.rateOfGrowthMap.worldSet(x, y, value);
 
-  if (tileValue >= TileValues.KAWABASE)
+  if (tileValue >= TileValues.KAWABASE) {
     zoneSize = KawaBuildings.getZoneSize(tileValue) - 1;
-  else if (tileValue === TileValues.AIRPORT)
+    // A wind turbine (whose rotor turns, so its tile isn't always WINDTURBINE) is its only tile
+    if (zoneSize <= 0) {
+      first = 0;
+      zoneSize = 1;
+    }
+  } else if (tileValue === TileValues.AIRPORT)
     zoneSize = 5;
   else if (tileValue >= TileValues.PORTBASE)
     zoneSize = 3;
@@ -205,8 +211,8 @@ var fireZone = function(map, x, y, blockMaps) {
       zoneSize = 2;
 
   // Make remaining tiles of the zone bulldozable
-  for (var xDelta = -1; xDelta < zoneSize; xDelta++) {
-    for (var yDelta = -1; yDelta < zoneSize; yDelta++) {
+  for (var xDelta = first; xDelta < zoneSize; xDelta++) {
+    for (var yDelta = first; yDelta < zoneSize; yDelta++) {
       var xTem = x + xDelta;
       var yTem = y + yDelta;
 
