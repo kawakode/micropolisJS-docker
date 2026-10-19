@@ -75,7 +75,7 @@ var TOOLS = {
   stadium: {name: 'Stadium', size: 4, cost: 5000, colour: '#a78bfa',
             description: 'Residents need one as the city grows.'},
 
-  trees: {name: 'Trees', size: 1, cost: 5, colour: '#15803d',
+  trees: {name: 'Trees', size: 1, cost: 5, colour: '#15803d', key: 'T',
           description: 'Plant a forest on bare land.'},
   water: {name: 'Dig water', size: 1, cost: 100, colour: '#2563eb',
           description: 'Dig a lake or a canal.'},
@@ -84,15 +84,28 @@ var TOOLS = {
 };
 
 // A category is built in the tool bar's group of categories, unless it names another holder
+// key: the keyboard shortcut that goes through the category's tools, pressed again and again (its code: see
+// InputStatus.setToolCycles)
 var CATEGORIES = [
-  {id: 'bulldozer', name: 'Bulldozer', holder: '#basicButtons',
+  {id: 'bulldozer', name: 'Bulldozer', holder: '#basicButtons', key: 'B', code: 'KeyB',
    tools: ['bulldozer', 'bulldozer3', 'bulldozer5', 'bulldozer7']},
-  {id: 'transport', name: 'Transport', tools: ['road', 'dirtroad', 'avenue', 'highway', 'rail', 'port', 'airport']},
-  {id: 'power', name: 'Power', tools: ['wire', 'wind', 'solar', 'gas', 'coal', 'nuclear']},
-  {id: 'services', name: 'Services', tools: ['police', 'fire', 'school', 'university']},
-  {id: 'leisure', name: 'Leisure', tools: ['park', 'garden', 'plaza', 'bigpark', 'stadium']},
-  {id: 'terrain', name: 'Terrain', tools: ['trees', 'water', 'landfill']}
+  {id: 'transport', name: 'Transport', key: '4', code: 'Digit4',
+   tools: ['road', 'dirtroad', 'avenue', 'highway', 'rail', 'port', 'airport']},
+  {id: 'power', name: 'Power', key: '6', code: 'Digit6', tools: ['wire', 'wind', 'solar', 'gas', 'coal', 'nuclear']},
+  {id: 'services', name: 'Services', key: '8', code: 'Digit8', tools: ['police', 'fire', 'school', 'university']},
+  {id: 'leisure', name: 'Leisure', key: '7', code: 'Digit7', tools: ['park', 'garden', 'plaza', 'bigpark', 'stadium']},
+  {id: 'terrain', name: 'Terrain', key: 'T', code: 'KeyT', tools: ['trees', 'water', 'landfill']}
 ];
+
+
+// The tools each category's key goes through (see InputStatus.setToolCycles)
+var cycles = function() {
+  var result = {};
+  CATEGORIES.forEach(function(category) {
+    result[category.code] = category.tools.slice();
+  });
+  return result;
+};
 
 
 var makeToolButton = function(toolName) {
@@ -118,7 +131,13 @@ var build = function() {
     var palette = $('<div class="toolPalette" role="menu"></div>').attr({'data-category': category.id,
                                                                         'aria-label': I18n.t(category.name),
                                                                         'data-i18n-aria-label': category.name});
-    $('<div class="paletteTitle"></div>').attr('data-i18n', category.name).text(I18n.t(category.name)).appendTo(palette);
+    var title = $('<div class="paletteTitle"></div>').appendTo(palette);
+    $('<span></span>').attr('data-i18n', category.name).text(I18n.t(category.name)).appendTo(title);
+    // The category's key, which goes through its tools
+    $('<span class="paletteKey"></span>').text(category.key + ' \u21bb')
+      .attr({title: I18n.t('Press this key again and again to go through these tools'),
+             'data-i18n-title': 'Press this key again and again to go through these tools'})
+      .appendTo(title);
     category.tools.forEach(function(toolName) {
       var item = makeToolButton(toolName).attr('role', 'menuitemradio');
       palette.append(item);
@@ -220,6 +239,7 @@ var Toolbar = {
   bind: bind,
   refresh: refresh,
   closeFlyout: closeFlyout,
+  cycles: cycles,
   TOOLS: TOOLS,
   CATEGORIES: CATEGORIES
 };

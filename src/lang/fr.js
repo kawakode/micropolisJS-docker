@@ -42,6 +42,7 @@ var strings = {
   'Zoom out (-)': 'Dézoomer (-)',
   'Live': 'En direct',
   'Close': 'Fermer',
+  'Press this key again and again to go through these tools': 'Appuyez plusieurs fois sur cette touche pour passer d\'un outil à l\'autre',
   'Game saved. Click here to keep a copy as a file.': 'Partie sauvegardée. Cliquez ici pour en garder une copie dans un fichier.',
   'City news': 'Actualités de la ville',
   'Show on the map': 'Voir sur la carte',

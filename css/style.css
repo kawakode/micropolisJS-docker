@@ -3443,10 +3443,21 @@ kbd {
 }
 
 .paletteTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
   margin: 0 0 4px;
   font-family: var(--title-font);
   font-size: 10px;
   color: var(--gold);
+}
+
+.paletteKey {
+  font-family: var(--text-font);
+  font-size: 13px;
+  color: var(--muted);
+  cursor: help;
 }
 
 .toolPalette .toolButton {

@@ -129,6 +129,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
   ToolIcons.decorateToolButtons();
   this.inputStatus = new InputStatus(this.gameMap, this.gameCanvas);
   Toolbar.bind(this.inputStatus.selectTool.bind(this.inputStatus));
+  this.inputStatus.setToolCycles(Toolbar.cycles());
   Toolbar.refresh(null);
   this.inputStatus.addEventListener(Messages.TOOL_CHANGED, function(toolName) {
     Toolbar.refresh(toolName);
