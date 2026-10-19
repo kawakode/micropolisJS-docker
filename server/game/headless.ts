@@ -265,7 +265,7 @@ interface ToolObject {
   doTool(x: number, y: number, blockMaps: unknown): void;
   modifyIfEnoughFunding(budget: unknown): boolean;
   clear(): void;
-  startBatch?(): void;
+  startBatch?(count: number): void;
   endBatch?(): void;
 }
 
@@ -559,7 +559,7 @@ export class HeadlessCity {
 
     this.act(() => {
       try {
-        tool.startBatch?.();
+        tool.startBatch?.(placements.length);
         for (const p of placements) {
           tool.doTool(p.x, p.y, blockMaps);
           if (tool.modifyIfEnoughFunding(budget)) {

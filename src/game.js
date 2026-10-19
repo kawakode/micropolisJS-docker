@@ -742,7 +742,7 @@ Game.prototype._simulateTool = function(tool, placements) {
 
   tool.clear();
   if (tool.startBatch)
-    tool.startBatch();
+    tool.startBatch(placements.length);
 
   for (var i = 0, l = placements.length; i < l; i++) {
     var p = placements[i];

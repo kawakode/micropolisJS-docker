@@ -34,16 +34,49 @@ var isRoad = function(tile) {
 };
 
 
+var isBridge = function(tile) {
+  tile = TileUtils.normalizeRoad(tile);
+  return tile === TileValues.HBRIDGE || tile === TileValues.VBRIDGE ||
+         tile === TileValues.BRWH || tile === TileValues.BRWV;
+};
+
+
+// How big each kind of road is (see GameMap.ROAD_*): a dirt road, a street, an avenue, then a highway
+var ROAD_RANK = [1, 0, 2, 3];
+
+
+// The tool is about to be applied at the given number of places, along a drag
+RoadTool.prototype.startBatch = function(count) {
+  this._batchSize = count || 1;
+};
+
+
+RoadTool.prototype.endBatch = function() {
+  this._batchSize = 1;
+};
+
+
 RoadTool.prototype.layRoad = function(x, y) {
   var current = this._worldEffects.getTileValue(x, y);
 
-  // Rebuild an existing road as this kind of road
+  // Rebuild an existing road as this kind of road. A road dragged across a bigger one leaves it as it is: only a
+  // click on a single tile makes a road smaller
   if (isRoad(current)) {
-    if (this._worldEffects.getRoadClass(x, y) === this.roadClass)
+    var currentClass = this._worldEffects.getRoadClass(x, y);
+    if (currentClass === this.roadClass)
+      return this.TOOLRESULT_FAILED;
+    if (this._batchSize > 1 && ROAD_RANK[this.roadClass] < ROAD_RANK[currentClass])
       return this.TOOLRESULT_FAILED;
 
+    var cost = this.toolCost;
+    if (isBridge(current)) {
+      if (this.bridgeCost === 0)
+        return this.TOOLRESULT_FAILED;
+      cost = this.bridgeCost;
+    }
+
     this._worldEffects.setRoadClass(x, y, this.roadClass);
-    this.addCost(this.toolCost);
+    this.addCost(cost);
     return this.TOOLRESULT_OK;
   }
 
