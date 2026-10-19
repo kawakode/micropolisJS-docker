@@ -7,6 +7,7 @@
 
 import { BaseTool } from './baseTool.js';
 import { BIT_MASK, BLBNBIT, BULLBIT } from "./tileFlags.ts";
+import { TileUtils } from './tileUtils.js';
 import * as TileValues from "./tileValues.ts";
 
 // Tools that shape the land, tile by tile: planting forests, digging water, filling water in, and laying single
@@ -41,6 +42,18 @@ var isWater = function(value) {
 };
 
 
+// Water, or a bridge, power line or rail over water: the water goes on under it
+var isWaterUnder = function(value) {
+  if (isWater(value))
+    return true;
+
+  value = TileUtils.normalizeRoad(value);
+  return value === TileValues.HBRIDGE || value === TileValues.VBRIDGE || value === TileValues.BRWH ||
+         value === TileValues.BRWV || value === TileValues.HPOWER || value === TileValues.VPOWER ||
+         value === TileValues.HRAIL || value === TileValues.VRAIL;
+};
+
+
 var isTree = function(value) {
   return value >= TileValues.WOODS_LOW && value <= TileValues.WOODS_HIGH;
 };
@@ -71,14 +84,8 @@ TerrainTool.prototype._smoothWaterAt = function(x, y) {
     index = index << 1;
     var nx = x + DX[i];
     var ny = y + DY[i];
-    // Off the map counts as water; trees and bare land as land
-    if (!effects.testBounds(nx, ny)) {
-      index++;
-      continue;
-    }
-
-    var value = effects.getTileValue(nx, ny);
-    if (value !== TileValues.DIRT && !isTree(value))
+    // Off the map counts as water; anything built, trees and bare land as land
+    if (!effects.testBounds(nx, ny) || isWaterUnder(effects.getTileValue(nx, ny)))
       index++;
   }
 

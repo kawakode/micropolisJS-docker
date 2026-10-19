@@ -195,3 +195,25 @@ describe("Rebuilding a road as another kind", () => {
         expect([avenue.result, avenue.cost]).toEqual([OK, 100]);
     });
 });
+
+describe("Digging water", () => {
+    it("draws a bank along a road, as along bare land", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+        apply(map, tools.road, 6, 5);
+
+        expect(apply(map, tools.water, 5, 5).value).toBe(13);
+        expect(apply(map, tools.water, 10, 10).value).toBe(13);
+    });
+
+    it("lets the water go on under a bridge", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+        apply(map, tools.road, 4, 5);
+        map.setTile(5, 5, RIVER, 0);
+        apply(map, tools.road, 5, 5);
+
+        // West of the dug tile is the bridge: water on that side only
+        expect(apply(map, tools.water, 6, 5).value).not.toBe(13);
+    });
+});
