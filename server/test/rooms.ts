@@ -201,6 +201,18 @@ describe('Frames', () => {
     expect([rooms.monitor.overloaded, rooms.monitor.refuseLoads]).toEqual([false, false]);
   });
 
+  test('A city opened again sends its neighbours the power it sent when it was saved, until it scans its grid', async () => {
+    const city = await createCity(alice);
+    const stored = {east: {transport: false, power: true, powerOut: true,
+                           signed: {trade: false, buyPower: false, sellPower: true, twinning: false}}};
+    t.db.run('UPDATE cities SET edge_state = ? WHERE public_id = ?', JSON.stringify(stored), city.id);
+
+    const row = t.app.game.cities.byPublicId(city.id)!;
+    const room = t.app.game.rooms.open(row, alice.id);
+    expect(room.edge.east.powerOut).toBe(true);
+    expect(room.edge.west.powerOut).toBe(false);
+  });
+
   test('A player who joins an empty room is not told what the city said before they came', async () => {
     const {room, client} = await openRoom(t, alice);
     // The city spoke after the last pass, then the last player left

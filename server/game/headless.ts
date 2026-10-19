@@ -225,6 +225,7 @@ export interface NeighboursObject {
   setRemote(side: string, remote: unknown): void;
   getRemote(side: string): unknown;
   clearDeals(side: string): void;
+  restoreDelivered(edges: unknown): void;
 }
 
 type Listener = (value: never) => void;
@@ -719,6 +720,11 @@ export class HeadlessCity {
   // The neighbours, as the game's window shows them (see Neighbours.describe)
   describeNeighbours(): unknown[] {
     return this.lookAtNeighbours(neighbours => neighbours.describe());
+  }
+
+  // Takes back the power delivered at each edge from the edges stored with the save (see Neighbours.restoreDelivered)
+  restoreEdges(edges: unknown): void {
+    this.simulation.neighbours.restoreDelivered(edges);
   }
 
   // What the city has at each of its edges, for the players' cities beyond them (see Neighbours.edgeState)

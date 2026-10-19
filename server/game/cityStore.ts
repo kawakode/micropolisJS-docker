@@ -138,6 +138,16 @@ export interface SavedState {
 }
 
 // The year of a city, from its time (see Simulation.getDate)
+// The edges of a city as stored with its save (see Neighbours.edgeState)
+export const parseEdges = (text: string): Record<string, unknown> => {
+  try {
+    const edges = JSON.parse(text) as unknown;
+    return edges !== null && typeof edges === 'object' && !Array.isArray(edges) ? edges as Record<string, unknown> : {};
+  } catch (e) {
+    return {};
+  }
+};
+
 export const yearOf = (cityTime: number): number => 1900 + Math.floor(cityTime / 48);
 
 export const notFound = () => new HttpError(404, 'not_found');
