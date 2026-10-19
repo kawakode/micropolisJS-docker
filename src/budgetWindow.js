@@ -18,6 +18,7 @@ import { I18n } from './i18n.js';
 import { BUDGET_WINDOW_CLOSED } from './messages.ts';
 import { MiscUtils } from './miscUtils.js';
 import { ModalWindow } from './modalWindow.js';
+import { Ordinances } from './ordinances.js';
 
 
 var BudgetWindow = ModalWindow(function() {
@@ -91,6 +92,31 @@ var showDebt = function(budgetData) {
 };
 
 
+// The ordinances, each with what it would cost a year in the city as it is
+var showOrdinances = function(mask, population) {
+  var list = $('#ordinanceList').empty();
+  Ordinances.LIST.forEach(function(ordinance) {
+    var label = $('<label class="budgetData budgetCheck">').attr('title', I18n.t(ordinance.description));
+    $('<input type="checkbox">').attr('data-bit', ordinance.bit).prop('checked', Ordinances.isOn(mask, ordinance))
+      .appendTo(label);
+    $('<span>').text(I18n.t('{name} ({cost} a year)', {name: I18n.t(ordinance.name),
+                                                        cost: I18n.money(Ordinances.costOf(ordinance, population))}))
+      .appendTo(label);
+    label.appendTo(list);
+  });
+};
+
+
+// The ordinances ticked in the window, as a mask
+var chosenOrdinances = function() {
+  var mask = 0;
+  $('#ordinanceList input:checked').each(function() {
+    mask |= 1 << Number(this.getAttribute('data-bit'));
+  });
+  return mask;
+};
+
+
 var resetItems = function(e) {
   for (var i = 0; i < spendKeys.length; i++) {
     var original = this['original' + spendKeys[i]];
@@ -102,6 +128,7 @@ var resetItems = function(e) {
   $('#loanCount')[0].value = 0;
   onLoanUpdate.call(this);
   $('#repayDebt')[0].checked = false;
+  showOrdinances(this.originalOrdinances, this.population);
 
   e.preventDefault();
 };
@@ -130,9 +157,11 @@ var submit = function(e) {
   var taxPercent = $('#taxRate')[0].value;
   var borrow = $('#loanCount')[0].value - 0;
   var repay = $('#repayDebt')[0].checked;
+  var ordinances = chosenOrdinances();
 
   var data = {cancelled: false, roadPercent: roadPercent, firePercent: firePercent,
                         policePercent: policePercent, taxPercent: taxPercent, borrow: borrow, repay: repay,
+                        ordinances: ordinances,
                         e: e, original: e.type};
   this.close(data);
 };
@@ -197,7 +226,13 @@ BudgetWindow.prototype.open = function(budgetData) {
   onLoanUpdate.call(this);
   showDebt(budgetData);
 
-  var cashFlow = taxesCollected + dealsFund + upkeepFund + loanFund - this.roadMaintenanceBudget - this.fireMaintenanceBudget -
+  // The ordinances in force
+  this.originalOrdinances = budgetData.ordinances || 0;
+  this.population = budgetData.population || 0;
+  showOrdinances(this.originalOrdinances, this.population);
+  var ordinanceFund = budgetData.ordinanceFund || 0;
+
+  var cashFlow = taxesCollected + dealsFund + upkeepFund + loanFund + ordinanceFund - this.roadMaintenanceBudget - this.fireMaintenanceBudget -
                  this.policeMaintenanceBudget;
   var currentFunds = previousFunds + cashFlow;
   var money = I18n.money;
@@ -208,6 +243,8 @@ BudgetWindow.prototype.open = function(budgetData) {
   $('#upkeepInfo').toggleClass('hidden', upkeepFund === 0);
   $('#loanFund').text(money(loanFund));
   $('#loanInfo').toggleClass('hidden', loanFund === 0);
+  $('#ordinanceFund').text(money(ordinanceFund));
+  $('#ordinanceInfo').toggleClass('hidden', ordinanceFund === 0);
   $('#cashFlow').text(money(cashFlow));
   $('#previousFunds').text(money(previousFunds));
   $('#currentFunds').text(money(currentFunds));

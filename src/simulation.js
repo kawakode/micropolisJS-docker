@@ -28,6 +28,7 @@ import * as Messages from './messages.ts';
 import { MiscTiles } from './miscTiles.js';
 import { MiscUtils } from './miscUtils.js';
 import { Neighbours } from './neighbours.js';
+import { Ordinances } from './ordinances.js';
 import { PowerManager } from './powerManager.js';
 import { RepairManager } from './repairManager.js';
 import { Residential } from './residential.js';
@@ -382,8 +383,9 @@ Simulation.prototype.init = function() {
   var simData = this._constructSimData();
   this._mapScanner.mapScan(0, this._map.width, simData);
   this._scanPower();
-  BlockMapUtils.pollutionTerrainLandValueScan(this._map, this._census, this.blockMaps);
-  BlockMapUtils.crimeScan(this._census, this.blockMaps);
+  BlockMapUtils.pollutionTerrainLandValueScan(this._map, this._census, this.blockMaps,
+                                                    Ordinances.effects(this.budget.ordinances).pollution);
+  BlockMapUtils.crimeScan(this._census, this.blockMaps, Ordinances.effects(this.budget.ordinances).crime);
   BlockMapUtils.populationDensityScan(this._map, this.blockMaps);
   BlockMapUtils.fireAnalysis(this.blockMaps);
   this._snapshotCensus();
@@ -415,7 +417,7 @@ var simulate = function(simData) {
         this._newMonthWeather();
 
       if ((this._simCycle & 1) === 0)
-        this._valves.setValves(this._gameLevel, this._census, this.budget, this.neighbours.demandBonus());
+        this._valves.setValves(this._gameLevel, this._census, this.budget, this._demandBonus());
 
       this._clearCensus();
       break;
@@ -444,7 +446,8 @@ var simulate = function(simData) {
         this._census.take120Census(this.budget);
 
       if (this._cityTime % TAX_FREQUENCY === 0)  {
-        this.budget.collectTax(this._gameLevel, this._census, this.neighbours.closeYear(), this.weather.closeYear());
+        this.budget.collectTax(this._gameLevel, this._census, this.neighbours.closeYear(), this.weather.closeYear(),
+                               this.evaluation.computePopulation(this._census));
         this.evaluation.cityEvaluation(simData);
       }
 
@@ -465,12 +468,13 @@ var simulate = function(simData) {
 
     case 12:
       if ((this._simCycle % speedPollutionTerrainLandValueScan[speedIndex]) === 0)
-        BlockMapUtils.pollutionTerrainLandValueScan(this._map, this._census, this.blockMaps);
+        BlockMapUtils.pollutionTerrainLandValueScan(this._map, this._census, this.blockMaps,
+                                                    Ordinances.effects(this.budget.ordinances).pollution);
       break;
 
     case 13:
       if ((this._simCycle % speedCrimeScan[speedIndex]) === 0)
-        BlockMapUtils.crimeScan(this._census, this.blockMaps);
+        BlockMapUtils.crimeScan(this._census, this.blockMaps, Ordinances.effects(this.budget.ordinances).crime);
       break;
 
     case 14:
@@ -675,6 +679,14 @@ Simulation.prototype._sendMessages = function() {
       this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.TRAFFIC_JAMS});
     break;
   }
+};
+
+
+// What the deals with the neighbours and the ordinances add to the demand for zones: {res, com, ind}
+Simulation.prototype._demandBonus = function() {
+  var bonus = this.neighbours.demandBonus();
+  var effects = Ordinances.effects(this.budget.ordinances);
+  return {res: bonus.res + effects.res, com: bonus.com + effects.com, ind: bonus.ind + effects.ind};
 };
 
 

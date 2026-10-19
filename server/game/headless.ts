@@ -12,6 +12,7 @@ import { GameMap } from '../../src/gameMap.js';
 import { GameTools } from '../../src/gameTools.js';
 import * as Messages from '../../src/messages';
 import { Neighbours } from '../../src/neighbours.js';
+import { Ordinances } from '../../src/ordinances.js';
 import { Placements } from '../../src/placements.js';
 import { Simulation } from '../../src/simulation.js';
 import { BIT_MASK } from '../../src/tileFlags';
@@ -184,6 +185,7 @@ export interface BudgetObject {
   doBudgetWindow(): void;
   borrow(count: number): number;
   repay(): boolean;
+  setOrdinances(mask: number): void;
 }
 
 export interface EvaluationObject {
@@ -712,6 +714,15 @@ export class HeadlessCity {
       return false;
 
     budget.borrow(borrow as number);
+    return true;
+  }
+
+  // The ordinances in force, as the budget window sets them (see Ordinances): a mask of known ones only
+  applyOrdinances(mask: unknown): boolean {
+    if (!isIntegerIn(mask, 0, Ordinances.ALL) || (mask & Ordinances.ALL) !== mask)
+      return false;
+
+    this.simulation.budget.setOrdinances(mask);
     return true;
   }
 

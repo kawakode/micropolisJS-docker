@@ -1356,9 +1356,22 @@ a.hudButton, a.hudButton:visited {
   color: var(--muted);
 }
 
-/* The loans take the whole width (see BudgetWindow) */
-.budgetSliders .loanFieldset {
+/* The loans and the ordinances take the whole width (see BudgetWindow) */
+.budgetSliders .loanFieldset,
+.budgetSliders .ordinanceFieldset {
   grid-column: 1 / -1;
+}
+
+.ordinanceList {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
+@media (max-width: 600px) {
+  .ordinanceList {
+    grid-template-columns: 1fr;
+  }
 }
 
 #debtInfo {

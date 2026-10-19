@@ -8,6 +8,7 @@
 import { Budget } from '../../src/budget.js';
 import { Evaluation } from '../../src/evaluation.js';
 import { Neighbours } from '../../src/neighbours.js';
+import { Ordinances } from '../../src/ordinances.js';
 import { Scenarios } from '../../src/scenarios.js';
 import { BIT_MASK, fromClassicValue, ZONEBIT } from '../../src/tileFlags';
 import { AIRPORT, BIGPARK, CHURCH, CHURCH1, CHURCH2, CHURCH3, CHURCH4, CHURCH5, CHURCH6, CHURCH7, FIRESTATION,
@@ -117,6 +118,8 @@ const RULES: Readonly<Record<string, Rule>> = {
   debt: {type: 'integer', min: 0, max: MAX_DEBT, optional: true},
   debtPayment: {type: 'integer', min: 0, max: MAX_DEBT, optional: true},
   loanFund: {type: 'integer', min: -MAX_DEBT, max: 0, optional: true},
+  ordinances: {type: 'integer', min: 0, max: Ordinances.ALL, optional: true},
+  ordinanceFund: {type: 'integer', min: INT32_MIN, max: 0, optional: true},
 
   // Census (the histories are checked apart)
   resPop: {type: 'integer', min: 0, max: INT32_MAX},

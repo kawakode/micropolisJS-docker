@@ -42,7 +42,7 @@ var EVALUATION_FIELDS = ['cityYes', 'cityPop', 'cityPopDelta', 'cityAssessedValu
 var BUDGET_FIELDS = ['policePercent', 'roadPercent', 'firePercent', 'roadSpend', 'policeSpend', 'fireSpend',
                      'roadMaintenanceBudget', 'policeMaintenanceBudget', 'fireMaintenanceBudget', 'cityTax',
                      'roadEffect', 'policeEffect', 'fireEffect', 'dealsFund', 'upkeepFund', 'debt', 'debtPayment',
-                     'loanFund', 'taxFund',
+                     'loanFund', 'ordinances', 'ordinanceFund', 'taxFund',
                      'cashFlow'];
 var CENSUS_FIELDS = ['resPop', 'comPop', 'indPop', 'crimeRamp', 'pollutionRamp', 'landValueAverage',
                      'pollutionAverage', 'crimeAverage', 'totalPop'];

@@ -812,6 +812,7 @@
               <div id="dealsInfo" class="budgetData"><span data-i18n>Neighbour deals</span> <span id="dealsFund"></span></div>
               <div id="upkeepInfo" class="budgetData"><span data-i18n>Schools upkeep</span> <span id="upkeepFund"></span></div>
               <div id="loanInfo" class="budgetData"><span data-i18n>Loan repayment</span> <span id="loanFund"></span></div>
+              <div id="ordinanceInfo" class="budgetData"><span data-i18n>Ordinances</span> <span id="ordinanceFund"></span></div>
             </div>
             <div class="budgetSliders">
               <fieldset>
@@ -841,6 +842,11 @@
                 <label for="loanCount" class="budgetData" id="loanCountLabel"></label>
                 <p class="budgetData" id="debtInfo"></p>
                 <label class="budgetData budgetCheck" id="repayDebtLabel"><input type="checkbox" id="repayDebt"> <span id="repayDebtText"></span></label>
+              </fieldset>
+              <!-- The ordinances, each with what it costs a year (see Ordinances) -->
+              <fieldset class="ordinanceFieldset">
+                <legend data-i18n>Ordinances</legend>
+                <div id="ordinanceList" class="ordinanceList"></div>
               </fieldset>
             </div>
             <div id="budgetButtons" class="modalButtons">

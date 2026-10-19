@@ -451,6 +451,15 @@ describe('The commands of a headless city', () => {
     expect([budget.totalFunds, budget.debt, budget.debtPayment]).toEqual([6000, 0, 0]);
   });
 
+  test('set the ordinances in force, known ones only', () => {
+    const city = createHeadlessCity(sampleCity('kowloon'));
+    expect(city.applyOrdinances(5)).toBe(true);
+    expect(city.save().ordinances).toBe(5);
+    for (const bad of [1 << 20, -1, 1.5, '1', null])
+      expect(city.applyOrdinances(bad)).toBe(false);
+    expect(city.simulation.budget.ordinances).toBe(5);
+  });
+
   test('change the settings, all or none', () => {
     const city = createHeadlessCity(sampleCity('kowloon'));
     expect(city.applySettings({autoBudget: false, autoBulldoze: false, disasters: false, level: 2})).toBe(true);

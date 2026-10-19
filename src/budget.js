@@ -13,6 +13,7 @@
 
 import { EventEmitter } from './eventEmitter.js';
 import * as Messages from './messages.ts';
+import { Ordinances } from './ordinances.js';
 import { MiscUtils } from './miscUtils.js';
 
 // Cost of maintaining 1 police station
@@ -67,6 +68,9 @@ var Budget = EventEmitter(function() {
   this.debt = 0;
   this.debtPayment = 0;
   this.loanFund = 0;
+  // The ordinances in force (a mask, see Ordinances), and what they cost this year (negative)
+  this.ordinances = 0;
+  this.ordinanceFund = 0;
 
   // These values denote how much money is required to fully maintain the relevant services
   this.roadMaintenanceBudget = 0;
@@ -93,7 +97,7 @@ var Budget = EventEmitter(function() {
 var saveProps = ['autoBudget', 'totalFunds', 'policePercent', 'roadPercent', 'firePercent', 'roadSpend',
                  'policeSpend', 'fireSpend', 'roadMaintenanceBudget', 'policeMaintenanceBudget',
                  'fireMaintenanceBudget', 'cityTax', 'roadEffect', 'policeEffect', 'fireEffect', 'dealsFund',
-                 'upkeepFund', 'debt', 'debtPayment', 'loanFund'];
+                 'upkeepFund', 'debt', 'debtPayment', 'loanFund', 'ordinances', 'ordinanceFund'];
 
 Budget.prototype.save = function(saveData) {
   for (var i = 0, l = saveProps.length; i < l; i++)
@@ -111,6 +115,8 @@ Budget.prototype.load = function(saveData) {
   this.debt = this.debt || 0;
   this.debtPayment = this.debtPayment || 0;
   this.loanFund = this.loanFund || 0;
+  this.ordinances = Ordinances.clean(this.ordinances);
+  this.ordinanceFund = this.ordinanceFund || 0;
 
   this._emitEvent(Messages.AUTOBUDGET_CHANGED, this.autoBudget);
   this._emitEvent(Messages.FUNDS_CHANGED, this.totalFunds);
@@ -274,10 +280,15 @@ Budget.prototype.updateFundEffects = function() {
 };
 
 
-// What the city earned or paid this year besides taxes and the services of the sliders: its deals, its upkeep and
-// the repayment of its loans
+// What the city earned or paid this year besides taxes and the services of the sliders: its deals, its upkeep, the
+// repayment of its loans and its ordinances
 Budget.prototype.otherFunds = function() {
-  return this.dealsFund + this.upkeepFund + this.loanFund;
+  return this.dealsFund + this.upkeepFund + this.loanFund + this.ordinanceFund;
+};
+
+
+Budget.prototype.setOrdinances = function(mask) {
+  this.ordinances = Ordinances.clean(mask);
 };
 
 
@@ -325,8 +336,9 @@ Budget.prototype._repayYear = function() {
 
 
 // dealsFund: what the deals with the neighbouring cities earned (or cost) over the year. snowFactor: how much more
-// the roads cost to keep clear after the snow of the year (see Weather.closeYear), 1 by default.
-Budget.prototype.collectTax = function(gameLevel, census, dealsFund, snowFactor) {
+// the roads cost to keep clear after the snow of the year (see Weather.closeYear), 1 by default. population: the
+// city's, for the cost of the ordinances.
+Budget.prototype.collectTax = function(gameLevel, census, dealsFund, snowFactor, population) {
   this.cashFlow = 0;
   this.dealsFund = dealsFund || 0;
   var upkeep = Object.keys(UPKEEP).reduce(function(total, counter) {
@@ -334,6 +346,8 @@ Budget.prototype.collectTax = function(gameLevel, census, dealsFund, snowFactor)
   }, 0);
   this.upkeepFund = upkeep > 0 ? -upkeep : 0;
   this.loanFund = this._repayYear();
+  var ordinanceCost = Ordinances.cost(this.ordinances, population || 0);
+  this.ordinanceFund = ordinanceCost > 0 ? -ordinanceCost : 0;
 
   // How much would it cost to fully fund every service?
   this.policeMaintenanceBudget = census.policeStationPop * policeMaintenanceCost;

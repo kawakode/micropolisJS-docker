@@ -536,6 +536,23 @@ var strings = {
   'No debt': 'Aucune dette',
   'Pay off the whole debt now ({debt})': 'Rembourser toute la dette maintenant ({debt})',
 
+  // Ordinances (see Ordinances)
+  'Ordinances': 'Arrêtés municipaux',
+  '{name} ({cost} a year)': '{name} ({cost} par an)',
+  'Street lighting': 'Éclairage public',
+  'Lit streets: less crime.': 'Des rues éclairées : moins de criminalité.',
+  'Neighbourhood watch': 'Voisins vigilants',
+  'Neighbours look out: a little less crime.': 'Les voisins veillent : un peu moins de criminalité.',
+  'Recycling': 'Recyclage',
+  'Less waste: less pollution.': 'Moins de déchets : moins de pollution.',
+  'Clean air rules': 'Normes antipollution',
+  'Much less pollution, but industry would rather go elsewhere.':
+    'Beaucoup moins de pollution, mais l\'industrie préfère s\'installer ailleurs.',
+  'Tourism campaign': 'Promotion touristique',
+  'Visitors come: more demand for shops.': 'Les visiteurs affluent : plus de demande de commerces.',
+  'Housing grants': 'Aides au logement',
+  'Help to buy a home: more demand for homes.': 'Une aide pour acheter : plus de demande de logements.',
+
   // The weather (see Weather)
   'Weather': 'Météo',
   'Snow': 'Neige',

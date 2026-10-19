@@ -24,7 +24,7 @@ const SERVER_KEYS = new Set([
     "pollutionMaxX", "pollutionMaxY", "width", "height", "cityClass", "cityScore", "cityPop", "resValve", "comValve",
     "indValve", "autoBudget", "totalFunds", "policePercent", "roadPercent", "firePercent", "roadSpend", "policeSpend",
     "fireSpend", "roadMaintenanceBudget", "policeMaintenanceBudget", "fireMaintenanceBudget", "cityTax", "roadEffect",
-    "policeEffect", "fireEffect", "dealsFund", "upkeepFund", "debt", "debtPayment", "loanFund", "resPop", "comPop", "indPop", "crimeRamp", "pollutionRamp",
+    "policeEffect", "fireEffect", "dealsFund", "upkeepFund", "debt", "debtPayment", "loanFund", "ordinances", "ordinanceFund", "resPop", "comPop", "indPop", "crimeRamp", "pollutionRamp",
     "landValueAverage", "pollutionAverage", "crimeAverage", "totalPop", "version", "isSavedGame", "everClicked",
     "scenario", "map", "roadClass", "neighbours",
     ...["res", "com", "ind", "crime", "money", "pollution"].flatMap(name => [name + "Hist10", name + "Hist120"])

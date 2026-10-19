@@ -200,7 +200,10 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
       loanFund: this.simulation.budget.loanFund,
       debt: this.simulation.budget.debt,
       debtPayment: this.simulation.budget.debtPayment,
-      loansAvailable: this.simulation.budget.loansAvailable()
+      loansAvailable: this.simulation.budget.loansAvailable(),
+      ordinances: this.simulation.budget.ordinances,
+      ordinanceFund: this.simulation.budget.ordinanceFund,
+      population: this.simulation.evaluation.cityPop
     };
 
     this._windowShown = budgetData;
