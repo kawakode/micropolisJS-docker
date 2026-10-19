@@ -14,7 +14,9 @@ var ACHIEVEMENTS = [
   {id: 'park', bit: 1, name: 'Green spaces', goal: 'Build a big park.',
    met: function(f) { return f.census.parkPop > 0; }},
   {id: 'safety', bit: 2, name: 'Safe and sound', goal: 'Have a police station and a fire station.',
-   met: function(f) { return f.census.policeStationPop > 0 && f.census.fireStationPop > 0; }},
+   met: function(f) {
+     return f.census.policeStationPop + f.census.policePostPop > 0 && f.census.fireStationPop + f.census.firePostPop > 0;
+   }},
   {id: 'hospital', bit: 15, name: 'In good health', goal: 'Build a hospital.',
    met: function(f) { return f.census.hospitalPop > 0; }},
   {id: 'stadium', bit: 3, name: 'Home team', goal: 'Build a stadium.',

@@ -164,6 +164,15 @@ var strings = {
   'Raises land values and lowers crime nearby. $100 a year.':
     'Fait monter les prix fonciers et baisser la criminalité alentour. 100 $ par an.',
   'Hospital': 'Hôpital',
+  'Police post': 'Poste de police',
+  'A small police station for dense neighbourhoods: half as strong. $50 a year.':
+    'Un petit commissariat pour les quartiers denses : deux fois moins efficace. 50 $ par an.',
+  'Fire post': 'Poste de pompiers',
+  'A small fire station for dense neighbourhoods: half as strong. $50 a year.':
+    'Une petite caserne pour les quartiers denses : deux fois moins efficace. 50 $ par an.',
+  'Library': 'Bibliothèque',
+  'A small school: raises land values and lowers crime nearby. $50 a year.':
+    'Une petite école : fait monter les prix fonciers et baisser la criminalité alentour. 50 $ par an.',
   'Heals the neighbourhood: homes grow better and land is worth more. $150 a year.':
     'Soigne le quartier : les logements se développent mieux et le terrain vaut plus cher. 150 $ par an.',
   'University': 'Université',
@@ -1373,6 +1382,10 @@ var jokes = {
   school: [
     'Nouvelle école : le maire a enfin de la classe.',
     'Le maire visite la nouvelle école et rate une interro surprise sur le zonage.'
+  ],
+  library: [
+    'Nouvelle bibliothèque : le maire emprunte un livre sur les finances, et le renouvelle pour la troisième fois.',
+    'Bibliothèque inaugurée : le maire demande le silence, pour une fois.'
   ],
   hospital: [
     'Nouvel hôpital : le maire assure que la ville est entre de bonnes mains.',

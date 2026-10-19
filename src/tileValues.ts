@@ -334,7 +334,13 @@ export const BIGPARKBASE    = 1071; // Big park (tiles 1071--1079)
 export const BIGPARK        = 1075;
 export const GARDEN         = 1080;
 export const PLAZA          = 1081;
-export const KAWALAST       = 1081;
+export const LIBRARYBASE    = 1082; // Library (tiles 1082--1085)
+export const LIBRARY        = 1085;
+export const POLICEPOSTBASE = 1086; // Compact police station (tiles 1086--1089)
+export const POLICEPOST     = 1089;
+export const FIREPOSTBASE   = 1090; // Compact fire station (tiles 1090--1093)
+export const FIREPOST       = 1093;
+export const KAWALAST       = 1093;
 
 export const TILE_COUNT     = 2048;
 

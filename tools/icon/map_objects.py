@@ -407,6 +407,45 @@ def university():
     return shapes, [tree(52, 40), tree(36, 52), tree(56, 56, True)], [], []
 
 
+def library():
+    def stone(face, u, v):
+        if STATE['lights']:
+            return LIT[1] if face == 'left' and 2 <= v < 7 and int(u) % 4 == 2 and hashed(u, v, 7) % 2 else None
+        if face == 'top':
+            return (210, 200, 176)
+        if v >= 8:
+            return (240, 232, 210) if face == 'left' else (200, 190, 166)
+        if int(u) % 4 == 0:
+            return (250, 246, 230) if face == 'left' else (214, 206, 186)
+        return (176, 164, 138) if face == 'left' else (146, 134, 112)
+
+    shapes = [box(4, 4, 26, 22, 10, stone),
+              roof(4, 4, 26, 22, 10, 5, ((120, 122, 138), (90, 92, 108)), (214, 206, 186)),
+              box(3, 22, 27, 25, 1, plain((226, 220, 204), (190, 184, 170), (226, 220, 204))),
+              flat(2, 26, 30, 30, lambda u, v: (214, 196, 150) if int(u) % 6 else (110, 178, 84))]
+    return shapes, [tree(28, 8, True), tree(28, 18, True)], [], []
+
+
+def police_post():
+    walls_ = facade((60, 84, 168), (42, 60, 126), (170, 176, 196), (176, 214, 246), 3, 4, 2, trim=(WHITE, 9), seed=94)
+    car = ['.kb.', 'wwww', 'kwwk']
+    car_palette = {'k': (30, 26, 40), 'b': (92, 156, 255), 'w': WHITE}
+    return [box(4, 4, 24, 22, 11, walls_)], [Sprite(28, 18, 0, car, car_palette)], [], []
+
+
+def fire_post():
+    walls_ = facade((214, 66, 52), (168, 48, 40), (150, 150, 160), (146, 192, 238), 4, 5, 2, trim=(WHITE, 8.5),
+                    seed=95)
+
+    def doors(face, u, v):
+        if not STATE['lights'] and face == 'left' and v < 7 and int(u) % 10 in range(2, 8):
+            return (60, 56, 70) if v < 6 else WHITE
+        return walls_(face, u, v)
+
+    tower = facade((214, 66, 52), (168, 48, 40), (150, 150, 160), (146, 192, 238), 4, 5, 2, trim=(WHITE, 16), seed=96)
+    return [box(4, 6, 24, 26, 10, doors), box(24, 18, 30, 26, 18, tower)], [], [], []
+
+
 def stadium(full):
     cx, cy, rx, ry = 32, 32, 28, 24
 
@@ -687,7 +726,8 @@ def objects():
     for kind in range(8):
         out.append(('worship%d' % kind, 3, lambda k=kind: worship(k)))
     out += [('fire_station', 3, fire_station), ('police', 3, police), ('school', 3, school),
-            ('university', 4, university), ('stadium', 4, lambda: stadium(False)), ('stadium_full', 4, lambda: stadium(True)),
+            ('university', 4, university), ('library', 2, library), ('police_post', 2, police_post),
+            ('fire_post', 2, fire_post), ('stadium', 4, lambda: stadium(False)), ('stadium_full', 4, lambda: stadium(True)),
             ('port', 4, port), ('airport', 6, airport), ('coal', 4, coal), ('nuclear', 4, nuclear), ('gas', 3, gas),
             ('solar', 3, solar), ('bigpark', 3, bigpark), ('garden', 1, garden), ('plaza', 1, lambda: fountain(True)),
             ('fountain', 1, lambda: fountain(False))]

@@ -657,12 +657,13 @@ Simulation.prototype._sendMessages = function() {
       break;
 
     case 45:
-      if (this._census.totalPop > 60 && this._census.fireStationPop === 0)
+      if (this._census.totalPop > 60 && this._census.fireStationPop + this._census.firePostPop === 0)
         this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.NEED_FIRE_STATION});
       break;
 
     case 48:
-      if (this._census.totalPop > 60 && this._census.policeStationPop === 0)
+      if (this._census.totalPop > 60 &&
+          this._census.policeStationPop + this._census.policePostPop === 0)
         this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.NEED_POLICE_STATION});
       break;
 

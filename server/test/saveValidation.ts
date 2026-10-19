@@ -271,8 +271,9 @@ describe('Crafted saves are refused', () => {
       .map(action => action.criterion).filter((criterion): criterion is number => typeof criterion === 'number')
       .filter(value => (ZoneUtils as unknown as {getZoneSize(v: number): number}).getZoneSize(value) > 1);
     expect(values.length).toBeGreaterThanOrEqual(20);
+    // A centre is one tile in from its building's top left corner: in the top left corner of the map, no building fits
     for (const value of values)
-      expect([value, unmarked(119, 99, value)]).toEqual([value, 'map']);
+      expect([value, unmarked(0, 0, value)]).toEqual([value, 'map']);
   });
 
   test('A stadium on the edge of the map is refused before its city is kept', () => {

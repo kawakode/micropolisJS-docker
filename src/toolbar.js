@@ -61,6 +61,12 @@ var TOOLS = {
          description: 'Puts fires out faster around it. $100 a year.'},
   school: {name: 'School', size: 3, cost: 1000, colour: '#f97316',
            description: 'Raises land values and lowers crime nearby. $100 a year.'},
+  policepost: {name: 'Police post', size: 2, cost: 300, colour: '#3b82f6',
+               description: 'A small police station for dense neighbourhoods: half as strong. $50 a year.'},
+  firepost: {name: 'Fire post', size: 2, cost: 300, colour: '#ef4444',
+             description: 'A small fire station for dense neighbourhoods: half as strong. $50 a year.'},
+  library: {name: 'Library', size: 2, cost: 800, colour: '#eab308',
+            description: 'A small school: raises land values and lowers crime nearby. $50 a year.'},
   hospital: {name: 'Hospital', size: 3, cost: 1500, colour: '#f43f5e',
              description: 'Heals the neighbourhood: homes grow better and land is worth more. $150 a year.'},
   university: {name: 'University', size: 4, cost: 3000, colour: '#38bdf8',
@@ -94,7 +100,8 @@ var CATEGORIES = [
   {id: 'transport', name: 'Transport', key: '4', code: 'Digit4',
    tools: ['road', 'dirtroad', 'avenue', 'highway', 'rail', 'port', 'airport']},
   {id: 'power', name: 'Power', key: '6', code: 'Digit6', tools: ['wire', 'wind', 'solar', 'gas', 'coal', 'nuclear']},
-  {id: 'services', name: 'Services', key: '8', code: 'Digit8', tools: ['police', 'fire', 'school', 'hospital', 'university']},
+  {id: 'services', name: 'Services', key: '8', code: 'Digit8',
+   tools: ['police', 'policepost', 'fire', 'firepost', 'school', 'library', 'hospital', 'university']},
   {id: 'leisure', name: 'Leisure', key: '7', code: 'Digit7', tools: ['park', 'garden', 'plaza', 'bigpark', 'stadium']},
   {id: 'terrain', name: 'Terrain', key: 'T', code: 'KeyT', tools: ['trees', 'water', 'landfill']}
 ];

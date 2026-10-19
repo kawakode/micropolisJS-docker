@@ -7,7 +7,7 @@ import { Simulation } from "../src/simulation.js";
 import { Traffic } from "../src/traffic.js";
 import { ZoneUtils } from "../src/zoneUtils.js";
 import { BULLBIT } from "../src/tileFlags";
-import { DIRT, HOSPITAL, HRAIL, ROADS, WINDTURBINE, WINDTURBINE1 } from "../src/tileValues";
+import { DIRT, FIREPOST, HOSPITAL, HRAIL, LIBRARY, POLICEPOST, ROADS, WINDTURBINE, WINDTURBINE1 } from "../src/tileValues";
 
 const makeMap = (): any => new (GameMap as any)(20, 20, DIRT);
 
@@ -126,5 +126,51 @@ describe("A hospital", () => {
         budget.collectTax(0, {totalPop: 0, hospitalPop: 2, policeStationPop: 0, fireStationPop: 0,
                               roadTotal: 0, railTotal: 0, landValueAverage: 0}, 0);
         expect(budget.upkeepFund).toBe(-300);
+    });
+});
+
+
+describe("The compact stations and the library", () => {
+    const scanned = (centre: number): any => {
+        const simulation = new (Simulation as any)(new (GameMap as any)(120, 100), 0, Simulation.SPEED_MED);
+        const map = simulation._map;
+        (ZoneUtils as any).putZone(map, 20, 20, centre, true);
+        // The building covers 19..20: a road along its right edge
+        map.setTile(21, 20, ROADS, 0);
+        simulation._clearCensus();
+        simulation._mapScanner.mapScan(0, map.width, simulation._constructSimData());
+        return simulation;
+    };
+
+    it("are 2x2 buildings, demolished whole", () => {
+        [LIBRARY, POLICEPOST, FIREPOST].forEach((centre) => expect((ZoneUtils as any).getZoneSize(centre)).toBe(2));
+    });
+
+    it("cover their neighbourhood half as well as a big station, for the same budget", () => {
+        const post = scanned(POLICEPOST);
+        expect(post._census.policePostPop).toBe(1);
+        // Half as strong, and half again without power (there is no power plant)
+        expect(post.blockMaps.policeStationMap.worldGet(20, 20)).toBe(Math.floor(post.budget.policeEffect / 4));
+
+        const fire = scanned(FIREPOST);
+        expect(fire._census.firePostPop).toBe(1);
+        expect(fire.blockMaps.fireStationMap.worldGet(20, 20)).toBeGreaterThan(0);
+    });
+
+    it("educate a little, like a small school", () => {
+        const library = scanned(LIBRARY);
+        expect(library._census.libraryPop).toBe(1);
+        // Half as strong without power
+        expect(library.blockMaps.educationMap.worldGet(20, 20)).toBe(200);
+    });
+
+    it("cost half the upkeep of a big station", () => {
+        const budget = new (Budget as any)();
+        budget.setFunds(1000);
+        budget.collectTax(0, {totalPop: 0, policeStationPop: 1, policePostPop: 2, fireStationPop: 0, firePostPop: 1,
+                              libraryPop: 1, roadTotal: 0, railTotal: 0, landValueAverage: 0}, 0);
+        expect(budget.policeMaintenanceBudget).toBe(200);
+        expect(budget.fireMaintenanceBudget).toBe(50);
+        expect(budget.upkeepFund).toBe(-50);
     });
 });

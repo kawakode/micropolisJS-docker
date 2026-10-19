@@ -260,11 +260,16 @@ var addLot = function(first, last, lot) {
   addBuilding('school', 3, TileValues.SCHOOLBASE);
   addBuilding('university', 4, TileValues.UNIVERSITYBASE);
   addBuilding('bigpark', 3, TileValues.BIGPARKBASE);
+  addBuilding('library', 2, TileValues.LIBRARYBASE);
+  addBuilding('police_post', 2, TileValues.POLICEPOSTBASE);
+  addBuilding('fire_post', 2, TileValues.FIREPOSTBASE);
   addLot(TileValues.GASBASE, TileValues.GASBASE + 8, 'concrete');
   addLot(TileValues.SOLARBASE, TileValues.SOLARBASE + 8, 'lawn');
   addLot(TileValues.SCHOOLBASE, TileValues.SCHOOLBASE + 8, 'lawn');
   addLot(TileValues.UNIVERSITYBASE, TileValues.UNIVERSITYBASE + 15, 'lawn');
   addLot(TileValues.BIGPARKBASE, TileValues.BIGPARKBASE + 8, 'lawn');
+  addLot(TileValues.LIBRARYBASE, TileValues.LIBRARYBASE + 3, 'lawn');
+  addLot(TileValues.POLICEPOSTBASE, TileValues.FIREPOSTBASE + 3, 'pavement');
 
   ground[TileValues.GARDEN] = cell.lot_lawn;
   object[TileValues.GARDEN] = named('garden');

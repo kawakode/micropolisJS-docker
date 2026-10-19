@@ -109,7 +109,8 @@ QueryTool.prototype.classifyZone = function(x, y) {
       TileValues.HBRDG0, TileValues.RADAR0, TileValues.FOUNTAIN, TileValues.INDBASE2,
       TileValues.FOOTBALLGAME1, TileValues.VBRDG0, 952, TileValues.CHURCH1BASE, 1020,
       TileValues.WINDTURBINE, TileValues.GASBASE, TileValues.SOLARBASE, TileValues.SCHOOLBASE,
-      TileValues.UNIVERSITYBASE, TileValues.BIGPARKBASE, TileValues.GARDEN, TileValues.PLAZA, TileValues.KAWALAST + 1];
+      TileValues.UNIVERSITYBASE, TileValues.BIGPARKBASE, TileValues.GARDEN, TileValues.PLAZA,
+      TileValues.LIBRARYBASE, TileValues.POLICEPOSTBASE, TileValues.FIREPOSTBASE, TileValues.KAWALAST + 1];
 
   var tileValue = this._map.getTileValue(x, y);
   if (tileValue >= TileValues.COALSMOKE1 && tileValue < TileValues.FOOTBALLGAME1)

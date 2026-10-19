@@ -201,6 +201,47 @@ def plaza():
     return a
 
 
+def library():
+    a = Art(2)
+    # A stone hall with a row of columns and steps, under a grey roof
+    a.rect(3, 3, 26, 18, 'white').rect(3, 3, 26, 5, 'lgrey').rect(3, 3, 26, 1, 'grey')
+    for x in range(5, 28, 4):
+        a.rect(x, 10, 2, 9, 'lgrey')
+    a.rect(13, 14, 6, 7, 'brown')
+    a.rect(2, 21, 28, 2, 'lgrey').rect(4, 23, 24, 2, 'grey')
+    # A lawn, a reading bench and a tree
+    a.rect(4, 27, 6, 2, 'brown')
+    a.tree(26, 27, 3).tree(18, 28, 2)
+    return a
+
+
+def police_post():
+    a = Art(2, 'lgrey')
+    # A small blue station with a white band, and a car outside
+    a.rect(2, 2, 22, 18, 'blue').rect(2, 2, 22, 3, 'dgrey').rect(2, 12, 22, 2, 'white')
+    for x in range(5, 22, 5):
+        a.rect(x, 7, 3, 3, 'water')
+    a.rect(11, 15, 4, 5, 'dgrey')
+    a.pixel(20, 4, 'red').pixel(21, 4, 'blue')
+    a.rect(4, 24, 9, 5, 'white').rect(4, 24, 9, 1, 'dgrey').rect(6, 25, 5, 3, 'dgrey').rect(7, 24, 2, 1, 'blue')
+    a.rect(26, 2, 4, 28, 'ground')
+    a.tree(28, 8, 2).tree(28, 22, 2)
+    return a
+
+
+def fire_post():
+    a = Art(2, 'lgrey')
+    # A red fire house with two garage doors, and its tower for drying the hoses
+    a.rect(2, 4, 20, 18, 'red').rect(2, 4, 20, 3, 'dgrey')
+    a.rect(4, 12, 7, 10, 'dgrey').rect(13, 12, 7, 10, 'dgrey')
+    for y in range(13, 22, 3):
+        a.rect(4, y, 7, 1, 'grey').rect(13, y, 7, 1, 'grey')
+    a.rect(23, 2, 7, 20, 'red').rect(23, 2, 7, 3, 'dgrey').rect(25, 8, 3, 3, 'water')
+    a.rect(2, 22, 20, 2, 'white')
+    a.rect(24, 26, 6, 4, 'dgrey').disc(27, 28, 1.5, 'red')
+    return a
+
+
 # Tile numbers: keep in sync with src/tileValues.ts. Each entry: (first tile, size, drawing)
 WIND = 1024
 WIND_FRAMES = [1025, 1026, 1027]
@@ -211,6 +252,9 @@ UNIVERSITYBASE = 1055
 BIGPARKBASE = 1071
 GARDEN = 1080
 PLAZA = 1081
+LIBRARYBASE = 1082
+POLICEPOSTBASE = 1086
+FIREPOSTBASE = 1090
 
 BUILDINGS = [
     (WIND, 1, lambda: wind_turbine(0)),
@@ -224,6 +268,9 @@ BUILDINGS = [
     (BIGPARKBASE, 3, big_park),
     (GARDEN, 1, garden),
     (PLAZA, 1, plaza),
+    (LIBRARYBASE, 2, library),
+    (POLICEPOSTBASE, 2, police_post),
+    (FIREPOSTBASE, 2, fire_post),
 ]
 
 

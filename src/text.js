@@ -29,7 +29,8 @@ var zoneTypes = ['Clear', 'Water', 'Trees', 'Rubble', 'Flood', 'Radioactive Wast
                  'Police Department', 'Stadium', 'Nuclear Power', 'Draw Bridge',
                  'Radar Dish', 'Fountain', 'Industrial', 'Steelers 38  Bears 3',
                  'Draw Bridge', 'Ur 238', 'Church', 'Clear', 'Wind Power', 'Gas Power', 'Solar Power',
-                 'School', 'University', 'Park', 'Garden', 'Plaza', 'Clear'];
+                 'School', 'University', 'Park', 'Garden', 'Plaza', 'Library',
+                 'Police Department', 'Fire Department', 'Clear'];
 
 // Evaluation window
 var gameLevel = {};

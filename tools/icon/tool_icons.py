@@ -350,6 +350,57 @@ def university():
     return shapes, [], []
 
 
+def library():
+    def stone(face, u, v):
+        if face == 'top':
+            return (210, 200, 176)
+        if v >= 3.6:
+            return (240, 232, 210) if face == 'left' else (200, 190, 166)
+        if int(u * 2) % 3 == 0:
+            return (250, 246, 230) if face == 'left' else (214, 206, 186)
+        return (176, 164, 138) if face == 'left' else (146, 134, 112)
+
+    shapes = [land(grass), Box(2, 3, 0, 11, 10, 4.4, stone),
+              gable(2, 3, 11, 10, 4.4, 2.4, ((120, 122, 138), (90, 92, 108)), (214, 206, 186), 'x')]
+    return shapes, [], []
+
+
+def compact(walls_paint, sprite=None):
+    """A smaller building than service's, on a smaller lot: the compact stations"""
+    def ground(x, y):
+        if y >= 9 or x >= 9:
+            return CONCRETE
+        return grass(x, y)
+
+    return [land(ground), Box(3, 3, 0, 9, 8, 4, walls_paint)], sprite or [], []
+
+
+def police_post():
+    def paint(face, u, v):
+        if face == 'top':
+            return GREY_LIGHT
+        if 2.2 <= v < 2.9:
+            return WHITE
+        if face == 'left' and 0.8 <= v < 1.8 and int(u) % 3 == 1:
+            return (146, 192, 238)
+        return NAVY if face == 'left' else NAVY_DARK
+
+    return compact(paint, [Sprite(5.5, 4.5, 4, LIGHTS, LIGHTS_PALETTE), Sprite(10.5, 10, 0, CAR, CAR_PALETTE)])
+
+
+def fire_post():
+    def paint(face, u, v):
+        if face == 'top':
+            return GREY_LIGHT
+        if face == 'left' and v < 2.8 and 0.6 <= u % 3 < 2.4:
+            return (60, 56, 70) if v < 2.4 else WHITE
+        if 3.2 <= v < 3.7:
+            return WHITE
+        return RED if face == 'left' else RED_DARK
+
+    return compact(paint)
+
+
 def park():
     def path(x, y):
         return (214, 196, 150) if abs(x - y) <= 1 else grass(x, y)
@@ -502,6 +553,9 @@ ICONS = [
     ('water', water),
     ('landfill', landfill),
     ('hospital', hospital),
+    ('library', library),
+    ('policepost', police_post),
+    ('firepost', fire_post),
 ]
 
 
