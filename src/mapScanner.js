@@ -50,7 +50,7 @@ MapScanner.prototype.mapScan = function(startX, maxX, simData) {
       if (tile.isZone()) {
         simData.repairManager.checkTile(x, y, simData.cityTime);
 
-        // The power was set just above: read it from the map, not from our copy of the tile. Parks and statues need no power:
+        // The power was set just above: read it from the map, not from our copy of the tile. Some buildings need no power:
         // they don't count among the zones that have it or not
         if (TileUtils.needsPower(tileValue)) {
           if (this._map.getTile(x, y).isPowered())

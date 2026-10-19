@@ -534,6 +534,47 @@ def waterworks():
     return shapes, [], [], []
 
 
+BUS_YELLOW = ((250, 204, 60), (206, 160, 40), (236, 236, 230))
+
+
+def bus_paint(face, u, v):
+    if STATE['lights']:
+        return None
+    if face == 'top':
+        return BUS_YELLOW[2]
+    if 2 <= v < 3.6 and int(u) % 3 != 0:
+        return (120, 170, 220) if face == 'left' else (90, 130, 180)
+    return BUS_YELLOW[0] if face == 'left' else BUS_YELLOW[1]
+
+
+def bus_stop():
+    def pavement(u, v):
+        return (196, 196, 204) if v >= 9 else (110, 178, 84)
+
+    glass = plain((150, 196, 236), (110, 150, 196), (70, 66, 84))
+    shapes = [flat(0, 0, 16, 16, pavement), box(3, 7, 12, 9, 6, glass), box(2, 6, 13, 10, 0.8, plain(
+        (70, 66, 84), (54, 50, 66), (90, 86, 100)), 6)]
+    lines = [Line((14, 12, 0), (14, 12, 9), GREY_LIGHT)]
+    return shapes, [Sprite(14, 12, 9, ['yy', 'yy'], {'y': (250, 204, 60)})], lines, []
+
+
+def bus_depot():
+    hall = facade((150, 150, 160), (118, 118, 130), (170, 170, 184), (176, 214, 246), 4, 6, 3, seed=103)
+
+    def doors(face, u, v):
+        if not STATE['lights'] and face == 'left' and v < 7 and int(u) % 8 in range(1, 7):
+            return (60, 56, 70) if v < 6.5 else (250, 204, 60)
+        return hall(face, u, v)
+
+    def yard(u, v):
+        return (150, 150, 156) if (int(u) // 4 + int(v) // 4) % 2 else (162, 162, 168)
+
+    shapes = [flat(0, 0, 48, 48, yard), box(2, 2, 46, 20, 11, doors)]
+    for x in range(5, 44, 9):
+        shapes.append(box(x, 25, x + 6, 42, 5, bus_paint))
+    return shapes, [], [], []
+
+
 def stadium(full):
     cx, cy, rx, ry = 32, 32, 28, 24
 
@@ -816,7 +857,8 @@ def objects():
     out += [('fire_station', 3, fire_station), ('police', 3, police), ('school', 3, school),
             ('university', 4, university), ('library', 2, library), ('police_post', 2, police_post),
             ('fire_post', 2, fire_post), ('statue', 1, statue), ('town_hall', 3, town_hall), ('tower', 2, tower),
-            ('recycling', 3, recycling), ('waterworks', 3, waterworks), ('stadium', 4, lambda: stadium(False)), ('stadium_full', 4, lambda: stadium(True)),
+            ('recycling', 3, recycling), ('waterworks', 3, waterworks), ('bus_stop', 1, bus_stop),
+            ('bus_depot', 3, bus_depot), ('stadium', 4, lambda: stadium(False)), ('stadium_full', 4, lambda: stadium(True)),
             ('port', 4, port), ('airport', 6, airport), ('coal', 4, coal), ('nuclear', 4, nuclear), ('gas', 3, gas),
             ('solar', 3, solar), ('bigpark', 3, bigpark), ('garden', 1, garden), ('plaza', 1, lambda: fountain(True)),
             ('fountain', 1, lambda: fountain(False))]

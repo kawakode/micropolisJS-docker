@@ -18,7 +18,8 @@ import * as TileValues from "./tileValues.ts";
 // better and raises land values (see Residential.evalResidential). Libraries are small schools. Monuments add their
 // prestige to the landmark map, which raises land values more than anything. Recycling centres (when the city
 // recycles) and water treatment plants clean up the pollution around them, and the plants make the waterfront
-// sought after (see BlockMapUtils.pollutionTerrainLandValueScan). Parks, gardens and plazas count as green space for land values
+// sought after (see BlockMapUtils.pollutionTerrainLandValueScan). Bus stops and depots take cars off the roads around
+// them, once the city has a depot (see Traffic.addToTrafficDensityMap). Parks, gardens and plazas count as green space for land values
 // (see BlockMapUtils.pollutionTerrainLandValueScan).
 
 var SCHOOL_STRENGTH = 800;
@@ -34,6 +35,10 @@ var TOWER_PRESTIGE = 2400;
 var RECYCLING_CLEANUP = 1200;
 var WATERWORKS_CLEANUP = 500;
 var WATERWORKS_WATERFRONT = 1000;
+// How many people the buses carry instead of cars, around each stop and the depot (only once there is a depot: see
+// BlockMapUtils.crimeScan)
+var BUSSTOP_TRANSIT = 300;
+var BUSDEPOT_TRANSIT = 600;
 
 
 // Whether there is a road or rail along the edge of a building of the given size, whose centre is at (x, y)
@@ -55,11 +60,11 @@ var hasRoadAlongside = function(map, x, y, size) {
 };
 
 
-// Adds a building's strength to one of the block maps (education, health...), halved without power, and halved again
-// without a road
+// Adds a building's strength to one of the block maps (education, health...), halved without power (if it needs any),
+// and halved again without a road
 var addEffect = function(map, x, y, simData, strength, size, mapName) {
   var effect = strength;
-  if (!map.getTile(x, y).isPowered())
+  if (!map.getTile(x, y).isPowered() && TileUtils.needsPower(map.getTileValue(x, y)))
     effect = Math.floor(effect / 2);
 
   if (!hasRoadAlongside(map, x, y, size))
@@ -129,6 +134,7 @@ var getZoneSize = function(tileValue) {
   switch (tileValue) {
     case TileValues.WINDTURBINE:
     case TileValues.STATUE:
+    case TileValues.BUSSTOP:
       return 1;
 
     case TileValues.LIBRARY:
@@ -144,6 +150,7 @@ var getZoneSize = function(tileValue) {
     case TileValues.TOWNHALL:
     case TileValues.RECYCLING:
     case TileValues.WATERWORKS:
+    case TileValues.BUSDEPOT:
       return 3;
 
     case TileValues.UNIVERSITY:
@@ -173,6 +180,8 @@ var KawaBuildings = {
     mapScanner.addAction(TileValues.TOWER, makeServiceHandler('towerPop', TOWER_PRESTIGE, 2, 'landmarkMap'));
     mapScanner.addAction(TileValues.RECYCLING, recyclingFound);
     mapScanner.addAction(TileValues.WATERWORKS, waterworksFound);
+    mapScanner.addAction(TileValues.BUSSTOP, makeServiceHandler('busStopPop', BUSSTOP_TRANSIT, 1, 'transitMap'));
+    mapScanner.addAction(TileValues.BUSDEPOT, makeServiceHandler('busDepotPop', BUSDEPOT_TRANSIT, 3, 'transitMap'));
     mapScanner.addAction(TileValues.BIGPARK, parkFound);
 
     repairManager.addAction(TileValues.SCHOOL, 15, 3);
@@ -185,6 +194,7 @@ var KawaBuildings = {
     repairManager.addAction(TileValues.TOWER, 15, 2);
     repairManager.addAction(TileValues.RECYCLING, 15, 3);
     repairManager.addAction(TileValues.WATERWORKS, 15, 3);
+    repairManager.addAction(TileValues.BUSDEPOT, 15, 3);
     repairManager.addAction(TileValues.BIGPARK, 15, 3);
   }
 };

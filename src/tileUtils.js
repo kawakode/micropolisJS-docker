@@ -108,10 +108,10 @@ var randomRubble = function() {
 };
 
 
-// Whether the centre of a zone or building needs power: parks and statues don't (they neither count among the zones
-// with or without power, nor blink without it)
+// Whether the centre of a zone or building needs power: parks, statues and bus stops don't (they neither count among
+// the zones with or without power, nor blink without it)
 var needsPower = function(tileValue) {
-  return tileValue !== TileValues.BIGPARK && tileValue !== TileValues.STATUE;
+  return tileValue !== TileValues.BIGPARK && tileValue !== TileValues.STATUE && tileValue !== TileValues.BUSSTOP;
 };
 
 

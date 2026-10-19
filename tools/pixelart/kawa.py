@@ -317,6 +317,28 @@ def waterworks():
     return a
 
 
+def bus_stop():
+    a = Art(1)
+    # A shelter on a strip of pavement, with its sign
+    a.rect(0, 9, 16, 7, 'lgrey').rect(0, 15, 16, 1, 'grey')
+    a.rect(3, 6, 9, 6, 'dgrey').rect(3, 6, 9, 1, 'water').rect(4, 7, 7, 4, 'water')
+    a.rect(4, 11, 7, 1, 'brown')
+    a.rect(13, 3, 1, 10, 'grey').rect(12, 2, 3, 3, 'yellow').pixel(13, 3, 'dgrey')
+    return a
+
+
+def bus_depot():
+    a = Art(3, 'lgrey')
+    # The garage, with its bays, and buses waiting in the yard
+    a.rect(2, 2, 44, 18, 'grey').rect(2, 2, 44, 4, 'dgrey')
+    for x in range(4, 44, 8):
+        a.rect(x, 9, 6, 11, 'dgrey').rect(x, 9, 6, 1, 'yellow')
+    for x in range(5, 44, 9):
+        a.rect(x, 25, 6, 17, 'yellow').rect(x, 25, 6, 2, 'white').rect(x + 1, 28, 4, 1, 'water').rect(x + 1, 38, 4, 1, 'water')
+    a.rect(0, 44, 48, 4, 'grey')
+    return a
+
+
 # Tile numbers: keep in sync with src/tileValues.ts. Each entry: (first tile, size, drawing)
 WIND = 1024
 WIND_FRAMES = [1025, 1026, 1027]
@@ -335,6 +357,8 @@ TOWNHALLBASE = 1095
 TOWERBASE = 1104
 RECYCLINGBASE = 1108
 WATERWORKSBASE = 1117
+BUSSTOP = 1126
+BUSDEPOTBASE = 1127
 
 BUILDINGS = [
     (WIND, 1, lambda: wind_turbine(0)),
@@ -356,6 +380,8 @@ BUILDINGS = [
     (TOWERBASE, 2, tower),
     (RECYCLINGBASE, 3, recycling),
     (WATERWORKSBASE, 3, waterworks),
+    (BUSSTOP, 1, bus_stop),
+    (BUSDEPOTBASE, 3, bus_depot),
 ]
 
 

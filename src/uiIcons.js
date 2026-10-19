@@ -14,7 +14,8 @@ var TOOL_ICONS = {size: 32, width: 352, height: 128, at: {query: [0, 0], bulldoz
   nuclear: [288, 32], police: [320, 32], fire: [0, 64], school: [32, 64], university: [64, 64], park: [96, 64],
   garden: [128, 64], plaza: [160, 64], bigpark: [192, 64], stadium: [224, 64], trees: [256, 64], water: [288, 64],
   landfill: [320, 64], hospital: [0, 96], library: [32, 96], policepost: [64, 96], firepost: [96, 96],
-  statue: [128, 96], townhall: [160, 96], tower: [192, 96], recycling: [224, 96], waterworks: [256, 96]}};
+  statue: [128, 96], townhall: [160, 96], tower: [192, 96], recycling: [224, 96], waterworks: [256, 96],
+  busstop: [288, 96], busdepot: [320, 96]}};
 var HUD_ICONS = {size: 16, width: 208, height: 16, at: {budget: [0, 0], evaluation: [16, 0], graphs: [32, 0],
   neighbours: [48, 0], disasters: [64, 0], picture: [80, 0], about: [96, 0], settings: [112, 0], save: [128, 0],
   query: [144, 0], trophy: [160, 0], scenario: [176, 0], heart: [192, 0]}};

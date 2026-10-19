@@ -7,8 +7,8 @@ import { Ordinances } from "../src/ordinances.js";
 import { Simulation } from "../src/simulation.js";
 import { Traffic } from "../src/traffic.js";
 import { ZoneUtils } from "../src/zoneUtils.js";
-import { BULLBIT } from "../src/tileFlags";
-import { DIRT, FIREPOST, HOSPITAL, HRAIL, LIBRARY, POLICEPOST, POWERPLANT, RECYCLING, RIVER, ROADS, WATERWORKS, WINDTURBINE,
+import { BULLBIT, ZONEBIT } from "../src/tileFlags";
+import { BUSDEPOT, BUSSTOP, DIRT, FIREPOST, HOSPITAL, HRAIL, LIBRARY, POLICEPOST, POWERPLANT, RECYCLING, RIVER, ROADS, WATERWORKS, WINDTURBINE,
          WINDTURBINE1 } from "../src/tileValues";
 
 const makeMap = (): any => new (GameMap as any)(20, 20, DIRT);
@@ -226,5 +226,41 @@ describe("The recycling centre and the water treatment plant", () => {
         };
 
         expect(landValueByWater(true)).toBeGreaterThan(landValueByWater(false));
+    });
+});
+
+
+describe("The buses", () => {
+    const transitAt = (withDepot: boolean): any => {
+        const simulation = new (Simulation as any)(new (GameMap as any)(120, 100), 0, Simulation.SPEED_MED);
+        const map = simulation._map;
+        map.setTile(20, 20, BUSSTOP, ZONEBIT);
+        map.setTile(21, 20, ROADS, 0);
+        if (withDepot)
+            (ZoneUtils as any).putZone(map, 60, 60, BUSDEPOT, true);
+        simulation._clearCensus();
+        simulation._mapScanner.mapScan(0, map.width, simulation._constructSimData());
+        BlockMapUtils.crimeScan(simulation._census, simulation.blockMaps);
+        return simulation;
+    };
+
+    it("only run once the city has a depot", () => {
+        const noDepot = transitAt(false);
+        expect(noDepot._census.busStopPop).toBe(1);
+        expect(noDepot.blockMaps.transitEffectMap.worldGet(20, 20)).toBe(0);
+        expect(transitAt(true).blockMaps.transitEffectMap.worldGet(20, 20)).toBeGreaterThan(0);
+    });
+
+    it("take cars off the roads around the stops", () => {
+        const trafficAfterTrip = (withDepot: boolean): number => {
+            const simulation = transitAt(withDepot);
+            const traffic = new (Traffic as any)(simulation._map, simulation.spriteManager);
+            traffic._stack = [{x: 21, y: 20}];
+            traffic.addToTrafficDensityMap(simulation.blockMaps);
+            return simulation.blockMaps.trafficDensityMap.worldGet(21, 20);
+        };
+
+        expect(trafficAfterTrip(true)).toBeLessThan(trafficAfterTrip(false));
+        expect(trafficAfterTrip(true)).toBeGreaterThanOrEqual(Math.floor(trafficAfterTrip(false) / 2));
     });
 });

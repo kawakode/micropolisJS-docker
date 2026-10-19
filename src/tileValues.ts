@@ -349,7 +349,10 @@ export const RECYCLINGBASE  = 1108; // Recycling centre (tiles 1108--1116)
 export const RECYCLING      = 1112;
 export const WATERWORKSBASE = 1117; // Water treatment plant (tiles 1117--1125)
 export const WATERWORKS     = 1121;
-export const KAWALAST       = 1125;
+export const BUSSTOP        = 1126; // A 1x1 bus stop, its own centre
+export const BUSDEPOTBASE   = 1127; // Bus depot (tiles 1127--1135)
+export const BUSDEPOT       = 1131;
+export const KAWALAST       = 1135;
 
 export const TILE_COUNT     = 2048;
 

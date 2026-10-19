@@ -448,6 +448,30 @@ def waterworks():
     return shapes, [], []
 
 
+BUS = walls((250, 204, 60), (206, 160, 40), (236, 236, 230), ((120, 170, 220), 2, 2))
+
+
+def bus_stop():
+    def ground(x, y):
+        return CONCRETE if y >= 7 else grass(x, y)
+
+    shapes = [land(ground), Box(2, 5, 0, 9, 6.5, 4, walls((150, 196, 236), (110, 150, 196), (70, 66, 84))),
+              Box(1.5, 4.5, 4, 9.5, 7, 0.6, walls((70, 66, 84), (54, 50, 66), (90, 86, 100))),
+              Box(3, 9, 0, 11, 12, 2.5, BUS)]
+    lines = [Line((11.5, 7.5, 0), (11.5, 7.5, 6), GREY_LIGHT)]
+    return shapes, [Sprite(11.5, 7.5, 6, ['yy', 'yy'], {'y': (250, 204, 60)})], lines
+
+
+def bus_depot():
+    def yard(x, y):
+        return CONCRETE if (x + y) % 2 else CONCRETE_DARK
+
+    shapes = [land(yard), Box(1, 1, 0, 12, 6, 4, walls((150, 150, 160), (118, 118, 130), (170, 170, 184)))]
+    for x in (1.5, 5, 8.5):
+        shapes.append(Box(x, 7.5, 0, x + 2.5, 12, 2.2, BUS))
+    return shapes, [], []
+
+
 def park():
     def path(x, y):
         return (214, 196, 150) if abs(x - y) <= 1 else grass(x, y)
@@ -608,6 +632,8 @@ ICONS = [
     ('tower', tower),
     ('recycling', recycling),
     ('waterworks', waterworks),
+    ('busstop', bus_stop),
+    ('busdepot', bus_depot),
 ]
 
 

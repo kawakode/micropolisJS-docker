@@ -165,6 +165,12 @@ var strings = {
     'Fait monter les prix fonciers et baisser la criminalité alentour. 100 $ par an.',
   'Hospital': 'Hôpital',
   'Environment': 'Écologie',
+  'Bus stop': 'Arrêt de bus',
+  'Beside a road: fewer cars around it, once the city has a bus depot. $5 a year.':
+    'Au bord d\'une route : moins de voitures alentour, dès que la ville a un dépôt de bus. 5 $ par an.',
+  'Bus depot': 'Dépôt de bus',
+  'Runs the city\'s buses: the bus stops take cars off the roads. $200 a year.':
+    'Fait rouler les bus de la ville : les arrêts retirent des voitures des routes. 200 $ par an.',
   'Recycling centre': 'Centre de tri',
   'Cleans up the pollution around it, once the city recycles (an ordinance). $200 a year.':
     'Réduit la pollution alentour, dès que la ville recycle (un arrêté). 200 $ par an.',

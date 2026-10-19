@@ -267,6 +267,7 @@ var addLot = function(first, last, lot) {
   addBuilding('tower', 2, TileValues.TOWERBASE);
   addBuilding('recycling', 3, TileValues.RECYCLINGBASE);
   addBuilding('waterworks', 3, TileValues.WATERWORKSBASE);
+  addBuilding('bus_depot', 3, TileValues.BUSDEPOTBASE);
   addLot(TileValues.GASBASE, TileValues.GASBASE + 8, 'concrete');
   addLot(TileValues.SOLARBASE, TileValues.SOLARBASE + 8, 'lawn');
   addLot(TileValues.SCHOOLBASE, TileValues.SCHOOLBASE + 8, 'lawn');
@@ -278,12 +279,15 @@ var addLot = function(first, last, lot) {
   addLot(TileValues.TOWERBASE, TileValues.TOWERBASE + 3, 'pavement');
   addLot(TileValues.RECYCLINGBASE, TileValues.RECYCLINGBASE + 8, 'concrete');
   addLot(TileValues.WATERWORKSBASE, TileValues.WATERWORKSBASE + 8, 'lawn');
+  addLot(TileValues.BUSDEPOTBASE, TileValues.BUSDEPOTBASE + 8, 'concrete');
 
   ground[TileValues.GARDEN] = cell.lot_lawn;
   object[TileValues.GARDEN] = named('garden');
   ground[TileValues.PLAZA] = cell.lot_pavement;
   ground[TileValues.STATUE] = cell.lot_pavement;
   object[TileValues.STATUE] = named('statue');
+  ground[TileValues.BUSSTOP] = cell.lot_lawn;
+  object[TileValues.BUSSTOP] = named('bus_stop');
   object[TileValues.PLAZA] = named('plaza');
   range(TileValues.FOUNTAIN, TileValues.FOUNTAIN + 3, function(tile) {
     ground[tile] = cell.lot_lawn;

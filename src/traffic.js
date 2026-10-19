@@ -57,6 +57,7 @@ Traffic.prototype.makeTraffic = function(x, y, blockMaps, destFn) {
 
 Traffic.prototype.addToTrafficDensityMap = function(blockMaps) {
   var trafficDensityMap = blockMaps.trafficDensityMap;
+  var transitEffectMap = blockMaps.transitEffectMap;
 
   while (this._stack.length > 0) {
     var pos = this._stack.pop();
@@ -70,7 +71,11 @@ Traffic.prototype.addToTrafficDensityMap = function(blockMaps) {
     if (tileValue >= ROADBASE && tileValue < POWERBASE) {
       // Update traffic density.
       var traffic = trafficDensityMap.worldGet(pos.x, pos.y);
-      traffic += ROAD_TRAFFIC[this._map.getRoadClass(pos.x, pos.y)] || 50;
+      var added = ROAD_TRAFFIC[this._map.getRoadClass(pos.x, pos.y)] || 50;
+      // KawaCity: where the buses run, up to half the trips leave the car at home
+      if (transitEffectMap)
+        added -= Math.floor(added * Math.min(0.5, transitEffectMap.worldGet(pos.x, pos.y) / 200));
+      traffic += added;
       traffic = Math.min(traffic, 240);
       trafficDensityMap.worldSet(pos.x, pos.y, traffic);
 
