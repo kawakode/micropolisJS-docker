@@ -791,8 +791,8 @@ var strings = {
   'An account is only needed to play with others. Alone, you play without one, and your cities stay in your browser.':
     'Un compte ne sert qu\'à jouer avec d\'autres. Seul, vous jouez sans compte, et vos villes restent dans votre navigateur.',
   'What the server keeps': 'Ce que le serveur conserve',
-  'Your username, your email address, your password (in a form that cannot be read back), the language of your emails, the sessions of the devices where you are logged in, when your account was created, changed and last used, its failed logins (to protect it), and a new email address until you confirm it. If you play with others: your shared cities and regions, the ones you are a member of, and the invitations you send and receive. The chat is never stored: the server keeps the last 50 messages of a city in memory while it is open, and forgets them when it closes, at most a minute after its last player leaves.':
-    'Votre nom d\'utilisateur, votre adresse e-mail, votre mot de passe (sous une forme qui ne permet pas de le relire), la langue de vos e-mails, les sessions des appareils où vous êtes connecté, les dates de création, de modification et de dernière connexion de votre compte, ses tentatives de connexion manquées (pour le protéger), et une nouvelle adresse e-mail tant que vous ne l\'avez pas confirmée. Si vous jouez avec d\'autres : vos villes et régions partagées, celles dont vous êtes membre, et les invitations que vous envoyez et recevez. La discussion n\'est jamais enregistrée : le serveur garde en mémoire les 50 derniers messages d\'une ville tant qu\'elle est ouverte, et les oublie quand elle se ferme, au plus une minute après le départ de son dernier joueur.',
+  'Your username, your email address, your password (in a form that cannot be read back), the language of your emails, the sessions of the devices where you are logged in, when your account was created, changed and last used, its failed logins (to protect it), and a new email address until you confirm it. If you play with others: your shared cities and regions, the ones you are a member of, the regions whose owner removed you, and the invitations you send and receive. The chat is never stored: the server keeps the last 50 messages of a city in memory while it is open, and forgets them when it closes, at most a minute after its last player leaves.':
+    'Votre nom d\'utilisateur, votre adresse e-mail, votre mot de passe (sous une forme qui ne permet pas de le relire), la langue de vos e-mails, les sessions des appareils où vous êtes connecté, les dates de création, de modification et de dernière connexion de votre compte, ses tentatives de connexion manquées (pour le protéger), et une nouvelle adresse e-mail tant que vous ne l\'avez pas confirmée. Si vous jouez avec d\'autres : vos villes et régions partagées, celles dont vous êtes membre, les régions dont le propriétaire vous a retiré, et les invitations que vous envoyez et recevez. La discussion n\'est jamais enregistrée : le serveur garde en mémoire les 50 derniers messages d\'une ville tant qu\'elle est ouverte, et les oublie quand elle se ferme, au plus une minute après le départ de son dernier joueur.',
   'The server\'s logs record the IP addresses and the accounts behind requests, to protect it against abuse. Old logs are deleted as new ones are written, by the log rotation that the people who run this server set up.':
     'Les journaux du serveur notent les adresses IP et les comptes à l\'origine des requêtes, pour le protéger des abus. Les anciens journaux sont effacés à mesure que de nouveaux s\'écrivent, par la rotation des journaux que les responsables de ce serveur mettent en place.',
   'Backups of the server\'s data, made by the people who run it, keep what they hold until they delete them.':
@@ -901,6 +901,31 @@ var strings = {
   'The region is deleted for all its members. Its cities stay, out of the region.':
     'La région est supprimée pour tous ses membres. Ses villes restent, hors de la région.',
   'Delete the region': 'Supprimer la région',
+  'Who can join it': 'Qui peut la rejoindre',
+  'Who can join the region': 'Qui peut rejoindre la région',
+  'The players I invite': 'Les joueurs que j\'invite',
+  'Every player': 'Tous les joueurs',
+  'A public region is listed in every player\'s lobby, and anyone can join it without an invitation, except the players you removed from it. Its members stay when you close it again.':
+    'Une région publique s\'affiche dans le salon de chaque joueur, et chacun peut la rejoindre sans invitation, sauf les joueurs que vous en avez retirés. Ses membres restent quand vous la refermez.',
+  'Apply': 'Appliquer',
+  'Public regions': 'Régions publiques',
+  'Regions open to every player: join one to build your city beside the cities of others.':
+    'Des régions ouvertes à tous les joueurs : rejoignez-en une pour bâtir votre ville à côté de celles des autres.',
+  'No public region to join right now.': 'Aucune région publique à rejoindre pour le moment.',
+  'Join': 'Rejoindre',
+  'Open to every player': 'Ouverte à tous les joueurs',
+  'On invitation only': 'Sur invitation seulement',
+  '1 member': '1 membre',
+  '{count} members': '{count} membres',
+  'This region is no longer open to every player.': 'Cette région n\'est plus ouverte à tous les joueurs.',
+  'The owner of this region removed you from it: only an invitation from them lets you back in.':
+    'Le propriétaire de cette région vous en a retiré : seule une invitation de sa part vous permet d\'y revenir.',
+  'This region has as many members as it can have.': 'Cette région a autant de membres qu\'elle peut en avoir.',
+  'You are already a member of this region.': 'Vous êtes déjà membre de cette région.',
+  'Every player can now join this region from their lobby.':
+    'Tous les joueurs peuvent désormais rejoindre cette région depuis leur salon.',
+  'Only the players you invite can now join this region.':
+    'Seuls les joueurs que vous invitez peuvent désormais rejoindre cette région.',
   'Owner: {name}': 'Propriétaire : {name}',
   'Population: {population}': 'Habitants : {population}',
   'Year: {year}': 'Année : {year}',

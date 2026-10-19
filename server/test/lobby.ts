@@ -355,7 +355,8 @@ describe('Shared cities', () => {
     expect(exported.cities).toEqual([expect.objectContaining({id: city.id, name: 'Exported', region: null,
       members: [{id: alice.publicId, username: 'Alice', role: 'owner'}, {id: bob.publicId, username: 'Bob',
                                                                           role: 'viewer'}]})]);
-    expect(exported.regions).toEqual([expect.objectContaining({id: region.id, name: 'Valley', width: 2, height: 2})]);
+    expect(exported.regions).toEqual([expect.objectContaining({id: region.id, name: 'Valley', width: 2, height: 2,
+                                                                 public: false})]);
     expect(exported.memberships.cities).toEqual([expect.objectContaining({id: city.id, role: 'owner'})]);
     expect(exported.invitations.sent).toEqual([expect.objectContaining({kind: 'region', username: 'Bob'})]);
 
@@ -364,6 +365,14 @@ describe('Shared cities', () => {
     expect(bobs.memberships.cities).toEqual([expect.objectContaining({id: city.id, role: 'viewer'})]);
     expect(bobs.invitations.received).toEqual([expect.objectContaining({kind: 'region', username: 'Alice',
                                                                         target: {id: region.id, name: 'Valley'}})]);
+    expect(bobs.memberships.removedFrom).toEqual([]);
+
+    // Removed from a region by its owner: kept, so that they do not join it again by themselves
+    const invitation = (await bob.get('/api/cities')).json.invitations.find((i: any) => i.kind === 'region');
+    await bob.post(`/api/invitations/${invitation.id}/accept`);
+    expect((await alice.post(`/api/regions/${region.id}/members/${bob.publicId}/remove`)).status).toBe(204);
+    expect((await bob.get('/api/account/export')).json.memberships.removedFrom)
+      .toEqual([{id: region.id, name: 'Valley', removedAt: expect.any(String)}]);
     expect(JSON.stringify(exported)).not.toMatch(/"(owner_id|user_id|city_id)"/);
   });
 });

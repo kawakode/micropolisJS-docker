@@ -157,4 +157,19 @@ export const MIGRATIONS: readonly string[] = [
   CREATE INDEX region_invitations_invitee ON region_invitations(invitee_id);
   CREATE INDEX region_invitations_inviter ON region_invitations(inviter_id);
   `,
+
+  // 3: public regions, open to every player: listed in the lobby, joined without an invitation. A player the owner
+  // removed from a region does not join it again that way (an invitation from its owner still lets them in).
+  `
+  ALTER TABLE regions ADD COLUMN is_public INTEGER NOT NULL DEFAULT 0 CHECK (is_public IN (0, 1));
+  CREATE INDEX regions_public ON regions(is_public, created_at);
+
+  CREATE TABLE region_removals (
+    region_id INTEGER NOT NULL REFERENCES regions(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    removed_at INTEGER NOT NULL,
+    PRIMARY KEY (region_id, user_id)
+  );
+  CREATE INDEX region_removals_user ON region_removals(user_id);
+  `,
 ];

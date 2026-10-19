@@ -12,7 +12,8 @@ import { forbidden, notFound } from './cityStore';
 // The regions in the database: private grids of 2x2 to 4x4 slots, each slot empty or holding a shared city, side by
 // side with the cities of the slots around it (see regionLink.ts). A region's owner invites its members; a member
 // fills a free slot by making a new city there. As for cities, someone who is not a member is told a region does not
-// exist (404 not_found).
+// exist (404 not_found). A public region is also listed in every player's lobby, and anyone may join it without an
+// invitation, but for the players its owner removed from it.
 
 export const REGION_LIMITS = Object.freeze({
   // Regions a player owns
@@ -30,6 +31,7 @@ export interface RegionRow {
   name: string;
   width: number;
   height: number;
+  is_public: number;
   created_at: number;
   updated_at: number;
 }
@@ -39,6 +41,14 @@ export interface RegionListing extends RegionRow {
   owner_name: string;
   cities: number;
 }
+
+// A public region as the lobby lists it, for a player who may join it
+export interface PublicRegionListing extends RegionListing {
+  members: number;
+}
+
+// The public regions the lobby lists, at most
+export const PUBLIC_REGIONS_LISTED = 50;
 
 // A city in a slot of a region
 export interface SlotRow {
@@ -121,17 +131,37 @@ export class RegionStore {
        WHERE m.user_id = ? ORDER BY r.created_at DESC, r.id DESC`, userId);
   }
 
+  // The public regions a user may join, newest first: not a member yet, not removed from them, with a free slot and
+  // room for one more member
+  publicFor(userId: number): PublicRegionListing[] {
+    return this.db.all<PublicRegionListing>(
+      `SELECT * FROM (
+         SELECT r.*, o.username AS owner_name, (SELECT count(*) FROM cities c WHERE c.region_id = r.id) AS cities,
+                (SELECT count(*) FROM region_members m WHERE m.region_id = r.id) AS members
+         FROM regions r JOIN users o ON o.id = r.owner_id
+         WHERE r.is_public = 1
+           AND NOT EXISTS (SELECT 1 FROM region_members m WHERE m.region_id = r.id AND m.user_id = ?)
+           AND NOT EXISTS (SELECT 1 FROM region_removals x WHERE x.region_id = r.id AND x.user_id = ?))
+       WHERE cities < width * height AND members < ?
+       ORDER BY created_at DESC, id DESC LIMIT ?`, userId, userId, REGION_LIMITS.members, PUBLIC_REGIONS_LISTED);
+  }
+
   // A new region, its owner its first member
-  create(ownerId: number, name: string, width: number, height: number, now: number): RegionRow {
+  create(ownerId: number, name: string, width: number, height: number, isPublic: boolean, now: number): RegionRow {
     const id = this.db.run(
-      `INSERT INTO regions (public_id, owner_id, name, width, height, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`, newPublicId(), ownerId, name, width, height, now, now).lastInsertRowid;
+      `INSERT INTO regions (public_id, owner_id, name, width, height, is_public, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, newPublicId(), ownerId, name, width, height, isPublic ? 1 : 0, now, now)
+      .lastInsertRowid;
     this.addMember(id, ownerId, now);
     return this.byId(id) as RegionRow;
   }
 
   rename(id: number, name: string, now: number): void {
     this.db.run('UPDATE regions SET name = ?, updated_at = ? WHERE id = ?', name, now, id);
+  }
+
+  setPublic(id: number, isPublic: boolean, now: number): void {
+    this.db.run('UPDATE regions SET is_public = ?, updated_at = ? WHERE id = ?', isPublic ? 1 : 0, now, id);
   }
 
   delete(id: number): void {
@@ -173,6 +203,21 @@ export class RegionStore {
 
   removeMember(regionId: number, userId: number): void {
     this.db.run('DELETE FROM region_members WHERE region_id = ? AND user_id = ?', regionId, userId);
+  }
+
+  // A member the owner removed: they do not join the region again unless its owner invites them
+  noteRemoval(regionId: number, userId: number, now: number): void {
+    this.db.run(`INSERT INTO region_removals (region_id, user_id, removed_at) VALUES (?, ?, ?)
+                 ON CONFLICT (region_id, user_id) DO UPDATE SET removed_at = excluded.removed_at`, regionId, userId, now);
+  }
+
+  wasRemoved(regionId: number, userId: number): boolean {
+    return this.db.get('SELECT 1 FROM region_removals WHERE region_id = ? AND user_id = ?', regionId, userId) !==
+      undefined;
+  }
+
+  forgetRemoval(regionId: number, userId: number): void {
+    this.db.run('DELETE FROM region_removals WHERE region_id = ? AND user_id = ?', regionId, userId);
   }
 
   // The cities a user has in a region

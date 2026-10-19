@@ -41,11 +41,15 @@ import { prepareCity, SaveError } from './saveValidation';
 //   POST /api/invitations/:id/cancel {}                inviter (or the owner of the city or region): 204
 //   POST /api/invitations/decline-all {from: userId}   204: every invitation from that user declined
 //   GET  /api/regions                                  {regions: [region]}
-//   POST /api/regions {name, width, height}            201 {region}
+//   GET  /api/public-regions                           {regions: [region + members]}: the public regions the user may
+//                                                       join, newest first, at most 50
+//   POST /api/regions {name, width, height, public?}   201 {region}
 //   GET  /api/regions/:id                              {region, slots: [{x, y, city: {id, name, ownerName,
 //                                                       population, role} | null}], members: [{id, username,
 //                                                       owner}], invitations (owner only)}
-//   PATCH /api/regions/:id {name}                      region owner: {region}
+//   PATCH /api/regions/:id {name?, public?}            region owner: {region}
+//   POST /api/regions/:id/join {}                      a public region: {region}; 409 conflict already a member; 403
+//                                                       forbidden removed by its owner, limit_reached no room left
 //   POST /api/regions/:id/delete {}                    region owner: 204 (its cities stay, out of the region)
 //   POST /api/regions/:id/invitations {username}       region owner: 201 {ok: true}
 //   POST /api/regions/:id/members/:userId/remove {}    region owner, or the member (leaving): 204 (their cities leave)
@@ -53,7 +57,7 @@ import { prepareCity, SaveError } from './saveValidation';
 //                                                       the city there is not that one
 //
 // city = {id, name, role, ownerName, population, year, online, region: {id, name, x, y} | null}
-// region = {id, name, ownerName, width, height, mine, cities}
+// region = {id, name, ownerName, width, height, public, mine, cities}
 // invitation = {id, kind: 'city' | 'region', target: {id, name}, inviterId, inviterName, role (null for a region)}
 
 const MINUTE = 60 * 1000;
@@ -65,6 +69,7 @@ export const LOBBY_LIMITS = {
   // Invitations sent, to cities and regions together: counted once the request is checked
   invitations: {name: 'invitations', limit: 20, windowMs: HOUR, per: 'user'},
   downloads: {name: 'city-download', limit: 30, windowMs: HOUR, per: 'user'},
+  regionJoins: {name: 'region-join', limit: 20, windowMs: HOUR, per: 'user'},
 } as const satisfies Record<string, RateLimitRule>;
 
 // The longest username looked up (a username is at most 20 code points)
@@ -132,6 +137,7 @@ export function registerLobbyRoutes(context: AppContext, lobby: Lobby): void {
     ownerName: regions.ownerName(region),
     width: region.width,
     height: region.height,
+    public: region.is_public === 1,
     mine: region.owner_id === userId,
     cities: regions.cityCount(region.id),
   });
@@ -486,6 +492,8 @@ export function registerLobbyRoutes(context: AppContext, lobby: Lobby): void {
         throw new HttpError(403, 'limit_reached');
       regions.addMember(target.id, user.id, now);
       regions.deleteInvitation(invitation.id);
+      // Invited back by the owner: they may join the region again, if it is public, once they leave it
+      regions.forgetRemoval(target.id, user.id);
       return target;
     });
     log.info('region.join', {...logFields(ctx), region: region.public_id});
@@ -524,29 +532,48 @@ export function registerLobbyRoutes(context: AppContext, lobby: Lobby): void {
       ownerName: region.owner_name,
       width: region.width,
       height: region.height,
+      public: region.is_public === 1,
       mine: region.owner_id === user.id,
       cities: region.cities,
     }))});
   }, required);
 
+  router.get('/api/public-regions', ctx => {
+    const user = signedInUser(ctx);
+    json(ctx.res, 200, {regions: regions.publicFor(user.id).map(region => ({
+      id: region.public_id,
+      name: region.name,
+      ownerName: region.owner_name,
+      width: region.width,
+      height: region.height,
+      public: true,
+      mine: false,
+      cities: region.cities,
+      members: region.members,
+    }))});
+  }, required);
+
   router.post('/api/regions', ctx => {
     const user = signedInUser(ctx);
-    const body = readFields(ctx.body, ['name', 'width', 'height']);
+    const body = readFields(ctx.body, ['name', 'width', 'height'], ['public']);
     const name = nameField(body.name, 'name', REGION_NAME_MAX);
     const fields: Record<string, 'invalid'> = {};
     for (const key of ['width', 'height'] as const) {
       if (!isIntegerIn(body[key], REGION_LIMITS.minSize, REGION_LIMITS.maxSize))
         fields[key] = 'invalid';
     }
+    if (body.public !== undefined && typeof body.public !== 'boolean')
+      fields.public = 'invalid';
     if (Object.keys(fields).length > 0)
       throw invalidInput(fields);
 
     const region = db.transaction(() => {
       if (regions.ownedCount(user.id) >= REGION_LIMITS.ownedRegions)
         throw new HttpError(403, 'limit_reached');
-      return regions.create(user.id, name, body.width as number, body.height as number, clock.now());
+      return regions.create(user.id, name, body.width as number, body.height as number, body.public === true,
+                            clock.now());
     });
-    log.info('region.create', {...logFields(ctx), region: region.public_id});
+    log.info('region.create', {...logFields(ctx), region: region.public_id, public: region.is_public === 1});
     json(ctx.res, 201, {region: regionView(region, user.id)});
   }, {...required, limits: [LOBBY_LIMITS.regionCreations]});
 
@@ -587,11 +614,58 @@ export function registerLobbyRoutes(context: AppContext, lobby: Lobby): void {
   router.patch('/api/regions/:id', ctx => {
     const user = signedInUser(ctx);
     const region = regions.forOwner(ctx.params.id, user.id);
-    const body = readFields(ctx.body, ['name']);
-    const name = nameField(body.name, 'name', REGION_NAME_MAX);
-    regions.rename(region.id, name, clock.now());
-    link.refreshAround(regions.slots(region.id).map(slot => slot.city_id));
+    const body = readFields(ctx.body, [], ['name', 'public']);
+    if (body.name === undefined && body.public === undefined)
+      throw invalidInput();
+    const name = body.name === undefined ? null : nameField(body.name, 'name', REGION_NAME_MAX);
+    if (body.public !== undefined && typeof body.public !== 'boolean')
+      throw invalidInput({public: 'invalid'});
+
+    const now = clock.now();
+    db.transaction(() => {
+      if (name !== null)
+        regions.rename(region.id, name, now);
+      if (typeof body.public === 'boolean')
+        regions.setPublic(region.id, body.public, now);
+    });
+    if (name !== null)
+      link.refreshAround(regions.slots(region.id).map(slot => slot.city_id));
+    if (typeof body.public === 'boolean' && body.public !== (region.is_public === 1))
+      log.info('region.visibility', {...logFields(ctx), region: region.public_id, public: body.public});
     json(ctx.res, 200, {region: regionView(regions.byId(region.id) as RegionRow, user.id)});
+  }, required);
+
+  // A public region, joined without an invitation. Someone who is not a member of a region that is not public is told
+  // it does not exist, as for any other route.
+  router.post('/api/regions/:id/join', ctx => {
+    const user = signedInUser(ctx);
+    readEmpty(ctx.body);
+    const found = regions.byPublicId(ctx.params.id);
+    if (!found || (found.is_public !== 1 && !regions.isMember(found.id, user.id)))
+      throw notFound();
+    context.limit(ctx, LOBBY_LIMITS.regionJoins);
+
+    const region = db.transaction(() => {
+      const target = regions.byId(found.id);
+      if (!target)
+        throw notFound();
+      if (regions.isMember(target.id, user.id))
+        throw new HttpError(409, 'conflict');
+      if (target.is_public !== 1)
+        throw notFound();
+      if (regions.wasRemoved(target.id, user.id))
+        throw new HttpError(403, 'forbidden');
+      if (regions.memberCount(target.id) >= REGION_LIMITS.members)
+        throw new HttpError(403, 'limit_reached');
+      regions.addMember(target.id, user.id, clock.now());
+      // An invitation to it has no use any more
+      const invitation = regions.invitationFor(target.id, user.id);
+      if (invitation)
+        regions.deleteInvitation(invitation.id);
+      return target;
+    });
+    log.info('region.join', {...logFields(ctx), region: region.public_id, public: true});
+    json(ctx.res, 200, {region: regionView(region, user.id)});
   }, required);
 
   // The cities leave their slots: the deals between them and their neighbours in the region end
@@ -657,6 +731,9 @@ export function registerLobbyRoutes(context: AppContext, lobby: Lobby): void {
     const touched = db.transaction(() => {
       const moved = leaveRegion(regions.citiesOf(region.id, target.id));
       regions.removeMember(region.id, target.id);
+      // Removed by the owner (not leaving): they do not join it again by themselves, were it public
+      if (target.id !== user.id)
+        regions.noteRemoval(region.id, target.id, clock.now());
       return moved;
     });
     link.refreshAround(touched);

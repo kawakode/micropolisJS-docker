@@ -146,22 +146,34 @@ describe("The lobby's answers from the server", () => {
     });
 
     it("give the regions, of 2 to 4 cities a side", () => {
-        const region = {id: ID, name: "Valley", ownerName: "alice", width: 3, height: 2, mine: true, cities: 4};
+        const region = {id: ID, name: "Valley", ownerName: "alice", width: 3, height: 2, public: false, mine: true,
+                        cities: 4};
         expect(LobbyData.region(region)).toEqual(region);
         expect(LobbyData.region({...region, mine: "yes"})!.mine).toBe(false);
+        expect(LobbyData.region({...region, public: true})!.public).toBe(true);
+        expect(LobbyData.region({...region, public: "yes"})!.public).toBe(false);
         [{...region, width: 5}, {...region, height: 1}, {...region, width: "3"}, {...region, id: undefined}]
             .forEach(entry => expect(LobbyData.region(entry)).toBeNull());
     });
 
+    it("give the public regions a player may join, with their members", () => {
+        const region = {id: ID, name: "Plains", ownerName: "alice", width: 2, height: 2, public: true, mine: false,
+                        cities: 1, members: 3};
+        expect(LobbyData.publicRegion(region)).toEqual(region);
+        expect(LobbyData.publicRegion({...region, members: -1})!.members).toBe(0);
+        expect(LobbyData.publicRegion({...region, width: 9})).toBeNull();
+    });
+
     it("give the whole lobby, whatever the answers hold", () => {
-        expect(LobbyData.lobby(null, undefined)).toEqual({cities: [], invitations: [], regions: []});
-        expect(LobbyData.lobby({cities: "no", invitations: {}}, {regions: [null]}))
-            .toEqual({cities: [], invitations: [], regions: []});
-        const lobby = LobbyData.lobby({cities: [goodCity, {id: "bad"}], invitations: []},
-                                      {regions: [{id: ID3, name: "R", ownerName: "bob", width: 2, height: 2, mine: false,
-                                                  cities: 0}]});
+        const empty = {cities: [], invitations: [], regions: [], publicRegions: []};
+        expect(LobbyData.lobby(null, undefined, null)).toEqual(empty);
+        expect(LobbyData.lobby({cities: "no", invitations: {}}, {regions: [null]}, {regions: "no"})).toEqual(empty);
+        const region = {id: ID3, name: "R", ownerName: "bob", width: 2, height: 2, mine: false, cities: 0};
+        const lobby = LobbyData.lobby({cities: [goodCity, {id: "bad"}], invitations: []}, {regions: [region]},
+                                      {regions: [{...region, id: ID2, public: true, members: 2}, {id: "bad"}]});
         expect(lobby.cities).toHaveLength(1);
         expect(lobby.regions).toHaveLength(1);
+        expect(lobby.publicRegions).toEqual([{...region, id: ID2, public: true, members: 2}]);
     });
 
     it("group the invitations by the player who sent them", () => {
@@ -199,7 +211,8 @@ describe("The lobby's answers from the server", () => {
 
     it("give a region's map: one place for each slot, in reading order", () => {
         const answer = {
-            region: {id: ID, name: "Valley", ownerName: "alice", width: 3, height: 2, mine: false, cities: 2},
+            region: {id: ID, name: "Valley", ownerName: "alice", width: 3, height: 2, public: false, mine: false,
+                     cities: 2},
             slots: [
                 {x: 2, y: 1, city: {id: ID2, name: "Mine", ownerName: "bob", population: 500, role: "owner"}},
                 {x: 0, y: 0, city: {id: ID3, name: "Theirs", ownerName: "alice", population: 9000, role: null}},

@@ -63,8 +63,8 @@ describe('Database', () => {
     const tables = db.all<{name: string}>("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE " +
                                           "'sqlite_%' ORDER BY name").map(row => row.name);
     expect(tables).toEqual(['captcha_used', 'cities', 'city_invitations', 'city_members', 'email_tokens',
-                            'region_invitations', 'region_members', 'regions', 'sessions', 'settings', 'signup_tokens',
-                            'users']);
+                            'region_invitations', 'region_members', 'region_removals', 'regions', 'sessions', 'settings',
+                            'signup_tokens', 'users']);
     db.close();
   });
 
@@ -95,6 +95,25 @@ describe('Database', () => {
     expect(db.get<{n: number}>('SELECT count(*) AS n FROM city_members')?.n).toBe(0);
     expect(db.all<{id: number; region_id: number | null}>('SELECT id, region_id FROM cities'))
       .toEqual([{id: other, region_id: null}]);
+    db.close();
+  });
+
+  test('A database of version 2 (shared cities) keeps its regions private', () => {
+    const db = new Database(':memory:');
+    migrate(db, MIGRATIONS.slice(0, 2), {backupDirectory: '/nonexistent', now: 0});
+    const alice = addUser(db, 'Alice');
+    const region = db.run(`INSERT INTO regions (public_id, owner_id, name, width, height, created_at, updated_at)
+                           VALUES (?, ?, 'R', 2, 2, 0, 0)`, newPublicId(), alice).lastInsertRowid;
+    expect(migrate(db, MIGRATIONS, {backupDirectory: '/nonexistent', now: 0}))
+      .toEqual({from: 2, to: MIGRATIONS.length, backup: null});
+    expect(db.get<{is_public: number}>('SELECT is_public FROM regions WHERE id = ?', region)?.is_public).toBe(0);
+    expect(() => db.run('UPDATE regions SET is_public = 2 WHERE id = ?', region)).toThrow(/CHECK/);
+
+    // A removal goes with its region and with the player removed
+    const bob = addUser(db, 'Bob');
+    db.run('INSERT INTO region_removals (region_id, user_id, removed_at) VALUES (?, ?, 0)', region, bob);
+    db.run('DELETE FROM users WHERE id = ?', bob);
+    expect(db.get<{n: number}>('SELECT count(*) AS n FROM region_removals')?.n).toBe(0);
     db.close();
   });
 

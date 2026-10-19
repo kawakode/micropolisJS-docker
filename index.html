@@ -375,7 +375,7 @@
           <div class="privacyText">
             <p data-i18n>An account is only needed to play with others. Alone, you play without one, and your cities stay in your browser.</p>
             <h3 data-i18n>What the server keeps</h3>
-            <p data-i18n>Your username, your email address, your password (in a form that cannot be read back), the language of your emails, the sessions of the devices where you are logged in, when your account was created, changed and last used, its failed logins (to protect it), and a new email address until you confirm it. If you play with others: your shared cities and regions, the ones you are a member of, and the invitations you send and receive. The chat is never stored: the server keeps the last 50 messages of a city in memory while it is open, and forgets them when it closes, at most a minute after its last player leaves.</p>
+            <p data-i18n>Your username, your email address, your password (in a form that cannot be read back), the language of your emails, the sessions of the devices where you are logged in, when your account was created, changed and last used, its failed logins (to protect it), and a new email address until you confirm it. If you play with others: your shared cities and regions, the ones you are a member of, the regions whose owner removed you, and the invitations you send and receive. The chat is never stored: the server keeps the last 50 messages of a city in memory while it is open, and forgets them when it closes, at most a minute after its last player leaves.</p>
             <p data-i18n>The server's logs record the IP addresses and the accounts behind requests, to protect it against abuse. Old logs are deleted as new ones are written, by the log rotation that the people who run this server set up.</p>
             <p data-i18n>Backups of the server's data, made by the people who run it, keep what they hold until they delete them.</p>
             <h3 data-i18n>Why</h3>
@@ -437,12 +437,23 @@
                     </select>
                   </label>
                 </fieldset>
+                <fieldset class="choice">
+                  <legend class="fieldLabel" data-i18n>Who can join it</legend>
+                  <input type="radio" name="regionCreateVisibility" id="regionCreatePrivate" value="private" checked="checked"><label for="regionCreatePrivate" data-i18n>The players I invite</label>
+                  <input type="radio" name="regionCreateVisibility" id="regionCreatePublic" value="public"><label for="regionCreatePublic" data-i18n>Every player</label>
+                </fieldset>
                 <p class="formError splashError" role="alert"></p>
                 <div class="modalButtons">
                   <button type="submit" class="button primary accountSubmit" data-i18n>Create the region</button>
                 </div>
               </form>
             </details>
+          </section>
+          <section class="lobbySection" aria-labelledby="lobbyPublicRegionsTitle">
+            <h3 id="lobbyPublicRegionsTitle" class="lobbyHeading" data-i18n>Public regions</h3>
+            <p class="lobbyHint" data-i18n>Regions open to every player: join one to build your city beside the cities of others.</p>
+            <ul id="lobbyPublicRegions" class="lobbyList"></ul>
+            <p id="lobbyNoPublicRegion" class="lobbyEmpty" data-i18n>No public region to join right now.</p>
           </section>
           <div class="modalButtons">
             <button type="button" class="button cancel accountBack" data-i18n>Back</button>
@@ -563,6 +574,21 @@
               <p class="formError splashError" role="alert"></p>
               <div class="modalButtons">
                 <button type="submit" class="button primary accountSubmit" data-i18n>Rename</button>
+              </div>
+            </form>
+          </details>
+          <details id="regionVisibilitySection" class="accountSection">
+            <summary data-i18n>Who can join the region</summary>
+            <form id="regionVisibilityForm" class="accountForm" novalidate>
+              <fieldset class="choice">
+                <legend class="visuallyHidden" data-i18n>Who can join the region</legend>
+                <input type="radio" name="regionVisibility" id="regionVisibilityPrivate" value="private" checked="checked"><label for="regionVisibilityPrivate" data-i18n>The players I invite</label>
+                <input type="radio" name="regionVisibility" id="regionVisibilityPublic" value="public"><label for="regionVisibilityPublic" data-i18n>Every player</label>
+              </fieldset>
+              <p class="cardText" data-i18n>A public region is listed in every player's lobby, and anyone can join it without an invitation, except the players you removed from it. Its members stay when you close it again.</p>
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button primary accountSubmit" data-i18n>Apply</button>
               </div>
             </form>
           </details>
