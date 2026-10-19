@@ -315,6 +315,45 @@ describe('Shared cities', () => {
     expect([full.status, full.json.error.code]).toEqual([403, 'limit_reached']);
   });
 
+  test('Handing a city over: to one of its members, who becomes its owner; the owner before stays a player',
+       async () => {
+    const alice = addPlayer(t, 'Alice');
+    const bob = addPlayer(t, 'Bob');
+    const carol = addPlayer(t, 'Carol');
+    const city = await createCity(alice, {name: 'Given'});
+    await addMember(alice, city.id, bob, 'viewer');
+    const handOver = (player: Player, body: unknown) => player.post(`/api/cities/${city.id}/owner`, body);
+
+    expect((await handOver(bob, {member: alice.publicId})).status).toBe(403);
+    expect((await handOver(carol, {member: carol.publicId})).status).toBe(404);
+    expect((await handOver(alice, {member: carol.publicId})).status).toBe(404);
+    expect((await handOver(alice, {member: OTHER_ID})).status).toBe(404);
+    expect((await handOver(alice, {member: 5})).status).toBe(400);
+    expect((await handOver(alice, {member: alice.publicId})).json).toEqual({error: {code: 'conflict'}});
+
+    // Bob owns as many cities as he can: not handed over
+    const bobs = [];
+    for (let i = 0; i < CITY_LIMITS.ownedCities; i++)
+      bobs.push(await createCity(bob));
+    expect((await handOver(alice, {member: bob.publicId})).json).toEqual({error: {code: 'limit_reached'}});
+    await bob.post(`/api/cities/${bobs[0].id}/delete`);
+
+    const a = await join(t, alice, city.id);
+    const given = await handOver(alice, {member: bob.publicId});
+    expect(given.status).toBe(200);
+    expect(given.json.city).toMatchObject({id: city.id, role: 'player', ownerName: 'Bob'});
+    expect(await a.socket.waitFor(m => m.t === 'roleChanged')).toEqual({t: 'roleChanged', role: 'player'});
+    expect((await bob.get(`/api/cities/${city.id}`)).json.members.map((m: any) => [m.username, m.role]))
+      .toEqual([['Bob', 'owner'], ['Alice', 'player']]);
+    expect((await bob.get('/api/cities')).json.cities.find((c: any) => c.id === city.id).role).toBe('owner');
+
+    // The owner's rights go along
+    expect((await alice.patch(`/api/cities/${city.id}`, {name: 'Mine'})).status).toBe(403);
+    expect((await bob.patch(`/api/cities/${city.id}`, {name: 'Bobton'})).status).toBe(200);
+    expect((await alice.post(`/api/cities/${city.id}/members/${alice.publicId}/remove`)).status).toBe(204);
+    await a.socket.close();
+  });
+
   test('An invitation accepted once the city is full waits', async () => {
     const alice = addPlayer(t, 'Alice');
     const city = await createCity(alice);

@@ -901,6 +901,20 @@ var strings = {
   'The region is deleted for all its members. Its cities stay, out of the region.':
     'La région est supprimée pour tous ses membres. Ses villes restent, hors de la région.',
   'Delete the region': 'Supprimer la région',
+  'Hand over': 'Céder',
+  'Hand {city} over to {name}? You will stay a player of it.':
+    'Céder {city} à {name} ? Vous en resterez un joueur.',
+  'Hand it over': 'La céder',
+  '{name} owns as many shared cities as they can.': '{name} possède déjà autant de villes partagées que possible.',
+  '{name} is not a member of the region of this city: its owner must invite them first.':
+    '{name} n\'est pas membre de la région de cette ville : son propriétaire doit d\'abord l\'y inviter.',
+  '{name} is now the owner of {city}.': '{name} est désormais propriétaire de {city}.',
+  'Move a city here': 'Déplacer une ville ici',
+  'City to move here': 'Ville à déplacer ici',
+  'Move one of your cities here? Its deals with the cities beside it end.':
+    'Déplacer une de vos villes ici ? Ses accords avec les villes à côté d\'elle prennent fin.',
+  'Move it': 'La déplacer',
+  '{city} moved to row {row}, column {column}.': '{city} est désormais ligne {row}, colonne {column}.',
   'Who can join it': 'Qui peut la rejoindre',
   'Who can join the region': 'Qui peut rejoindre la région',
   'The players I invite': 'Les joueurs que j\'invite',
@@ -966,8 +980,8 @@ var strings = {
   'The copy of the city was saved in the file {file}.': 'La copie de la ville a été enregistrée dans le fichier {file}.',
   'Row {row}, column {column}': 'Ligne {row}, colonne {column}',
   'Take out of the region': 'Retirer de la région',
-  'Take {city} out of the region? It cannot come back to this place.':
-    'Retirer {city} de la région ? Elle ne pourra pas revenir à cette place.',
+  'Take {city} out of the region? Its deals with the cities beside it end.':
+    'Retirer {city} de la région ? Ses accords avec les villes à côté d\'elle prennent fin.',
   'Take it out': 'La retirer',
   'Free place': 'Place libre',
   'Build here': 'Bâtir ici',

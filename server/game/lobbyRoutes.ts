@@ -36,6 +36,12 @@ import { prepareCity, SaveError } from './saveValidation';
 //                                                       many); 404 unknown user; 409 conflict already a member
 //   POST /api/cities/:id/members/:userId {role}        owner: {members}
 //   POST /api/cities/:id/members/:userId/remove {}     owner, or the member (leaving): 204
+//   POST /api/cities/:id/owner {member}                owner: {city}, handed over to that member (the owner before
+//                                                       stays, as a player); 403 limit_reached they own too many; 409
+//                                                       conflict not a member of the city's region
+//   POST /api/cities/:id/place {region: {id, x, y}}    owner: {city}, moved to that free place of a region the owner is
+//                                                       a member of (out of its region before, if any); 409 conflict
+//                                                       the place is taken
 //   POST /api/invitations/:id/accept {}                invitee: {city} or {region}
 //   POST /api/invitations/:id/decline {}               invitee: 204
 //   POST /api/invitations/:id/cancel {}                inviter (or the owner of the city or region): 204
@@ -409,6 +415,68 @@ export function registerLobbyRoutes(context: AppContext, lobby: Lobby): void {
     rooms.membersChanged(city.id);
     log.info(target.id === user.id ? 'city.leave' : 'city.remove_member', {...logFields(ctx), city: city.public_id});
     noContent(ctx.res);
+  }, required);
+
+  // Handing a city over to another of its members
+  router.post('/api/cities/:id/owner', ctx => {
+    const user = signedInUser(ctx);
+    const {city} = cities.forOwner(ctx.params.id, user.id);
+    const body = readFields(ctx.body, ['member']);
+    if (typeof body.member !== 'string')
+      throw invalidInput({member: 'invalid'});
+    const target = namedUser(body.member);
+
+    db.transaction(() => {
+      const member = cities.member(city.id, target.id);
+      if (!member)
+        throw notFound();
+      if (member.role === 'owner')
+        throw new HttpError(409, 'conflict');
+      // A city of a region belongs to one of the region's members
+      if (city.region_id !== null && !regions.isMember(city.region_id, target.id))
+        throw new HttpError(409, 'conflict');
+      if (cities.ownedCount(target.id) >= CITY_LIMITS.ownedCities)
+        throw new HttpError(403, 'limit_reached');
+      cities.setOwner(city.id, user.id, target.id, clock.now());
+    });
+    rooms.ownerChanged(city.id, target.username);
+    // The cities beside it show its new mayor
+    link.refreshAround([city.id]);
+
+    log.info('city.hand_over', {...logFields(ctx), city: city.public_id, to: target.public_id});
+    json(ctx.res, 200, {city: fullCityView(cities.byId(city.id) as CityRow, user.id)});
+  }, required);
+
+  // Moving a city to a free place of a region: its deals with the cities beside it, before and after, end
+  router.post('/api/cities/:id/place', ctx => {
+    const user = signedInUser(ctx);
+    const {city} = cities.forOwner(ctx.params.id, user.id);
+    const body = readFields(ctx.body, ['region']);
+    const place = body.region;
+    if (place === null || typeof place !== 'object' || Array.isArray(place))
+      throw invalidInput({region: 'invalid'});
+    const {id, x, y} = readFields(place, ['id', 'x', 'y']);
+    if (typeof id !== 'string' || !isIntegerIn(x, 0, REGION_LIMITS.maxSize - 1) ||
+        !isIntegerIn(y, 0, REGION_LIMITS.maxSize - 1))
+      throw invalidInput({region: 'invalid'});
+
+    const touched = db.transaction(() => {
+      const region = regions.forMember(id, user.id);
+      if (x >= region.width || y >= region.height)
+        throw invalidInput({region: 'invalid'});
+      const current = cities.byId(city.id) as CityRow;
+      if (regions.cityAt(region.id, x, y) ||
+          (current.region_id === region.id && current.region_x === x && current.region_y === y))
+        throw new HttpError(409, 'conflict');
+
+      const moved = current.region_id === null ? [] : link.clearAround(city.id);
+      cities.setRegion(city.id, {id: region.id, x, y}, clock.now());
+      return [...moved, ...link.clearAround(city.id)];
+    });
+    link.refreshAround(touched);
+
+    log.info('city.move', {...logFields(ctx), city: city.public_id, region: id});
+    json(ctx.res, 200, {city: fullCityView(cities.byId(city.id) as CityRow, user.id)});
   }, required);
 
   // Invitations
