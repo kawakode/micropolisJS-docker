@@ -5,6 +5,7 @@ import { CityFile } from "../src/cityFile.js";
 import { GameMap } from "../src/gameMap.js";
 import { LobbyData } from "../src/lobbyData.js";
 import { MapGenerator } from "../src/mapGenerator.js";
+import { Scenarios } from "../src/scenarios.js";
 import { Simulation } from "../src/simulation.js";
 import { Storage } from "../src/storage.js";
 
@@ -47,7 +48,8 @@ const expectAcceptable = (save: any) => {
     Object.keys(save).forEach(key => expect(SERVER_KEYS.has(key) ? key : "unknown key " + key).toBe(key));
     REQUIRED_KEYS.forEach(key => expect(save[key] === undefined ? "missing " + key : key).toBe(key));
     expect(save.version).toBe(4);
-    expect(save.scenario).toBeNull();
+    // No scenario, or one the server takes as it is
+    expect(save.scenario === null ? null : (Scenarios as any).clean(save.scenario)).toEqual(save.scenario);
     expect(save.width).toBe(120);
     expect(save.height).toBe(100);
     expect(save.map).toHaveLength(12000);
@@ -321,10 +323,35 @@ describe("A new shared city", () => {
         });
     });
 
+    it("keeps the scenario of a scenario of the game, on its way or ended", async () => {
+        const fetch = global.fetch;
+        global.fetch = (async (url: string) => {
+            const buffer = fs.readFileSync(path.join(__dirname, "..", url.replace(/\?.*$/, "")));
+            return {ok: true, arrayBuffer: async () => buffer.buffer.slice(buffer.byteOffset,
+                                                                          buffer.byteOffset + buffer.byteLength)};
+        }) as any;
+
+        try {
+            for (const scenario of (Scenarios as any).list) {
+                const game = await (Scenarios as any).load(scenario.id);
+                const save = LobbyData.buildSave({save: game}, scenario.name, 0) as any;
+                expectAcceptable(save);
+                expect(save.scenario).toEqual({id: scenario.id, goal: scenario.goal, disaster: scenario.disaster,
+                                               disasterWait: scenario.disasterWait, scoreWait: scenario.scoreWait});
+            }
+
+            const game = await (Scenarios as any).load("bern");
+            game.scenario = {...game.scenario, scoreWait: 0, ended: true, won: true};
+            expect((LobbyData.buildSave({save: game}, "Bern", 0) as any).scenario).toMatchObject({ended: true, won: true});
+        } finally {
+            global.fetch = fetch;
+        }
+    });
+
     it("is saved from a game saved by KawaCity, paused or old", () => {
         const first = LobbyData.buildSave({map: MapGenerator(120, 100, {})}, "Old", 1) as any;
 
-        // Saved while paused, with a scenario, at night
+        // Saved while paused, with a scenario the server would refuse (dropped), at night
         const paused = {...JSON.parse(JSON.stringify(first)), _speed: 0, timeOfDay: 1.75, dayNight: false,
                         scenario: {id: "dullsville"}, _reachedCity: true, autoBulldoze: false, isSavedGame: true};
         const save = LobbyData.buildSave({save: paused}, "Again", 1) as any;

@@ -33,6 +33,18 @@ export interface TilesMessage {
   r: number[];
 }
 
+// The scenario the city plays: its goal, how the city is doing on it, the time left, and how it ended
+export interface ScenarioState {
+  id: string;
+  goal: string;
+  scoreWait: number;
+  ended: boolean;
+  won: boolean;
+  value: number;
+  target: number;
+  met: boolean;
+}
+
 // The figures that change often (see RemoteCity.applyState)
 export interface CityScalars {
   funds: number;
@@ -48,6 +60,7 @@ export interface CityScalars {
   disasters: boolean;
   level: number;
   cityTime: number;
+  scenario: ScenarioState | null;
 }
 
 export type StateMessage = Partial<CityScalars>;
@@ -81,10 +94,11 @@ export interface Flushed {
 }
 
 const STATE_KEYS = ['funds', 'population', 'cityClass', 'score', 'date', 'valves', 'speed', 'paused', 'autoBudget',
-                    'autoBulldoze', 'disasters', 'level', 'cityTime'] as const;
+                    'autoBulldoze', 'disasters', 'level', 'cityTime', 'scenario'] as const;
 
 const copyScalars = (state: CityScalars): CityScalars =>
-  ({...state, date: {...state.date}, valves: {...state.valves}});
+  ({...state, date: {...state.date}, valves: {...state.valves},
+    scenario: state.scenario === null ? null : {...state.scenario}});
 
 const sameValue = (a: unknown, b: unknown): boolean => {
   if (a !== null && b !== null && typeof a === 'object' && typeof b === 'object') {
@@ -179,7 +193,20 @@ export class CityState {
       disasters: simulation.disasterManager.disastersEnabled,
       level: simulation.getLevel(),
       cityTime: simulation.getCityTime(),
+      scenario: this.scenario(),
     };
+  }
+
+  // The scenario, as the players see it (the figures rounded, as the game shows them)
+  private scenario(): ScenarioState | null {
+    const simulation = this.city.simulation;
+    const scenario = simulation.getScenario();
+    const progress = simulation.getScenarioProgress();
+    if (scenario === null || progress === null)
+      return null;
+
+    return {id: scenario.id, goal: scenario.goal, scoreWait: scenario.scoreWait, ended: scenario.ended === true,
+            won: scenario.won === true, value: Math.round(progress.value), target: progress.target, met: progress.met};
   }
 
   // The figures of the state that changed since the last call (null if none)
@@ -192,7 +219,7 @@ export class CityState {
     for (const key of STATE_KEYS) {
       if (!sameValue(state[key], last[key])) {
         const value = state[key];
-        changed[key] = typeof value === 'object' ? {...value} : value;
+        changed[key] = value !== null && typeof value === 'object' ? {...value} : value;
         any = true;
       }
     }

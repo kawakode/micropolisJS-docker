@@ -16,7 +16,8 @@ import { Scenarios } from './scenarios.js';
 // Presents a scenario before it starts, and its outcome when its time is up.
 //
 // The window closes with one of the actions below: the game starts or carries on, the scenario is played again, or
-// the player goes back to the title screen.
+// the player goes back to the title screen. A shared city carries on whatever the outcome: its players keep building
+// it together.
 
 var ScenarioWindow = ModalWindow(function() {
   this.mode = null;
@@ -44,10 +45,11 @@ var LOST_TEXT = ['The entire population of this city has finally had enough of y
                  'You should seriously consider taking an extended vacation -- NOW. (Or try again.)'];
 
 
-// mode: INTRO, WON or LOST; scenario: an entry of Scenarios.list
-ScenarioWindow.prototype.open = function(mode, scenario) {
+// mode: INTRO, WON or LOST; scenario: an entry of Scenarios.list; shared: true for a shared city
+ScenarioWindow.prototype.open = function(mode, scenario, shared) {
   this.mode = mode;
   this.scenario = scenario;
+  this.shared = !!shared;
 
   var title, paragraphs;
   if (mode === ScenarioWindow.WON) {
@@ -76,20 +78,21 @@ ScenarioWindow.prototype.open = function(mode, scenario) {
                                  {goal: goal, years: years}));
 
   // Which ways out there are
-  $('#scenarioOK').val(I18n.t(mode === ScenarioWindow.INTRO ? 'Take office' : 'Keep playing')).toggle(mode !== ScenarioWindow.LOST);
-  $('#scenarioRetry').toggle(mode === ScenarioWindow.LOST);
-  $('#scenarioTitle').toggle(mode !== ScenarioWindow.INTRO);
+  $('#scenarioOK').val(I18n.t(mode === ScenarioWindow.INTRO ? 'Take office' : 'Keep playing'))
+    .toggle(mode !== ScenarioWindow.LOST || this.shared);
+  $('#scenarioRetry').toggle(mode === ScenarioWindow.LOST && !this.shared);
+  $('#scenarioTitle').toggle(mode !== ScenarioWindow.INTRO && !this.shared);
 
   this._toggleDisplay();
-  if (mode === ScenarioWindow.LOST)
+  if (mode === ScenarioWindow.LOST && !this.shared)
     $('#scenarioRetry').focus();
 };
 
 
 ScenarioWindow.prototype.close = function(action) {
-  // Escape closes the window as its main button would; a lost scenario can't simply be carried on
+  // Escape closes the window as its main button would; a lost scenario can't simply be carried on, but in a shared city
   if (!action) {
-    if (this.mode === ScenarioWindow.LOST)
+    if (this.mode === ScenarioWindow.LOST && !this.shared)
       return false;
     action = this.mode === ScenarioWindow.INTRO ? ScenarioWindow.START : ScenarioWindow.CONTINUE;
   }

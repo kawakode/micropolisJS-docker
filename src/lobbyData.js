@@ -7,6 +7,7 @@
 
 import { BaseTool } from './baseTool.js';
 import { GameMap } from './gameMap.js';
+import { Scenarios } from './scenarios.js';
 import { Simulation } from './simulation.js';
 import { Storage } from './storage.js';
 import { TextRules } from './textRules.js';
@@ -425,8 +426,8 @@ var buildSave = function(choice, name, level) {
 
   simulation.save(save);
   save._gameLevel = level;
-  // A shared city plays no scenario
-  save.scenario = null;
+  // The scenario the city plays, as the server accepts it (a scenario it would refuse is dropped)
+  save.scenario = Scenarios.clean(simulation.getScenario());
   save.version = Storage.CURRENT_VERSION;
   return save;
 };

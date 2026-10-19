@@ -213,9 +213,7 @@ var showScenarios = function(e) {
 
   $('#splash').hide();
   $('#scenarioPicker').show();
-  // A shared city plays no scenario: only the cities are offered
-  $('#scenarioPicker .pickerTabs').toggle(sharing === null);
-  showTab.call(this, sharing !== null ? 'cities' : this._pickerTab || 'scenarios');
+  showTab.call(this, this._pickerTab || 'scenarios');
   $('#scenarioList .scenarioChoice[aria-selected="true"]').focus();
 };
 
@@ -548,7 +546,6 @@ var stopSharing = function() {
   $('#start .cardTitle').text(I18n.t('New city'));
   $('#playit').val(I18n.t('Found the city'));
   $('#splash, #start').removeClass('sharedCity');
-  $('#scenarioPicker .pickerTabs').show();
   $('#pickerPlay').prop('disabled', false);
 
   $('#start').hide();

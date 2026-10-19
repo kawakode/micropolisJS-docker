@@ -7,6 +7,7 @@
 
 import { Evaluation } from '../../src/evaluation.js';
 import { Neighbours } from '../../src/neighbours.js';
+import { Scenarios } from '../../src/scenarios.js';
 import { BIT_MASK, fromClassicValue, ZONEBIT } from '../../src/tileFlags';
 import { AIRPORT, BIGPARK, CHURCH, CHURCH1, CHURCH2, CHURCH3, CHURCH4, CHURCH5, CHURCH6, CHURCH7, FIRESTATION,
          FULLSTADIUM, GASPLANT, HOSPITAL, KAWALAST, NUCLEAR, POLICESTATION, PORT, POWERPLANT, SCHOOL, SOLARPLANT, STADIUM,
@@ -129,10 +130,10 @@ const MONEY_HISTORY_MAX = 255;
 const CENTRES = ['cityCentreX', 'cityCentreY', 'pollutionMaxX', 'pollutionMaxY'];
 
 // Keys of a save that the city does not keep: the version (always the current one once read), the flag the game sets
-// on a save it opened, a flag of version 1, and the scenario (a shared city never plays one)
-const DROPPED = ['version', 'isSavedGame', 'everClicked', 'scenario'];
+// on a save it opened, and a flag of version 1
+const DROPPED = ['version', 'isSavedGame', 'everClicked'];
 
-const SPECIAL = ['map', 'roadClass', 'neighbours'];
+const SPECIAL = ['map', 'roadClass', 'neighbours', 'scenario'];
 
 const KNOWN_KEYS: ReadonlySet<string> = new Set([...Object.keys(RULES), ...HISTORIES, ...DROPPED, ...SPECIAL]);
 
@@ -300,8 +301,12 @@ export function validateSave(input: unknown): CitySave {
     check(save.isSavedGame === true, 'isSavedGame');
   if (has('everClicked'))
     check(typeof save.everClicked === 'boolean', 'everClicked');
-  if (has('scenario'))
-    check(save.scenario === null || isPlainObject(save.scenario), 'scenario');
+  // The scenario the city plays, checked against the game's (see Scenarios.clean)
+  let scenario: Record<string, unknown> | null = null;
+  if (has('scenario') && save.scenario !== null) {
+    scenario = Scenarios.clean(save.scenario);
+    check(scenario !== null, 'scenario');
+  }
 
   const clean: CitySave = {};
   for (const [key, rule] of Object.entries(RULES)) {
@@ -338,8 +343,7 @@ export function validateSave(input: unknown): CitySave {
   if (has('neighbours'))
     clean.neighbours = checkNeighbours(save.neighbours);
 
-  // A shared city never plays a scenario
-  clean.scenario = null;
+  clean.scenario = scenario;
   clean.version = SAVE_VERSION;
   return clean;
 }

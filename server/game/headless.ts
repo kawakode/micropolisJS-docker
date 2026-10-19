@@ -247,6 +247,8 @@ export interface SimulationObject {
   getLevel(): number;
   changeLevel(level: number): void;
   getCityTime(): number;
+  getScenario(): {id: string; goal: string; scoreWait: number; ended?: boolean; won?: boolean} | null;
+  getScenarioProgress(): {value: number; target: number; met: boolean} | null;
   getHistoryTime(): number;
   getCityStatus(): Record<string, unknown>;
   getDate(): {month: number; year: number};

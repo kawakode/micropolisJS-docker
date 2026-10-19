@@ -62,6 +62,20 @@ describe('Shared cities', () => {
     expect(city.population).toBeGreaterThan(10000);
   });
 
+  test('A scenario of the game can be shared', async () => {
+    const alice = addPlayer(t);
+    const scenario = {id: 'dullsville', goal: 'metropolis', disaster: null, disasterWait: 2, scoreWait: 30 * 48};
+    const save = {...sampleCity('kobe'), scenario};
+    expect((await alice.post('/api/cities', {name: 'Dullsville', level: 0, save})).status).toBe(201);
+    const row = t.db.get<{state: Uint8Array}>('SELECT state FROM cities');
+    expect(decodeState(row!.state).scenario).toEqual(scenario);
+
+    // One the game does not have is refused
+    expect((await alice.post('/api/cities', {name: 'Atlantis', level: 0,
+                                             save: {...save, scenario: {...scenario, id: 'atlantis'}}})).json)
+      .toEqual({error: {code: 'invalid_input', fields: {save: 'invalid'}}});
+  });
+
   test('What is sent is checked', async () => {
     const alice = addPlayer(t);
     const save = freshCitySave();

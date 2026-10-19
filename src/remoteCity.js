@@ -9,6 +9,7 @@ import { BaseTool } from './baseTool.js';
 import { EventEmitter } from './eventEmitter.js';
 import { GameMap } from './gameMap.js';
 import * as Messages from './messages.ts';
+import { Scenarios } from './scenarios.js';
 import { Simulation } from './simulation.js';
 import * as SpriteConstants from './spriteConstants.ts';
 import { ALLBITS, BIT_MASK, CONDBIT, POWERBIT } from './tileFlags.ts';
@@ -49,7 +50,7 @@ var HISTORY_LENGTH = 120;
 
 // The figures of the state, in the order they are applied
 var STATE_KEYS = ['cityTime', 'date', 'funds', 'population', 'cityClass', 'score', 'valves', 'speed', 'paused',
-                  'autoBudget', 'autoBulldoze', 'disasters', 'level'];
+                  'autoBudget', 'autoBulldoze', 'disasters', 'level', 'scenario'];
 
 // The sprites are drawn this long after the server's positions arrive, moving between the last two
 var SPRITE_DELAY = 100;
@@ -366,6 +367,9 @@ function RemoteCity(map, simulation) {
   this._hud = {cityClass: simulation.evaluation.cityClass, population: simulation.evaluation.cityPop,
                score: simulation.evaluation.cityScore};
 
+  // How the city is doing on its scenario: at first, as the save says, then as the server says (see the state)
+  this.scenarioProgress = simulation.getScenarioProgress();
+
   var self = this;
   simulation.getHistoryTime = function() {
     return self.historyTime;
@@ -375,6 +379,9 @@ function RemoteCity(map, simulation) {
   };
   simulation.neighbours.describe = function() {
     return copyOf(self.neighbours);
+  };
+  simulation.getScenarioProgress = function() {
+    return simulation._scenario === null ? null : copyOf(self.scenarioProgress);
   };
 
   var spriteManager = simulation.spriteManager;
@@ -591,6 +598,32 @@ var STATE = {
       return v === Simulation.LEVEL_EASY || v === Simulation.LEVEL_MED || v === Simulation.LEVEL_HARD;
     },
     apply: function(city, v) { city.simulation.changeLevel(v); }
+  },
+
+  // The scenario the city plays (null in free play). Its time being up, as the server sees it, ends it here too.
+  scenario: {
+    valid: function(v) {
+      return v === null ||
+             (isObject(v) && typeof(v.id) === 'string' && Scenarios.get(v.id) !== null &&
+              Number.isInteger(v.scoreWait) && v.scoreWait >= 0 && isBoolean(v.ended) && isBoolean(v.won) &&
+              isNumber(v.value) && isNumber(v.target) && isBoolean(v.met));
+    },
+    apply: function(city, v) {
+      var simulation = city.simulation;
+      var running = simulation._scenario !== null && simulation._scenario.ended !== true;
+      if (v === null) {
+        simulation._scenario = null;
+        city.scenarioProgress = null;
+        return;
+      }
+
+      var definition = Scenarios.get(v.id);
+      simulation._scenario = {id: definition.id, goal: definition.goal, scoreWait: v.scoreWait, ended: v.ended,
+                              won: v.won};
+      city.scenarioProgress = {value: v.value, target: v.target, met: v.met};
+      if (running && v.ended)
+        simulation._emitEvent(Messages.SCENARIO_ENDED, {id: definition.id, won: v.won});
+    }
   }
 };
 
