@@ -50,3 +50,29 @@ describe("A milestone", () => {
         expect(busy.congratsWindow.open).toHaveBeenCalledTimes(2);
     });
 });
+
+describe("Switching views", () => {
+    it("gives back the zoom a view had, even at the most zoom", () => {
+        const zoomLevels = [0.5, 0.75, 1, 1.5, 2, 3, 4];
+        const canvas = {
+            zoom: 4, isometric: true,
+            getZoom() { return this.zoom; },
+            isIsometric() { return this.isometric; },
+            setIsometric(isometric: boolean) { this.isometric = isometric; },
+            setZoom(zoom: number) { this.zoom = Math.min(Math.max(zoom, zoomLevels[0]), 4); }
+        };
+        const game: any = {gameCanvas: canvas, monsterTV: {canvas: {setIsometric: jest.fn()}},
+                           ambientLife: {setIsometric: jest.fn()}};
+
+        Game.prototype.setIsometric.call(game, false);
+        expect(canvas.zoom).toBe(4);
+        Game.prototype.setIsometric.call(game, true);
+        expect(canvas.zoom).toBe(4);
+
+        // Zoomed in between: the same scale
+        Game.prototype.setIsometric.call(game, false);
+        canvas.zoom = 2;
+        Game.prototype.setIsometric.call(game, true);
+        expect(canvas.zoom).toBe(1);
+    });
+});
