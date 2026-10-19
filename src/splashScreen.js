@@ -84,8 +84,8 @@ function SplashScreen(tileSet, snowTileSet, spriteSheet) {
   this._scenarioGames = {};
   this._scenarioID = Scenarios.list[0].id;
 
-  // Conditionally enable load/save buttons
-  $('#saveRequest').prop('disabled', !Storage.canStore);
+  // A game can always be saved, as a file when the browser can't keep it; it can be loaded only from the browser
+  $('#saveRequest').prop('disabled', false);
   $('#splashLoad').prop('disabled', !(Storage.canStore && Storage.getSavedGame() !== null));
 
   // Paint the minimap

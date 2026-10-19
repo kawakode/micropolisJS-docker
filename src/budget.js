@@ -129,7 +129,8 @@ Budget.prototype._calculateBestPercentages = function() {
   var fireCost = 0;
   var policeCost = 0;
 
-  var cashRemaining = this.totalFunds + this.taxFund + this.dealsFund;
+  // Deals that cost more than the city has can leave nothing to spend, but never less than nothing
+  var cashRemaining = Math.max(0, this.totalFunds + this.taxFund + this.dealsFund);
 
   // Spending priorities: road, fire, police
   if (cashRemaining >= this.roadSpend)

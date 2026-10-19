@@ -200,6 +200,21 @@ describe('Frames', () => {
     expect(rooms.open(second, alice.id).id).toBe(second.id);
     expect([rooms.monitor.overloaded, rooms.monitor.refuseLoads]).toEqual([false, false]);
   });
+
+  test('A player who joins an empty room is not told what the city said before they came', async () => {
+    const {room, client} = await openRoom(t, alice);
+    // The city spoke after the last pass, then the last player left
+    (room.city as any).messages.push({subject: 'FIRE_REPORTED'});
+    t.app.game.rooms.leave(room, client);
+
+    const next = new FakeClient(alice.id);
+    t.app.game.rooms.join(room, next);
+    for (let i = 0; i < 30; i++) {
+      t.clock.advance(1000 / 60);
+      t.app.game.rooms.frame();
+    }
+    expect(next.sent.filter((m) => m.subject === 'FIRE_REPORTED')).toEqual([]);
+  });
 });
 
 describe('The protocol', () => {
