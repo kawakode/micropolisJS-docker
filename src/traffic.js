@@ -90,14 +90,22 @@ Traffic.prototype.addToTrafficDensityMap = function(blockMaps) {
 var perimX = [-1, 0, 1, 2, 2, 2, 1, 0,-1,-2,-2,-2];
 var perimY = [-2,-2,-2,-1, 0, 1, 2, 2, 2, 1, 0,-1];
 
-// Whether the tile is a highway (rails and other tiles may have been built where a highway once was)
-Traffic.prototype._isHighway = function(x, y) {
-  if (this._map.getRoadClass(x, y) !== HIGHWAY)
-    return false;
+// The kind of road at the tile: 0 (a street) where there is no road, as rails and other tiles may have been built
+// where another kind of road once was
+Traffic.prototype._roadClassAt = function(x, y) {
+  var roadClass = this._map.getRoadClass(x, y);
+  if (roadClass === 0)
+    return 0;
 
   var tileValue = TileUtils.normalizeRoad(this._map.getTileValue(x, y));
-  return (tileValue >= ROADBASE && tileValue <= TileValues.LASTROAD) ||
-         tileValue === TileValues.HRAILROAD || tileValue === TileValues.VRAILROAD;
+  var isRoad = (tileValue >= ROADBASE && tileValue <= TileValues.LASTROAD) ||
+               tileValue === TileValues.HRAILROAD || tileValue === TileValues.VRAILROAD;
+  return isRoad ? roadClass : 0;
+};
+
+
+Traffic.prototype._isHighway = function(x, y) {
+  return this._roadClassAt(x, y) === HIGHWAY;
 };
 
 
@@ -146,7 +154,7 @@ Traffic.prototype.tryDrive = function(startPos, destFn) {
     if (dir) {
       drivePos = Position.move(drivePos, dir);
       dirLast = dir.oppositeDirection();
-      dist += ROAD_HALF_STEPS[this._map.getRoadClass(drivePos.x, drivePos.y)] || 2;
+      dist += ROAD_HALF_STEPS[this._roadClassAt(drivePos.x, drivePos.y)] || 2;
 
       if (steps++ & 1)
         this._stack.push(drivePos);

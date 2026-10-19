@@ -31,19 +31,28 @@ var TOOL_AREA = Placements.AREA;         // Fills the dragged rectangle (bulldoz
 var TOOL_BUILDING = Placements.BUILDING; // Places a grid of buildings over the dragged rectangle
 var TOOL_SINGLE = Placements.SINGLE;     // Acts on a single tile on click (query)
 
-// Keyboard shortcuts for selecting tools
+// Keyboard shortcuts for selecting tools, by the key's place on the keyboard (event.code): the digits need no Shift on
+// an AZERTY keyboard either
 var toolShortcuts = {
-  '1': 'residential',
-  '2': 'commercial',
-  '3': 'industrial',
-  '4': 'road',
-  '5': 'rail',
-  '6': 'wire',
-  '7': 'park',
-  '8': 'police',
-  '9': 'fire',
-  'b': 'bulldozer',
-  'q': 'query'
+  'Digit1': 'residential',
+  'Digit2': 'commercial',
+  'Digit3': 'industrial',
+  'Digit4': 'road',
+  'Digit5': 'rail',
+  'Digit6': 'wire',
+  'Digit7': 'park',
+  'Digit8': 'police',
+  'Digit9': 'fire',
+  'KeyB': 'bulldozer'
+};
+for (var digit = 1; digit <= 9; digit++)
+  toolShortcuts['Numpad' + digit] = toolShortcuts['Digit' + digit];
+
+// And by the letter typed (event.key), for the query tool: Q, which pans on an AZERTY keyboard (see directionForKey),
+// or I
+var letterShortcuts = {
+  'q': 'query',
+  'i': 'query'
 };
 
 // Pressing the bulldozer's key again goes through its sizes
@@ -180,26 +189,27 @@ InputStatus.leaveTextField = function(element) {
 };
 
 
-var directionForKey = function(key) {
-  switch (key) {
+// The arrows, and the keys at the place of WASD (ZQSD on an AZERTY keyboard)
+var directionForKey = function(e) {
+  switch (e.key) {
     case 'ArrowUp':
-    case 'w':
-    case 'W':
       return 'up';
-
     case 'ArrowDown':
-    case 's':
-    case 'S':
       return 'down';
-
     case 'ArrowLeft':
-    case 'a':
-    case 'A':
       return 'left';
-
     case 'ArrowRight':
-    case 'd':
-    case 'D':
+      return 'right';
+  }
+
+  switch (e.code) {
+    case 'KeyW':
+      return 'up';
+    case 'KeyS':
+      return 'down';
+    case 'KeyA':
+      return 'left';
+    case 'KeyD':
       return 'right';
   }
 
@@ -226,9 +236,25 @@ var keyDownHandler = function(e) {
   if (this.isBlocked())
     return;
 
-  var direction = directionForKey(e.key);
+  var direction = directionForKey(e);
   if (direction !== null) {
     this._keysHeld[direction] = true;
+    e.preventDefault();
+    return;
+  }
+
+  // Before the zoom: on an AZERTY keyboard, the keys of 6 and 8 type - and _
+  var tool = toolShortcuts[e.code];
+  if (tool === undefined && typeof(e.key) === 'string')
+    tool = letterShortcuts[e.key.toLowerCase()];
+  if (tool !== undefined) {
+    if (!e.repeat) {
+      var size = BULLDOZER_SIZES.indexOf(this.toolName);
+      if (tool === 'bulldozer' && size >= 0)
+        this.selectTool(BULLDOZER_SIZES[(size + 1) % BULLDOZER_SIZES.length]);
+      else
+        this.selectTool(tool);
+    }
     e.preventDefault();
     return;
   }
@@ -252,21 +278,11 @@ var keyDownHandler = function(e) {
       e.preventDefault();
       return;
   }
-
-  var tool = toolShortcuts[e.key.toLowerCase()];
-  if (tool !== undefined && !e.repeat) {
-    var size = BULLDOZER_SIZES.indexOf(this.toolName);
-    if (tool === 'bulldozer' && size >= 0)
-      this.selectTool(BULLDOZER_SIZES[(size + 1) % BULLDOZER_SIZES.length]);
-    else
-      this.selectTool(tool);
-    e.preventDefault();
-  }
 };
 
 
 var keyUpHandler = function(e) {
-  var direction = directionForKey(e.key);
+  var direction = directionForKey(e);
   if (direction !== null)
     this._keysHeld[direction] = false;
 };

@@ -2,7 +2,7 @@ import { BaseTool } from "../src/baseTool.js";
 import { GameTools } from "../src/gameTools.js";
 import { GameMap } from "../src/gameMap.js";
 import { BLBNBIT, BULLBIT } from "../src/tileFlags";
-import { DIRT, RUBBLE, SCHOOL, TINYEXP, LASTTINYEXP, WOODS } from "../src/tileValues";
+import { DIRT, RIVER, RUBBLE, SCHOOL, TINYEXP, LASTTINYEXP, WOODS } from "../src/tileValues";
 
 // Placing tools on a small, bare map, as the game does (see Game.handleTool)
 const makeMap = (): any => new (GameMap as any)(20, 20, DIRT);
@@ -150,3 +150,70 @@ describe("The bulldozer", () => {
     });
 });
 
+
+describe("Rebuilding a road as another kind", () => {
+    const drag = (map: any, tool: any, xs: number[], y: number) => {
+        tool.startBatch(xs.length);
+        const outcomes = xs.map((x) => apply(map, tool, x, y));
+        tool.endBatch();
+        return outcomes;
+    };
+
+    it("rebuilds a road clicked on its own, even as a smaller road", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+        apply(map, tools.highway, 5, 5);
+
+        const outcome = drag(map, tools.road, [5], 5)[0];
+        expect([outcome.result, outcome.cost]).toEqual([OK, 10]);
+        expect(map.getRoadClass(5, 5)).toBe((GameMap as any).ROAD_STREET);
+    });
+
+    it("leaves a bigger road as it is when a road is dragged across it, and upgrades smaller ones", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+        apply(map, tools.highway, 6, 5);
+        apply(map, tools.dirtroad, 7, 5);
+
+        const outcomes = drag(map, tools.avenue, [5, 6, 7, 8], 5);
+        expect(outcomes.map((o) => o.result)).toEqual([OK, FAILED, OK, OK]);
+        expect([5, 6, 7, 8].map((x) => map.getRoadClass(x, 5))).toEqual([2, 3, 2, 2]);
+    });
+
+    it("charges a bridge's price for a bridge, and never makes it a dirt road", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+        apply(map, tools.road, 4, 5);
+        map.setTile(5, 5, RIVER, 0);
+        const bridge = apply(map, tools.road, 5, 5);
+        expect([bridge.result, bridge.cost]).toEqual([OK, 50]);
+
+        expect(apply(map, tools.dirtroad, 5, 5).result).toBe(FAILED);
+        expect(map.getRoadClass(5, 5)).toBe((GameMap as any).ROAD_STREET);
+
+        const avenue = apply(map, tools.avenue, 5, 5);
+        expect([avenue.result, avenue.cost]).toEqual([OK, 100]);
+    });
+});
+
+describe("Digging water", () => {
+    it("draws a bank along a road, as along bare land", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+        apply(map, tools.road, 6, 5);
+
+        expect(apply(map, tools.water, 5, 5).value).toBe(13);
+        expect(apply(map, tools.water, 10, 10).value).toBe(13);
+    });
+
+    it("lets the water go on under a bridge", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+        apply(map, tools.road, 4, 5);
+        map.setTile(5, 5, RIVER, 0);
+        apply(map, tools.road, 5, 5);
+
+        // West of the dug tile is the bridge: water on that side only
+        expect(apply(map, tools.water, 6, 5).value).not.toBe(13);
+    });
+});

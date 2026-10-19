@@ -320,10 +320,12 @@ export function registerLobbyRoutes(context: AppContext, lobby: Lobby): void {
       const besides = link.neighboursOf(city.id);
       for (const [side, id] of besides)
         link.clearSides(id, [FACING[side]]);
-      rooms.evict([city.id], 'deleted');
       cities.delete(city.id);
       return [...besides.values()];
     });
+    // Once it is gone for good: a transaction rolled back would have left its players told it was deleted, and its
+    // last changes lost
+    rooms.evict([city.id], 'deleted');
     link.refreshAround(touched);
 
     log.info('city.delete', {...logFields(ctx), city: city.public_id});

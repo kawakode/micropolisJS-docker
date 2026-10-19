@@ -1,9 +1,10 @@
-// KawaCity's buildings on the map: their road access, and fires
+// KawaCity's buildings on the map (their road access, and fires), and its kinds of road
 import { GameMap } from "../src/gameMap.js";
 import { KawaBuildings } from "../src/kawaBuildings.js";
+import { Traffic } from "../src/traffic.js";
 import { ZoneUtils } from "../src/zoneUtils.js";
 import { BULLBIT } from "../src/tileFlags";
-import { DIRT, ROADS, WINDTURBINE, WINDTURBINE1 } from "../src/tileValues";
+import { DIRT, HRAIL, ROADS, WINDTURBINE, WINDTURBINE1 } from "../src/tileValues";
 
 const makeMap = (): any => new (GameMap as any)(20, 20, DIRT);
 
@@ -48,5 +49,20 @@ describe("A wind turbine on fire", () => {
                 }
             }
         });
+    });
+});
+
+
+describe("The kind of road the traffic drives on", () => {
+    it("is a street's where a rail was laid over an old highway", () => {
+        const map = makeMap();
+        map.setTile(5, 5, ROADS, 0);
+        map.setRoadClass(5, 5, (GameMap as any).ROAD_HIGHWAY);
+        const traffic = new (Traffic as any)(map, null);
+        expect(traffic._roadClassAt(5, 5)).toBe((GameMap as any).ROAD_HIGHWAY);
+
+        map.setTile(5, 5, HRAIL, 0);
+        expect(traffic._roadClassAt(5, 5)).toBe((GameMap as any).ROAD_STREET);
+        expect(traffic._isHighway(5, 5)).toBe(false);
     });
 });

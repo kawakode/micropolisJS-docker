@@ -546,6 +546,17 @@ Neighbours.prototype.dealsOnHold = function() {
 };
 
 
+// Takes back which power sold was delivered at the last scan of the power grid, from the edges of the city as they
+// were stored with its save (see edgeState): it is not in the save, and a city opened in a room tells the cities
+// beside it before its first scan
+Neighbours.prototype.restoreDelivered = function(edges) {
+  this.list.forEach(function(n) {
+    var edge = edges !== null && typeof(edges) === 'object' ? edges[n.side] : null;
+    this._delivered[n.side] = edge !== null && typeof(edge) === 'object' && edge.powerOut === true;
+  }, this);
+};
+
+
 // What this city has at each edge, for the player's city beyond it: {side: {transport, power, powerOut, signed:
 // {trade, buyPower, sellPower, twinning}}}, powerOut telling whether the power sold there was delivered at the last
 // scan of the power grid

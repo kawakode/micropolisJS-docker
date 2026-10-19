@@ -19,7 +19,7 @@ const canvas = {
 };
 const page: any = {body: {tagName: "BODY"}, activeElement: null, querySelector: () => canvas};
 (global as any).document = page;
-(global as any).window = {addEventListener: () => undefined};
+(global as any).window = {addEventListener: (event: string, handler: (e: any) => void) => { handlers[event] = handler; }};
 
 const { InputStatus } = require("../src/inputStatus.js");
 
@@ -39,5 +39,45 @@ describe("A press on the map", () => {
                               clientY: 300, preventDefault: () => undefined});
         expect(button.blur).not.toHaveBeenCalled();
         expect(input.isBlocked()).toBe(false);
+    });
+});
+
+
+describe("The keyboard", () => {
+    const press = (code: string, key: string) => {
+        const e = {code: code, key: key, target: page.body, preventDefault: jest.fn()};
+        handlers.keydown(e);
+        return e;
+    };
+
+    const make = () => {
+        const zoomOut = jest.fn();
+        const input = new InputStatus({width: 120, height: 100}, {zoomOut: zoomOut, zoomIn: jest.fn()});
+        input.selectTool = jest.fn();
+        return {input, zoomOut};
+    };
+
+    it("selects the tools by the place of the digit keys: on an AZERTY keyboard, 6 and 8 don't zoom out", () => {
+        const {input, zoomOut} = make();
+        press("Digit6", "-");
+        press("Digit8", "_");
+        press("Digit1", "&");
+        press("Numpad9", "9");
+        expect(input.selectTool.mock.calls.map((call: any[]) => call[0])).toEqual(["wire", "police", "residential", "fire"]);
+        expect(zoomOut).not.toHaveBeenCalled();
+
+        press("Minus", "-");
+        expect(zoomOut).toHaveBeenCalledTimes(1);
+    });
+
+    it("pans with the keys at the place of WASD (ZQSD on an AZERTY keyboard), and opens the query tool with Q or I", () => {
+        const {input} = make();
+        press("KeyA", "q");
+        expect(input._keysHeld.left).toBe(true);
+        expect(input.selectTool).not.toHaveBeenCalled();
+
+        press("KeyQ", "q");
+        press("KeyI", "i");
+        expect(input.selectTool.mock.calls.map((call: any[]) => call[0])).toEqual(["query", "query"]);
     });
 });

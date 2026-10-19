@@ -7,7 +7,7 @@
 
 import type { Clock } from '../clock';
 import type { Database } from '../db/database';
-import { CityStore, decodeState, encodeState } from './cityStore';
+import { CityStore, decodeState, encodeState, parseEdges } from './cityStore';
 import type { EdgeState } from './headless';
 import { DEAL_KINDS, SIDES } from './protocol';
 import type { RemoteInfo, Room, RoomPlacement } from './room';
@@ -49,16 +49,6 @@ interface RegionCityRow {
   region_y: number;
   owner_name: string;
 }
-
-// The edges of a city that are not running, as stored
-const parseEdges = (text: string): Record<string, unknown> => {
-  try {
-    const edges = JSON.parse(text) as unknown;
-    return edges !== null && typeof edges === 'object' && !Array.isArray(edges) ? edges as Record<string, unknown> : {};
-  } catch (e) {
-    return {};
-  }
-};
 
 const noDeals = () => Object.fromEntries(DEAL_KINDS.map(kind => [kind, false]));
 

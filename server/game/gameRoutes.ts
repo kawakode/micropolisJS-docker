@@ -63,12 +63,15 @@ export function registerGameRoutes(context: AppContext, options: Partial<GameOpt
   // Deleting an account, in its transaction, before its rows go (they take its cities and regions along)
   auth.onAccountDeleting(userId => {
     const regionLink = link as RegionLink;
+    let owned: number[] = [];
     const {touched, memberships} = releaseAccount({cities, regions, link: regionLink, clock}, userId,
-                                                  owned => rooms.evict(owned, 'deleted'));
+                                                  ids => { owned = ids; });
 
-    // The cities beside, and those it was a member of, see it go once it is gone
+    // Its cities close, and the cities beside and those it was a member of see it go, once it is gone (not if the
+    // transaction is rolled back)
     setImmediate(() => {
       try {
+        rooms.evict(owned.filter(id => cities.byId(id) === null), 'deleted');
         regionLink.refreshAround(touched.filter(id => cities.byId(id) !== null));
         for (const id of memberships)
           rooms.membersChanged(id);

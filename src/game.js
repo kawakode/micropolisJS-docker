@@ -394,7 +394,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
   if (mode !== null) {
     this.dialogOpen = true;
     this._openWindow = 'scenarioWindow';
-    this.scenarioWindow.open(mode, Scenarios.get(scenario.id), remote);
+    this.scenarioWindow.open(mode, Scenarios.get(scenario.id), remote, remote ? scenario.scoreWait : undefined);
   }
 }
 
@@ -600,9 +600,17 @@ Game.prototype.setIsometric = function(isometric) {
   if (isometric === this.gameCanvas.isIsometric())
     return;
 
+  // Switching back without zooming in between gives back the zoom the view had, which the scale can't when it
+  // reached the most or least zoom
   var zoom = this.gameCanvas.getZoom();
+  var last = this._viewSwitch;
+  var target = isometric ? zoom / 2 : zoom * 2;
+  if (last && last.isometric !== isometric && last.zoom === zoom)
+    target = last.previous;
+
   this.gameCanvas.setIsometric(isometric);
-  this.gameCanvas.setZoom(isometric ? zoom / 2 : zoom * 2);
+  this.gameCanvas.setZoom(target);
+  this._viewSwitch = {isometric: isometric, zoom: this.gameCanvas.getZoom(), previous: zoom};
   this.monsterTV.canvas.setIsometric(isometric);
   this.ambientLife.setIsometric(isometric);
 };
@@ -742,7 +750,7 @@ Game.prototype._simulateTool = function(tool, placements) {
 
   tool.clear();
   if (tool.startBatch)
-    tool.startBatch();
+    tool.startBatch(placements.length);
 
   for (var i = 0, l = placements.length; i < l; i++) {
     var p = placements[i];

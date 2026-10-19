@@ -6,7 +6,7 @@
  */
 
 import { CityState } from './cityState';
-import { CityRow, CityStore, encodeState, MemberRow, PALETTE, Role } from './cityStore';
+import { CityRow, CityStore, encodeState, MemberRow, PALETTE, parseEdges, Role } from './cityStore';
 import { CitySave, createHeadlessCity, EdgeState, HeadlessCity, SPRITE_STEP_MS } from './headless';
 import { ChatEntry, CLOSE, CommandMessage, CursorEntry, ErrorCode, KickReason, PlayerEntry, SIDES } from './protocol';
 import { takeFromAll, TokenBucket } from './tokenBucket';
@@ -160,6 +160,8 @@ export class Room {
     this.city = createHeadlessCity(options.save, {paused: row.paused !== 0, random: options.random});
     this.city.name = row.name;
     this.state = new CityState(this.city);
+    // The power it sends its neighbours is known from its last scan of the power grid, which isn't in the save
+    this.city.restoreEdges(parseEdges(row.edge_state));
     this.edge = this.city.edgeState();
     this.setMembers(options.members);
 
