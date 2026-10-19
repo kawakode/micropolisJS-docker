@@ -148,7 +148,7 @@ var strings = {
   'Wind turbine': 'Éolienne',
   '50 MW, clean. Build them in fields.': '50 MW, propre. À construire en pleine campagne.',
   'Solar farm': 'Centrale solaire',
-  '250 MW, clean.': '250 MW, propre.',
+  '400 MW, clean.': '400 MW, propre.',
   'Gas plant': 'Centrale à gaz',
   '500 MW, a little pollution.': '500 MW, un peu polluante.',
   'Coal plant': 'Centrale à charbon',

@@ -122,7 +122,7 @@ var doBridge = function(map, x, y, currentTile, simData) {
 var densityTable = [TileValues.ROADBASE, TileValues.LTRFBASE, TileValues.HTRFBASE];
 
 // The upkeep of each kind of road, compared with a street (see GameMap.ROAD_*)
-var ROAD_UPKEEP = [0, -0.75, 1, 2];
+var ROAD_UPKEEP = [0, -0.5, 1, 2];
 
 var roadFound = function(map, x, y, simData) {
   simData.census.roadTotal += 1;

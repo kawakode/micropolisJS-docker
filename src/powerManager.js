@@ -24,7 +24,7 @@ var COAL_POWER_STRENGTH = 700;
 var NUCLEAR_POWER_STRENGTH = 2000;
 // KawaCity's power plants: cleaner, but smaller
 var GAS_POWER_STRENGTH = 500;
-var SOLAR_POWER_STRENGTH = 250;
+var SOLAR_POWER_STRENGTH = 400;
 var WIND_POWER_STRENGTH = 50;
 
 // The tiles that produce power
