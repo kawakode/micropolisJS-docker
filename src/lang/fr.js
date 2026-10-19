@@ -200,6 +200,7 @@ var strings = {
   'Land value': 'Valeur foncière',
   'Police coverage': 'Couverture police',
   'Fire coverage': 'Couverture pompiers',
+  'Education coverage': 'Couverture éducation',
   'Rate of growth': 'Croissance',
   'legend|Empty': 'Vide',
   'legend|Dense': 'Dense',
