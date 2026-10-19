@@ -228,9 +228,10 @@ export class Room {
 
     this.flushAll(now);
     if (this.clients.size === 0) {
-      // The city did not run while no one was there: it goes on from now
+      // The city did not run while no one was there: it goes on from now, and what it said before is old news
       this.nextStepAt = now;
       this.spriteAt = now;
+      this.city.takeMessages();
     }
     this.clients.add(client);
     this.emptySince = null;
