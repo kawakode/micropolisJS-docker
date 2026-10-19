@@ -137,7 +137,9 @@ LocalController.prototype.applySettings = function(actions) {
         break;
 
       case SettingsWindow.SPEED:
-        game.setSpeed(a.data - 0);
+        // A paused game stays paused, unless another speed was chosen
+        if (!game.isPaused || a.data - 0 !== game.defaultSpeed)
+          game.setSpeed(a.data - 0);
         break;
 
       case SettingsWindow.DISASTERS_CHANGED:
