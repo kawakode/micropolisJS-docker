@@ -380,15 +380,39 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
   if (remote)
     this._startRemote();
 
-  // A scenario starts with its briefing
+  // A scenario starts with its briefing. A shared city's shows each player, once, what they have not seen yet: the
+  // briefing while the scenario runs, how it ended once it has.
   this._scenarioPanelText = null;
   var scenario = this.simulation.getScenario();
-  if (scenario && savedGame && savedGame.scenarioBriefing && Scenarios.get(scenario.id)) {
+  var mode = null;
+  if (scenario && Scenarios.get(scenario.id)) {
+    if (remote)
+      mode = this._unseenScenarioWindow(scenario);
+    else if (savedGame && savedGame.scenarioBriefing)
+      mode = ScenarioWindow.INTRO;
+  }
+  if (mode !== null) {
     this.dialogOpen = true;
     this._openWindow = 'scenarioWindow';
-    this.scenarioWindow.open(ScenarioWindow.INTRO, Scenarios.get(scenario.id));
+    this.scenarioWindow.open(mode, Scenarios.get(scenario.id), remote);
   }
 }
+
+
+// The window of a shared city's scenario this player has not seen yet in this browser (null if none), now seen
+Game.prototype._unseenScenarioWindow = function(scenario) {
+  var mode = !scenario.ended ? ScenarioWindow.INTRO : (scenario.won ? ScenarioWindow.WON : ScenarioWindow.LOST);
+  var seen = scenario.id + (scenario.ended ? ':ended' : ':briefing');
+  var key = 'kawacity.scenario.' + this.controller.cityInfo.id;
+  try {
+    if (window.localStorage.getItem(key) === seen)
+      return null;
+    window.localStorage.setItem(key, seen);
+  } catch (err) {
+    // Without storage, the window comes each time
+  }
+  return mode;
+};
 
 
 // The time is up for the scenario: the city has won, or the mayor is impeached
@@ -400,9 +424,12 @@ Game.prototype.handleScenarioEnded = function(data) {
   if (this.dialogOpen && this._openWindow && this[this._openWindow])
     this[this._openWindow].close();
 
+  if (this.remote)
+    this._unseenScenarioWindow({id: data.id, ended: true, won: data.won});
+
   this.dialogOpen = true;
   this._openWindow = 'scenarioWindow';
-  this.scenarioWindow.open(data.won ? ScenarioWindow.WON : ScenarioWindow.LOST, scenario);
+  this.scenarioWindow.open(data.won ? ScenarioWindow.WON : ScenarioWindow.LOST, scenario, this.remote);
 
   if (data.won)
     this.ambientLife.celebrate(this.gameCanvas.getVisibleWorldRect());
@@ -414,8 +441,9 @@ Game.prototype.handleScenarioWindowClosure = function(data) {
 
   switch (data.action) {
     case ScenarioWindow.CONTINUE:
-      // Free play from now on
-      this.simulation.endScenario();
+      // Free play from now on (a shared city's scenario ended on the server, for every player)
+      if (!this.remote)
+        this.simulation.endScenario();
       break;
 
     case ScenarioWindow.RETRY:
@@ -875,8 +903,8 @@ Game.prototype.handleEscape = function() {
   if (InputStatus.toggleMoreMenu(false) || Toolbar.closeFlyout())
     return;
 
-  // A lost scenario can't be escaped
-  if (this._openWindow === 'scenarioWindow' && this.scenarioWindow.mode === ScenarioWindow.LOST)
+  // A lost scenario can't be escaped (but in a shared city, which carries on)
+  if (this._openWindow === 'scenarioWindow' && this.scenarioWindow.mode === ScenarioWindow.LOST && !this.remote)
     return;
 
   // InputStatus doesn't know what dialogs are showing, so we must handle escape here

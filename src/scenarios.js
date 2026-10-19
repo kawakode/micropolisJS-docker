@@ -71,6 +71,49 @@ var get = function(id) {
 };
 
 
+// The fields of a scenario in a save (see Simulation.getScenario)
+var SAVED_FIELDS = ['id', 'goal', 'disaster', 'disasterWait', 'scoreWait', 'ended', 'won'];
+
+var isCountdown = function(value, max) {
+  return Number.isInteger(value) && value >= 0 && value <= max;
+};
+
+
+// A scenario as a save holds it, checked against its definition: a fresh copy of it, or null when it is not one (an
+// unknown scenario, another goal or disaster, a countdown beyond the scenario's own, an unknown field). Its time is up
+// exactly when it has ended, with the city won or lost.
+var clean = function(scenario) {
+  if (scenario === null || typeof(scenario) !== 'object' || Array.isArray(scenario))
+    return null;
+
+  var has = function(field) {
+    return Object.prototype.hasOwnProperty.call(scenario, field);
+  };
+  if (Object.keys(scenario).some(function(field) { return SAVED_FIELDS.indexOf(field) === -1; }))
+    return null;
+
+  var definition = typeof(scenario.id) === 'string' ? get(scenario.id) : null;
+  if (definition === null || scenario.goal !== definition.goal ||
+      (scenario.disaster !== definition.disaster && scenario.disaster !== null) ||
+      !isCountdown(scenario.disasterWait, definition.disasterWait) ||
+      !isCountdown(scenario.scoreWait, definition.scoreWait))
+    return null;
+
+  var result = {id: definition.id, goal: definition.goal, disaster: scenario.disaster,
+                disasterWait: scenario.disasterWait, scoreWait: scenario.scoreWait};
+  if (scenario.scoreWait === 0) {
+    if (scenario.ended !== true || typeof(scenario.won) !== 'boolean')
+      return null;
+    result.ended = true;
+    result.won = scenario.won;
+  } else if ((has('ended') && scenario.ended !== false) || has('won')) {
+    return null;
+  }
+
+  return result;
+};
+
+
 // Fetches the scenario's city file, and resolves to a saved game ready to be played
 var load = function(id, version) {
   var scenario = get(id);
@@ -143,6 +186,7 @@ var Scenarios = {
   GOAL_TEXT: GOAL_TEXT,
   list: SCENARIOS,
   get: get,
+  clean: clean,
   load: load,
   cities: CITIES,
   getCity: getCity,

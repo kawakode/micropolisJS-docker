@@ -440,3 +440,54 @@ describe('The changes of a shared city', () => {
     expect(state.diffSprites()).toBeNull();
   });
 });
+
+
+describe('A shared city\'s scenario', () => {
+  test('strikes with its disaster, then ends for every player when its time is up', () => {
+    const save = sampleCity('kowloon');
+    save.scenario = {id: 'tokyo', goal: 'score', disaster: 'monster', disasterWait: 1, scoreWait: 2};
+    const city = createHeadlessCity(save, {random: seededRandom(5)});
+    const room = new Room(city);
+    room.players.push(join(room.state, room.now));
+    const ends: unknown[] = [];
+    room.players[0].mirror.simulation.addEventListener(Messages.SCENARIO_ENDED, (data: unknown) => ends.push(data));
+
+    const welcome = room.state.fullState().scenario;
+    expect(welcome).toMatchObject({id: 'tokyo', goal: 'score', scoreWait: 2, ended: false, won: false, target: 500});
+    expect(room.players[0].mirror.simulation.getScenarioProgress()).toEqual(
+      {value: city.simulation.evaluation.cityScore, target: 500, met: city.simulation.evaluation.cityScore > 500});
+
+    let monster = false;
+    for (let i = 0; i < 2000 && !city.simulation.getScenario()?.ended; i++) {
+      room.step();
+      room.flush();
+      monster ||= room.players[0].mirror.simulation.spriteManager.getSpriteList().length > 0;
+    }
+    room.flush();
+
+    // The monster came, as the scenario has it
+    expect(monster).toBe(true);
+    const scenario = city.simulation.getScenario();
+    expect(scenario).toMatchObject({ended: true, scoreWait: 0});
+
+    // A player joining now gets the scenario as it ended, without it ending again
+    room.players.push(join(room.state, room.now));
+    for (const player of room.players) {
+      expect(player.mirror.simulation.getScenario()).toEqual({id: 'tokyo', goal: 'score', scoreWait: 0, ended: true,
+                                                              won: scenario?.won});
+      expect(player.mirror.simulation.getScenarioProgress()?.met).toBe(scenario?.won);
+    }
+    expect(ends).toEqual([{id: 'tokyo', won: scenario?.won}]);
+
+    // The save keeps it, as the server accepts it
+    const saved: Record<string, unknown> = {};
+    city.simulation.save(saved);
+    expect(saved.scenario).toMatchObject({id: 'tokyo', ended: true, scoreWait: 0});
+  });
+
+  test('is none in free play', () => {
+    const state = new CityState(createHeadlessCity(sampleCity('kowloon')));
+    expect(state.fullState().scenario).toBeNull();
+    expect(state.diffState()).toBeNull();
+  });
+});

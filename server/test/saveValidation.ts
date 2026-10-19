@@ -47,6 +47,10 @@ const gameSave = (name = 'kowloon', steps = 200) => {
   return city.save();
 };
 
+// Scenarios as the game saves them: on its way, and ended
+const running = {id: 'sanfrancisco', goal: 'metropolis', disaster: 'earthquake', disasterWait: 7, scoreWait: 200};
+const ended = {id: 'bern', goal: 'traffic', disaster: null, disasterWait: 0, scoreWait: 0, ended: true, won: false};
+
 describe('Saves the game writes', () => {
   test('Every sample city, as the game reads it (CityFile.read)', () => {
     for (const name of SAMPLES) {
@@ -70,15 +74,25 @@ describe('Saves the game writes', () => {
       expect(refusal(freshCitySave('Newtown', level, level + 1))).toBeNull();
   });
 
-  test('The city is rebuilt from the values checked: the same values, scenario none, version 4', () => {
+  test('The city is rebuilt from the values checked: the same values, version 4', () => {
     const save = gameSave();
-    save.scenario = {name: 'x', disasters: []};
+    save.scenario = null;
     const clean = validateSave(save);
     expect(clean).not.toBe(save);
     expect(clean.map).not.toBe(save.map);
     expect(clean.scenario).toBeNull();
     expect(clean.version).toBe(4);
-    expect({...clean, scenario: undefined}).toEqual({...save, scenario: undefined});
+    expect(clean).toEqual(save);
+  });
+
+  test('A scenario of the game is kept as it is, on its way or ended', () => {
+    for (const scenario of [running, {...running, disaster: null, disasterWait: 0, ended: false}, ended]) {
+      const save = gameSave();
+      save.scenario = copy(scenario);
+      const clean = validateSave(save);
+      expect(clean.scenario).toEqual({...scenario, ended: 'ended' in scenario && scenario.ended ? true : undefined});
+      expect(clean.scenario).not.toBe(save.scenario);
+    }
   });
 
   test('A save without road classes gets plain roads; one without neighbours gets new ones when opened', () => {
@@ -280,6 +294,18 @@ describe('Crafted saves are refused', () => {
     expect(variant(save => { save.neighbours[0].deals.steal = true; })).toBe('neighbours.north.deals');
     expect(variant(save => { save.neighbours[0].months = JSON.parse('{"__proto__": 3}'); }))
       .toBe('neighbours.north.months');
+  });
+
+  test('A scenario the game does not have, or not as the game plays it', () => {
+    const refused = [
+      {name: 'x', disasters: []}, [], 'dullsville', {...running, id: 'atlantis'}, {...running, id: 'toString'},
+      {...running, goal: 'score'}, {...running, disaster: 'monster'}, {...running, disasterWait: 11},
+      {...running, scoreWait: 5 * 48 + 1}, {...running, scoreWait: 1.5}, {...running, scoreWait: -1},
+      {...running, ended: true, won: true}, {...running, won: false}, {...ended, won: undefined},
+      {...ended, ended: false}, {...running, extra: 1}, JSON.parse('{"__proto__": {}, "id": "bern"}')
+    ];
+    for (const scenario of refused)
+      expect([scenario, variant(save => { save.scenario = scenario; })]).toEqual([scenario, 'scenario']);
   });
 
   test('Required values may not be left out', () => {
