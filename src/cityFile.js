@@ -95,7 +95,6 @@ var read = function(buffer, options) {
   var savedGame = {
     isSavedGame: true,
     name: options.name || 'MyTown',
-    everClicked: false,
 
     // Game, simulation and map
     _cityTime: cityTime,

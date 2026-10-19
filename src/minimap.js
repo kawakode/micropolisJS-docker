@@ -113,6 +113,9 @@ function Minimap(parentID, map, simulation, gameCanvas, tileSet) {
   this._gameCanvas = gameCanvas;
   this._overlay = 'none';
   this._lastRefresh = 0;
+
+  // Where the power reaches (see setPowerSource): by default, the power manager's grid
+  this._powerSource = null;
   this._colours = computeTileColours(tileSet);
 
   this._parent = $(MiscUtils.normaliseDOMid(parentID))[0];
@@ -201,6 +204,14 @@ Minimap.prototype.translate = function() {
 };
 
 
+// For a shared city, whose power grid the server keeps: source() gives the tiles the power reaches, as a Uint8Array of
+// the map's tiles, row by row (see RemoteCity.poweredTiles)
+Minimap.prototype.setPowerSource = function(source) {
+  this._powerSource = source;
+  this._lastRefresh = 0;
+};
+
+
 // Returns a canvas with the current data overlay at one pixel per tile, or null if there is no overlay
 Minimap.prototype.getOverlayCanvas = function() {
   return this._overlay === 'none' ? null : this._overlayCanvas;
@@ -220,6 +231,7 @@ Minimap.prototype._computeOverlay = function() {
 
   if (overlay.power) {
     var powerGrid = this._simulation._powerManager.powerGridMap;
+    var powered = this._powerSource !== null ? this._powerSource() : null;
 
     for (y = 0; y < map.height; y++) {
       for (x = 0; x < map.width; x++) {
@@ -231,7 +243,10 @@ Minimap.prototype._computeOverlay = function() {
           continue;
         }
 
-        colour = powerGrid.worldGet(x, y) > 0 ? POWERED : UNPOWERED;
+        if (powered !== null)
+          colour = powered[y * map.width + x] ? POWERED : UNPOWERED;
+        else
+          colour = powerGrid.worldGet(x, y) > 0 ? POWERED : UNPOWERED;
         result[i] = colour[0];
         result[i + 1] = colour[1];
         result[i + 2] = colour[2];

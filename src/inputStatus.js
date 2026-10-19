@@ -23,32 +23,13 @@ import { GameTools } from './gameTools.js';
 import { I18n } from './i18n.js';
 import * as Messages from './messages.ts';
 import { MiscUtils } from './miscUtils.js';
+import { Placements } from './placements.js';
 
-// How the tools behave when dragged
-var TOOL_LINE = 'line';         // Lays an L-shaped path of tiles from the start of the drag (roads, rails, wires)
-var TOOL_AREA = 'area';         // Fills the dragged rectangle (bulldozer, parks), widened by the tool's brush
-var TOOL_BUILDING = 'building'; // Places a grid of buildings over the dragged rectangle
-var TOOL_SINGLE = 'single';     // Acts on a single tile on click (query)
-
-var toolCategories = {
-  road: TOOL_LINE,
-  dirtroad: TOOL_LINE,
-  avenue: TOOL_LINE,
-  highway: TOOL_LINE,
-  rail: TOOL_LINE,
-  wire: TOOL_LINE,
-  bulldozer: TOOL_AREA,
-  bulldozer3: TOOL_AREA,
-  bulldozer5: TOOL_AREA,
-  bulldozer7: TOOL_AREA,
-  park: TOOL_AREA,
-  garden: TOOL_AREA,
-  plaza: TOOL_AREA,
-  trees: TOOL_AREA,
-  water: TOOL_AREA,
-  landfill: TOOL_AREA,
-  query: TOOL_SINGLE
-};
+// How the tools behave when dragged (see Placements)
+var TOOL_LINE = Placements.LINE;         // Lays an L-shaped path of tiles from the start of the drag (roads, rails, wires)
+var TOOL_AREA = Placements.AREA;         // Fills the dragged rectangle (bulldozer, parks), widened by the tool's brush
+var TOOL_BUILDING = Placements.BUILDING; // Places a grid of buildings over the dragged rectangle
+var TOOL_SINGLE = Placements.SINGLE;     // Acts on a single tile on click (query)
 
 // Keyboard shortcuts for selecting tools
 var toolShortcuts = {
@@ -67,10 +48,6 @@ var toolShortcuts = {
 
 // Pressing the bulldozer's key again goes through its sizes
 var BULLDOZER_SIZES = ['bulldozer', 'bulldozer3', 'bulldozer5', 'bulldozer7'];
-
-// Limit how much can be done in a single drag
-var MAX_AREA_SIDE = 64;
-var MAX_BUILDINGS = 100;
 
 // Keyboard panning speed, in CSS pixels per second
 var KEY_PAN_SPEED = 900;
@@ -92,6 +69,13 @@ var InputStatus = EventEmitter(function(map, gameCanvas) {
 
   // Should be replaced by the owner: when it returns true (e.g. a dialog is open), the map does not respond to input
   this.isBlocked = function() { return false; };
+
+  // May be replaced by the owner: whether a tool can be taken up (a viewer of a shared city has only the query tool)
+  this.isToolAllowed = function() { return true; };
+
+  // When true, a tool's drag stays on the map: its ends are the nearest tiles of the map (a shared city's server only
+  // takes drags whose ends are on the map, and builds what the preview showed)
+  this.clampToMap = false;
 
   // Keyboard movement
   this._keysHeld = {up: false, down: false, left: false, right: false};
@@ -175,7 +159,7 @@ InputStatus.TOOL_SINGLE = TOOL_SINGLE;
 
 
 InputStatus.getToolCategory = function(toolName) {
-  return toolCategories[toolName] || TOOL_BUILDING;
+  return Placements.getToolCategory(toolName);
 };
 
 
@@ -185,6 +169,14 @@ var isEditable = function(element) {
 
   var tag = element.tagName;
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || element.isContentEditable;
+};
+
+
+// Takes the focus from element if it is a text field (or another control that keeps the keys): the game's shortcuts
+// work again
+InputStatus.leaveTextField = function(element) {
+  if (isEditable(element) && typeof(element.blur) === 'function')
+    element.blur();
 };
 
 
@@ -291,9 +283,23 @@ InputStatus.prototype._tileAt = function(coords) {
 };
 
 
+// The tile of a tool's drag at these coordinates (see clampToMap), or null
+InputStatus.prototype._dragTileAt = function(coords) {
+  var tile = this._tileAt(coords);
+  if (tile === null || !this.clampToMap)
+    return tile;
+
+  return {x: Math.max(0, Math.min(this._map.width - 1, tile.x)), y: Math.max(0, Math.min(this._map.height - 1, tile.y))};
+};
+
+
 var pointerDownHandler = function(e) {
   if (this.isBlocked())
     return;
+
+  // The press is the map's (its default, which would move the focus, is prevented below): the keys go back to the map
+  // from a text field (a shared city's chat, open beside it)
+  InputStatus.leaveTextField(document.activeElement);
 
   // A primary pointer is the first of its kind to go down: any pointer still tracked lost its pointerup (the browser
   // may swallow it, when another window takes the focus for example), and its gesture would block the tools
@@ -326,7 +332,7 @@ var pointerDownHandler = function(e) {
   if (panButton || this.currentTool === null) {
     this._gesture = {type: 'pan', pointerId: e.pointerId, button: e.button, start: coords, last: coords, moved: false};
   } else if (e.button === 0) {
-    var tile = this._tileAt(coords);
+    var tile = this._dragTileAt(coords);
     if (tile !== null) {
       this._gesture = {type: 'tool', pointerId: e.pointerId, start: coords, anchor: tile, current: tile,
                        toolName: this.toolName};
@@ -371,7 +377,7 @@ var pointerMoveHandler = function(e) {
       if (e.pointerId !== gesture.pointerId)
         return;
 
-      var tile = this._tileAt(coords);
+      var tile = this._dragTileAt(coords);
       if (tile !== null)
         gesture.current = tile;
       break;
@@ -416,13 +422,11 @@ var pointerUpHandler = function(e) {
     if (gesture.button === 2 && !gesture.moved)
       this.clearTool();
   } else if (gesture.type === 'tool' && gesture.toolName === this.toolName) {
-    var tile = this._tileAt(coords);
+    var tile = this._dragTileAt(coords);
     if (tile !== null)
       gesture.current = tile;
 
-    var placements = this._computePlacements(gesture.anchor, gesture.current);
-    if (placements.length > 0)
-      this._emitEvent(Messages.TOOL_APPLY, {toolName: gesture.toolName, placements: placements});
+    this._applyDrag(gesture);
   }
 
   this._updateCursor();
@@ -568,75 +572,21 @@ InputStatus.prototype.update = function(elapsed) {
 };
 
 
-// Computes the coordinates at which the tool should be applied for a drag from anchor to current (in order).
-// For buildings, the coordinates are those of the building's "centre" tile, as expected by the tools.
+// Asks for the tool to be applied over a finished drag: TOOL_APPLY gives the placements, and the drag's ends for the
+// server of a shared city, which works the placements out again
+InputStatus.prototype._applyDrag = function(gesture) {
+  var placements = this._computePlacements(gesture.anchor, gesture.current);
+  if (placements.length > 0)
+    this._emitEvent(Messages.TOOL_APPLY, {toolName: gesture.toolName, placements: placements,
+                                          anchor: {x: gesture.anchor.x, y: gesture.anchor.y},
+                                          current: {x: gesture.current.x, y: gesture.current.y}});
+};
+
+
+// Computes the coordinates at which the tool should be applied for a drag from anchor to current (in order), on the
+// map. For buildings, the coordinates are those of the building's "centre" tile, as expected by the tools.
 InputStatus.prototype._computePlacements = function(anchor, current) {
-  var placements = [];
-  var x, y;
-  var category = InputStatus.getToolCategory(this.toolName);
-
-  switch (category) {
-    case TOOL_SINGLE:
-      placements.push({x: current.x, y: current.y});
-      break;
-
-    case TOOL_LINE:
-      // An L-shaped path: first along the axis with the greatest distance, then along the other
-      var dx = current.x - anchor.x;
-      var dy = current.y - anchor.y;
-      var stepX = dx < 0 ? -1 : 1;
-      var stepY = dy < 0 ? -1 : 1;
-
-      if (Math.abs(dx) >= Math.abs(dy)) {
-        for (x = anchor.x; x !== current.x + stepX; x += stepX)
-          placements.push({x: x, y: anchor.y});
-        for (y = anchor.y + stepY; y !== current.y + stepY; y += stepY)
-          placements.push({x: current.x, y: y});
-      } else {
-        for (y = anchor.y; y !== current.y + stepY; y += stepY)
-          placements.push({x: anchor.x, y: y});
-        for (x = anchor.x + stepX; x !== current.x + stepX; x += stepX)
-          placements.push({x: x, y: current.y});
-      }
-      break;
-
-    case TOOL_AREA:
-      // A brush wider than a tile sweeps the drag, centred on the pointer
-      var reach = Math.floor((this.toolBrush - 1) / 2);
-      var minX = Math.min(anchor.x, current.x) - reach;
-      var minY = Math.min(anchor.y, current.y) - reach;
-      var maxX = Math.min(Math.max(anchor.x, current.x) + reach, minX + MAX_AREA_SIDE - 1);
-      var maxY = Math.min(Math.max(anchor.y, current.y) + reach, minY + MAX_AREA_SIDE - 1);
-
-      for (y = minY; y <= maxY; y++) {
-        for (x = minX; x <= maxX; x++)
-          placements.push({x: x, y: y});
-      }
-      break;
-
-    case TOOL_BUILDING:
-      // A grid of buildings, aligned on the first one
-      var size = this.toolWidth - 0;
-      var countX = Math.floor(Math.abs(current.x - anchor.x) / size) + 1;
-      var countY = Math.floor(Math.abs(current.y - anchor.y) / size) + 1;
-      var dirX = current.x < anchor.x ? -1 : 1;
-      var dirY = current.y < anchor.y ? -1 : 1;
-
-      for (var j = 0; j < countY; j++) {
-        for (var i = 0; i < countX; i++) {
-          if (placements.length >= MAX_BUILDINGS)
-            break;
-          placements.push({x: anchor.x + i * size * dirX, y: anchor.y + j * size * dirY});
-        }
-      }
-      break;
-  }
-
-  // Discard anything off the map
-  var map = this._map;
-  return placements.filter(function(p) {
-    return map.testBounds(p.x, p.y);
-  });
+  return Placements.computePlacements(this.toolName, anchor, current, this._map);
 };
 
 
@@ -666,6 +616,28 @@ InputStatus.prototype.getPendingPlacements = function() {
 };
 
 
+// Where the pointer is on the map, for the other players of a shared city: {x, y, anchor}, anchor being the tile where
+// a drag of the current tool started (or null), or null when the pointer is not over the map
+InputStatus.prototype.getPointer = function() {
+  var gesture = this._gesture;
+  if (gesture !== null && gesture.type === 'tool' && gesture.toolName === this.toolName &&
+      this._map.testBounds(gesture.current.x, gesture.current.y)) {
+    var anchor = this._map.testBounds(gesture.anchor.x, gesture.anchor.y) ? {x: gesture.anchor.x, y: gesture.anchor.y} :
+                 null;
+    return {x: gesture.current.x, y: gesture.current.y, anchor: anchor};
+  }
+
+  if (this._hover === null)
+    return null;
+
+  var tile = this._tileAt(this._hover);
+  if (tile === null || !this._map.testBounds(tile.x, tile.y))
+    return null;
+
+  return {x: tile.x, y: tile.y, anchor: null};
+};
+
+
 InputStatus.prototype._updateCursor = function() {
   var canvas = $(this._canvasElement);
   var gesture = this._gesture;
@@ -692,7 +664,7 @@ InputStatus.prototype.selectTool = function(toolName, keep) {
   }
 
   var button = $('.toolButton[data-tool="' + toolName + '"]');
-  if (button.length === 0 || this.gameTools[toolName] === undefined)
+  if (button.length === 0 || this.gameTools[toolName] === undefined || !this.isToolAllowed(toolName))
     return;
 
   $('.toolButton.selected').removeClass('selected').addClass('unselected').attr('aria-pressed', 'false');

@@ -39,8 +39,11 @@ import { Traffic } from './traffic.js';
 import { Transport } from './transport.js';
 import { Valves } from './valves.js';
 
-var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame) {
+// KawaCity: options (optional) is {inert}. An inert simulation is the copy of a city simulated elsewhere (on a server):
+// it holds the city's state, as loaded and then updated from outside, but never changes it by itself (see init).
+var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame, options) {
   this._map = gameMap;
+  this._inert = !!(options && options.inert);
   this.setLevel(gameLevel);
   this.setSpeed(speed);
 
@@ -183,6 +186,11 @@ Simulation.prototype.isPaused = function() {
 };
 
 
+Simulation.prototype.isInert = function() {
+  return this._inert;
+};
+
+
 var saveProps = ['_cityTime', '_speed', '_gameLevel'];
 
 Simulation.prototype.save = function(saveData) {
@@ -244,7 +252,7 @@ Simulation.prototype.timeUntilNextStep = function() {
 
 
 Simulation.prototype._simFrame = function() {
-  if (this.budget.awaitingValues || this._speed === Simulation.SPEED_PAUSED)
+  if (this.budget.awaitingValues || this._speed === Simulation.SPEED_PAUSED || this._inert)
     return;
 
   var d = new Date();
@@ -254,6 +262,21 @@ Simulation.prototype._simFrame = function() {
   var simData = this._constructSimData();
   this._simulate(simData);
   this._lastTickTime = new Date();
+};
+
+
+// KawaCity: one step of the simulation, now, whatever the time (for a server, which keeps its own time). Unlike
+// simTick, it does not wait for the yearly budget: the caller resolves budget.awaitingValues. The speed sets how often
+// the slower scans run, so it must not be SPEED_PAUSED. An inert simulation does not step.
+Simulation.prototype.step = function() {
+  if (this._inert)
+    return;
+
+  if (this._speed === Simulation.SPEED_PAUSED)
+    throw new Error('A paused simulation cannot step: set its speed');
+
+  this._simulate(this._constructSimData());
+  this._updateTime();
 };
 
 
@@ -329,6 +352,13 @@ Simulation.prototype.init = function() {
   Residential.registerHandlers(this._mapScanner, this._repairManager);
   Stadia.registerHandlers(this._mapScanner, this._repairManager);
   Transport.registerHandlers(this._mapScanner, this._repairManager);
+
+  // An inert copy of a city keeps the state it was loaded with: the scans would change tiles and the census, and make
+  // sprites (the city's own simulation sends what they find)
+  if (this._inert) {
+    this._snapshotCensus();
+    return;
+  }
 
   // As in the original game, the first scan starts from an empty census (a saved game holds the last counts) and
   // assumes everything is powered until the first power scan

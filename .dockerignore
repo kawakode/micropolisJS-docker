@@ -1,7 +1,16 @@
 .git
+.github
 .vscode
 node_modules
 dist
+build
 coverage
+data
 Dockerfile
 .dockerignore
+.env
+.env.*
+!.env.example
+**/*.db
+**/*.db-*
+**/__pycache__

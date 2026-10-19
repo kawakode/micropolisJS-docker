@@ -3,6 +3,7 @@ import CopyPlugin from 'copy-webpack-plugin';
 import { GitRevisionPlugin } from 'git-revision-webpack-plugin';
 import HtmlWebpackPlugin  from 'html-webpack-plugin';
 import path from 'path';
+import webpack from 'webpack';
 
 // Workaround now this is a module...
 import { fileURLToPath } from 'url';
@@ -21,6 +22,12 @@ const SUPPORT_FULLY_QUALIFIED_TS_ESM_IMPORTS = {
 const HANDLE_TYPESCRIPT_WITH_TS_LOADER = { test: /\.([cm]?ts|tsx)$/, loader: "ts-loader" };
 
 const OUTPUT_DIRECTORY = 'dist';
+
+// The server's bundle: outside dist/, so that it is never served
+const SERVER_OUTPUT_DIRECTORY = 'build/server';
+
+// Where `npm run dev` sends the API and the game's WebSocket: the server started by `npm run start:server`
+const DEV_API_SERVER = 'http://127.0.0.1:3000';
 
 function recursivelyCopy(dir) {
   return {from: dir, to: dir, toType: 'dir'};
@@ -41,6 +48,8 @@ function copyStaticAssets() {
       'COPYING',
       'favicon.ico',
       'manifest.webmanifest',
+      // Loaded without defer by index.html, so it is not part of the bundle
+      {from: 'src/hasScript.js', to: 'src/hasScript.js'},
     ]
   });
 }
@@ -50,6 +59,8 @@ function injectBundleIntoHTML(gitHash) {
     gitHash,
     inject: true,
     hash: true,
+    // The captcha worker is started by the game, never loaded as a page script
+    chunks: ['micropolis'],
     template: './index.html',
     filename: 'index.html'
   });
@@ -77,7 +88,10 @@ function injectBuildIdIntoNameLicense(gitHash) {
 
 function addDevelopmentConfigTo(options) {
   options.devServer = {
-    static: `./${OUTPUT_DIRECTORY}`
+    static: `./${OUTPUT_DIRECTORY}`,
+    port: 8080,
+    // The dev server keeps /ws for its own reloads; the game's WebSocket is /api/ws
+    proxy: [{context: ['/api'], target: DEV_API_SERVER, ws: true}],
   };
 
   options.devtool = 'source-map';
@@ -115,11 +129,13 @@ function getBuildId() {
   }
 }
 
-function commonOptions() {
-  const buildId = getBuildId();
-
+function commonOptions(env, buildId) {
   const options = {
-    entry: './src/micropolis.js',
+    name: 'client',
+    entry: {
+      micropolis: './src/micropolis.js',
+      captchaWorker: './src/captchaWorker.js',
+    },
     resolve: {
       extensions: ADD_TS_EXTENSIONS_TO_WEPACK,
       extensionAlias: SUPPORT_FULLY_QUALIFIED_TS_ESM_IMPORTS,
@@ -131,10 +147,11 @@ function commonOptions() {
     },
     output: {
       path: path.resolve(__dirname, OUTPUT_DIRECTORY),
-      filename: 'src/micropolis.js'
+      filename: 'src/[name].js'
     },
     plugins: [
-      cleanUpLeftovers(),
+      // Not for the dev server, which builds in memory: dist/ stays as built, for the server (npm run start:server)
+      ...(env.WEBPACK_SERVE ? [] : [cleanUpLeftovers()]),
       copyStaticAssets(),
       injectBundleIntoHTML(buildId),
       injectBuildIdIntoAbout(buildId),
@@ -145,8 +162,8 @@ function commonOptions() {
   return options;
 }
 
-export default function(env, argv) {
-  let options = commonOptions();
+function clientConfig(env, argv, buildId) {
+  let options = commonOptions(env, buildId);
 
   if (env.development || argv.mode === 'development') {
     addDevelopmentConfigTo(options);
@@ -155,4 +172,52 @@ export default function(env, argv) {
   }
 
   return options;
+}
+
+// The server (server/main.ts) reuses the game's modules from src/, so it is bundled too. Its type checking is done by
+// `npm run lint`.
+function serverConfig(env, argv, buildId) {
+  return {
+    name: 'server',
+    target: 'node22',
+    entry: './server/main.ts',
+    resolve: {
+      extensions: ADD_TS_EXTENSIONS_TO_WEPACK,
+      extensionAlias: SUPPORT_FULLY_QUALIFIED_TS_ESM_IMPORTS,
+      // The game's windows use jQuery; the server only runs the simulation and the tools, never a window
+      alias: {jquery: false},
+    },
+    module: {
+      rules: [
+        {
+          ...HANDLE_TYPESCRIPT_WITH_TS_LOADER,
+          options: {configFile: path.resolve(__dirname, 'server/tsconfig.json'), transpileOnly: true},
+        },
+      ],
+    },
+    // Installed in node_modules next to the bundle (the image's production dependencies)
+    externals: {
+      ws: 'commonjs ws',
+      nodemailer: 'commonjs nodemailer',
+    },
+    output: {
+      path: path.resolve(__dirname, SERVER_OUTPUT_DIRECTORY),
+      filename: 'main.cjs',
+      clean: true,
+    },
+    plugins: [
+      // The server's default BUILD_ID: the same as the game's
+      new webpack.DefinePlugin({__BUILD_ID__: JSON.stringify(buildId)}),
+    ],
+    devtool: 'source-map',
+    // nodeEnv false: process.env.NODE_ENV stays a runtime value (the server never reads it anyway)
+    optimization: {nodeEnv: false, minimize: false},
+    performance: {hints: false},
+  };
+}
+
+export default function(env, argv) {
+  const buildId = getBuildId();
+
+  return [clientConfig(env, argv, buildId), serverConfig(env, argv, buildId)];
 };

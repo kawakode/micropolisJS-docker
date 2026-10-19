@@ -102,7 +102,8 @@ function GameCanvas(id, parentNode) {
 }
 
 
-GameCanvas.prototype.init = function(map, tileSet, spriteSheet, animationManager) {
+// animationManager is optional, and so is options: {noWrite}, for the AnimationManager made when none is given
+GameCanvas.prototype.init = function(map, tileSet, spriteSheet, animationManager, options) {
   if (arguments.length < 3)
     throw new Error('GameCanvas constructor called with too few arguments ' + [].toString.apply(arguments));
 
@@ -112,7 +113,7 @@ GameCanvas.prototype.init = function(map, tileSet, spriteSheet, animationManager
   this._spriteSheet = spriteSheet;
   this._tileSet = tileSet;
   this._map = map;
-  this.animationManager = animationManager || new AnimationManager(map);
+  this.animationManager = animationManager || new AnimationManager(map, {noWrite: !!(options && options.noWrite)});
 
   // Whether to allow off-map scrolling
   this._allowScrolling = true;

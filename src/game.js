@@ -30,9 +30,9 @@ import { GameMap } from './gameMap.js';
 import { InfoBar } from './infoBar.js';
 import { InputStatus } from './inputStatus.js';
 import { IsoView } from './isoView.js';
+import { LocalController } from './localController.js';
 import * as Messages from './messages.ts';
 import { MonsterTV } from './monsterTV.js';
-import { NagWindow } from './nagWindow.js';
 import { NeighboursWindow } from './neighboursWindow.js';
 import { Notification } from './notification.js';
 import { QueryWindow } from './queryWindow.js';
@@ -57,11 +57,22 @@ var disasterTimeout = 20 * 1000;
 var SPRITE_STEP = 1000 / 60;
 
 
-function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
+// options: {controller}, for a shared city: a RemoteController, which holds the copy of the city the game shows (the
+// gameMap given is then that copy's map) and sends the player's commands to the server that simulates it. Without it,
+// the game carries them out on its own city (see LocalController).
+function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, options) {
   difficulty = difficulty || 0;
+  options = options || {};
   var savedGame;
 
-  if (!gameMap.isSavedGame) {
+  var controller = options.controller || null;
+  var remote = controller !== null && controller.remote === true;
+  this.remote = remote;
+
+  if (remote) {
+    this.gameMap = controller.city.map;
+    savedGame = null;
+  } else if (!gameMap.isSavedGame) {
     this.gameMap = gameMap;
     savedGame = null;
   } else {
@@ -72,10 +83,14 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.tileSet = tileSet;
   this.snowTileSet = snowTileSet;
   this.defaultSpeed = Simulation.SPEED_MED;
-  this.simulation = new Simulation(this.gameMap, difficulty, this.defaultSpeed, savedGame);
+  this.simulation = remote ? controller.city.simulation :
+                    new Simulation(this.gameMap, difficulty, this.defaultSpeed, savedGame);
+
+  // What the player's commands do (a shared city's game still uses the local one for the query tool)
+  this._local = new LocalController(this);
+  this.controller = remote ? controller : this._local;
 
   this.name = name || 'MyTown';
-  this.everClicked = false;
 
   // Track when various milestones are first reached
   this._reachedTown = this._reachedCity = this._reachedCapital = this._reachedMetropolis = this._reachedMegalopolis = false;
@@ -83,17 +98,24 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   if (savedGame)
     this.load(savedGame);
 
-  // A game saved while paused should not resume paused: the controls always start in the running state
-  if (this.simulation.isPaused())
+  // A game saved while paused should not resume paused: the controls always start in the running state. A shared
+  // city runs at the server's speed.
+  if (remote)
+    this.defaultSpeed = controller.city.speed;
+  else if (this.simulation.isPaused())
     this.simulation.setSpeed(this.defaultSpeed);
   else
     this.defaultSpeed = this.simulation._speed;
 
   this.rci = new RCI('RCIContainer', this.simulation);
 
-  // Note: must init canvas before inputStatus
+  // Note: must init canvas before inputStatus. A shared city's map only changes as the server says: its explosions
+  // keep their last picture until the server turns them into rubble.
   this.gameCanvas = new GameCanvas('canvasContainer');
-  this.gameCanvas.init(this.gameMap, this.tileSet, spriteSheet);
+  if (remote)
+    this.gameCanvas.init(this.gameMap, this.tileSet, spriteSheet, null, {noWrite: true});
+  else
+    this.gameCanvas.init(this.gameMap, this.tileSet, spriteSheet);
   this.gameCanvas.setIsometric(IsoView.isPreferred());
 
   // Modern screens are large: start zoomed in when there is room (the isometric view's tiles are already twice as
@@ -115,10 +137,14 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
 
   this.dialogOpen = false;
   this._openWindow = null;
+  // What the budget or settings window showed when it last opened
+  this._windowShown = null;
+  // The congratulations waiting for the window open to close
+  this._congrats = [];
   this.overlay = null;
   this._preview = null;
   this.simNeededBudget = false;
-  this.isPaused = false;
+  this.isPaused = remote ? controller.city.paused : false;
   this.lastBadMessageTime = null;
 
   // Map input is ignored while a dialog is open
@@ -126,28 +152,11 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
     return this.dialogOpen;
   }.bind(this);
 
-  var self = this;
-  if (!this.everClicked) {
-    this.nagger = window.setTimeout(function() {
-      self.dialogOpen = true;
-      self._openWindow = 'nagWindow';
-      self.nagWindow.open();
-    }, 30 * 60 * 1000);
-
-    // The link is written again when the language changes
-    $('#nagMessage').on('click', '.nag', function() {
-      if (self.nagger !== null) {
-        window.clearTimeout(self.nagger);
-        self.nagger = null;
-        self.everClicked = true;
-      }
-
-      return true;
-    });
-  }
-
   // Initialise monsterTV
-  this.monsterTV = new MonsterTV(this.gameMap, tileSet, spriteSheet, null);
+  if (remote)
+    this.monsterTV = new MonsterTV(this.gameMap, tileSet, spriteSheet, null, {noWrite: true});
+  else
+    this.monsterTV = new MonsterTV(this.gameMap, tileSet, spriteSheet, null);
   this.monsterTV.canvas.setIsometric(this.gameCanvas.isIsometric());
 
   var opacityLayerID = 'opaque';
@@ -177,17 +186,18 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   this.handleBudgetRequest = makeWindowOpenHandler('budget', function() {
     var budgetData = {
       roadMaintenanceBudget: this.simulation.budget.roadMaintenanceBudget,
-      roadRate: Math.floor(this.simulation.budget.roadPercent * 100),
+      roadRate: BudgetWindow.rateOf(this.simulation.budget.roadPercent),
       fireMaintenanceBudget: this.simulation.budget.fireMaintenanceBudget,
-      fireRate: Math.floor(this.simulation.budget.firePercent * 100),
+      fireRate: BudgetWindow.rateOf(this.simulation.budget.firePercent),
       policeMaintenanceBudget: this.simulation.budget.policeMaintenanceBudget,
-      policeRate: Math.floor(this.simulation.budget.policePercent * 100),
+      policeRate: BudgetWindow.rateOf(this.simulation.budget.policePercent),
       taxRate: this.simulation.budget.cityTax,
       totalFunds: this.simulation.budget.totalFunds,
       taxesCollected: this.simulation.budget.taxFund,
       dealsFund: this.simulation.budget.dealsFund
     };
 
+    this._windowShown = budgetData;
     return [budgetData];
   }.bind(this));
 
@@ -216,10 +226,11 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
 
   // ... the settings window
   this.handleSettingsRequest = makeWindowOpenHandler('settings', function() {
-    return [{autoBudget: this.simulation.budget.autoBudget, autoBulldoze: BaseTool.getAutoBulldoze(),
-             speed: this.defaultSpeed, disasters: this.simulation.disasterManager.disastersEnabled,
-             dayNight: this.ambientLife.dayNight, level: this.simulation.getLevel(), language: I18n.getLanguage(),
-             isometric: this.gameCanvas.isIsometric()}];
+    this._windowShown = {autoBudget: this.simulation.budget.autoBudget, autoBulldoze: BaseTool.getAutoBulldoze(),
+                         speed: this.defaultSpeed, disasters: this.simulation.disasterManager.disastersEnabled,
+                         dayNight: this.ambientLife.dayNight, level: this.simulation.getLevel(),
+                         language: I18n.getLanguage(), isometric: this.gameCanvas.isIsometric()};
+    return [this._windowShown];
   }.bind(this));
   this.settingsWindow = new SettingsWindow(opacityLayerID, 'settingsWindow');
   this.settingsWindow.addEventListener(Messages.SETTINGS_WINDOW_CLOSED, this.handleSettingsWindowClosure.bind(this));
@@ -237,10 +248,6 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   // ... the save confirmation window
   this.saveWindow = new SaveWindow(opacityLayerID, 'saveWindow');
   this.saveWindow.addEventListener(Messages.SAVE_WINDOW_CLOSED, this.genericDialogClosure);
-
-  // ... the nag confirmation window
-  this.nagWindow = new NagWindow(opacityLayerID, 'nagWindow');
-  this.nagWindow.addEventListener(Messages.NAG_WINDOW_CLOSED, this.genericDialogClosure);
 
   // ... the scenario window: the briefing, and the outcome
   this.scenarioWindow = new ScenarioWindow(opacityLayerID, 'scenarioWindow');
@@ -276,14 +283,21 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   //this.simulation.addEventListener(Messages.DATE_UPDATED, this.onDateChange.bind(this));
 
   this.infoBar = InfoBar('cclass', 'population', 'score', 'funds', 'date', 'name');
-  var initialValues = {
-    classification: this.simulation.evaluation.cityClass,
-    population: this.simulation.evaluation.cityPop,
-    score: this.simulation.evaluation.cityScore,
-    funds: this.simulation.budget.totalFunds,
-    date: this.simulation.getDate(),
-    name: this.name
-  };
+  var initialValues;
+  if (remote) {
+    // The copy's evaluation holds the figures of the last yearly evaluation, not those of the heads-up display
+    initialValues = controller.city.infoBarValues();
+    initialValues.name = this.name;
+  } else {
+    initialValues = {
+      classification: this.simulation.evaluation.cityClass,
+      population: this.simulation.evaluation.cityPop,
+      score: this.simulation.evaluation.cityScore,
+      funds: this.simulation.budget.totalFunds,
+      date: this.simulation.getDate(),
+      name: this.name
+    };
+  }
   this._showInfoBar = this.infoBar(this.simulation, initialValues);
 
   this._notificationBar = new Notification('#notifications', this.gameCanvas, I18n.t(Text.messageText[Messages.WELCOME]));
@@ -319,6 +333,10 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
     if (typeof(savedGame.dayNight) === 'boolean')
       this.ambientLife.setDayNight(savedGame.dayNight);
     this.ambientLife.setTimeOfDay(savedGame.timeOfDay);
+  } else if (remote) {
+    if (controller.dayNight !== null)
+      this.ambientLife.setDayNight(controller.dayNight);
+    this.ambientLife.setTimeOfDay(controller.timeOfDay);
   }
   this._clockText = '';
 
@@ -336,9 +354,10 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   // Everything shown changes language with the settings
   I18n.onChange(this.translate.bind(this));
 
-  // Run the sim
+  // Run the sim (a shared city runs on the server)
   this.tick = tick.bind(this);
-  this.tick();
+  if (!remote)
+    this.tick();
 
   // Paint the map
   var debug = Config.debug || Config.gameDebug;
@@ -357,6 +376,9 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name) {
   // Expose the game in debug mode, to help diagnose problems from the browser console
   if (Config.debug)
     window.kawaCity = this;
+
+  if (remote)
+    this._startRemote();
 
   // A scenario starts with its briefing
   this._scenarioPanelText = null;
@@ -469,7 +491,7 @@ var milestones = ['_reachedTown', '_reachedCity', '_reachedCapital', '_reachedMe
 
 // Everything needed to restore the game
 Game.prototype.getSaveData = function() {
-  var saveData = {name: this.name, everClicked: this.everClicked};
+  var saveData = {name: this.name};
   for (var i = 0; i < milestones.length; i++)
     saveData[milestones[i]] = this[milestones[i]];
 
@@ -493,7 +515,6 @@ Game.prototype.save = function() {
 // Note: the simulation loads its own state when it is constructed with the saved game
 Game.prototype.load = function(saveData) {
   this.name = saveData.name || this.name;
-  this.everClicked = !!saveData.everClicked;
   for (var i = 0; i < milestones.length; i++)
     this[milestones[i]] = !!saveData[milestones[i]];
 
@@ -533,93 +554,15 @@ Game.prototype.onDateChange = function(date) {
 
 Game.prototype.handleDisasterWindowClosure = function(request) {
   this.dialogOpen = false;
-
-  if (request === DisasterWindow.DISASTER_NONE)
-    return;
-
-  this.tickerNews.record('disaster:' + request);
-
-  switch (request) {
-    case DisasterWindow.DISASTER_MONSTER:
-      this.simulation.spriteManager.makeMonster();
-      break;
-
-    case DisasterWindow.DISASTER_FIRE:
-      this.simulation.disasterManager.makeFire();
-      break;
-
-    case DisasterWindow.DISASTER_FLOOD:
-      this.simulation.disasterManager.makeFlood();
-      break;
-
-    case DisasterWindow.DISASTER_CRASH:
-      this.simulation.disasterManager.makeCrash();
-      break;
-
-    case DisasterWindow.DISASTER_MELTDOWN:
-      this.simulation.disasterManager.makeMeltdown();
-      break;
-
-    case DisasterWindow.DISASTER_TORNADO:
-      this.simulation.spriteManager.makeTornado();
-      break;
-
-    case DisasterWindow.DISASTER_EARTHQUAKE:
-      this.simulation.disasterManager.makeEarthquake();
-      break;
-  }
+  this.controller.applyDisaster(request);
 };
 
 
+// The window's choices, and what it showed when it opened (in a shared city, others may have changed the settings
+// meanwhile: what the player left as it was is not sent back, see RemoteController)
 Game.prototype.handleSettingsWindowClosure = function(actions) {
   this.dialogOpen = false;
-
-  for (var i = 0, l = actions.length; i < l; i++) {
-    var a = actions[i];
-
-    switch (a.action) {
-      case SettingsWindow.AUTOBUDGET:
-        this.simulation.budget.setAutoBudget(a.data);
-        break;
-
-      case SettingsWindow.AUTOBULLDOZE:
-        BaseTool.setAutoBulldoze(a.data);
-        break;
-
-      case SettingsWindow.SPEED:
-        this.setSpeed(a.data - 0);
-        break;
-
-      case SettingsWindow.DISASTERS_CHANGED:
-        if (!a.data && this.simulation.disasterManager.disastersEnabled)
-          this.tickerNews.record('disastersOff');
-        this.simulation.disasterManager.disastersEnabled = a.data;
-        break;
-
-      case SettingsWindow.DAY_NIGHT:
-        if (!a.data && this.ambientLife.dayNight)
-          this.tickerNews.record('nightOff');
-        this.ambientLife.setDayNight(a.data);
-        break;
-
-      case SettingsWindow.LEVEL:
-        if (a.data !== this.simulation.getLevel())
-          this.tickerNews.record(a.data > this.simulation.getLevel() ? 'harder' : 'easier');
-        this.simulation.changeLevel(a.data);
-        break;
-
-      case SettingsWindow.LANGUAGE:
-        I18n.setLanguage(a.data);
-        break;
-
-      case SettingsWindow.VIEW:
-        this.setIsometric(a.data);
-        break;
-
-      default:
-        console.warn('Unexpected action', a);
-    }
-  }
+  this.controller.applySettings(actions, this._windowShown);
 };
 
 
@@ -640,29 +583,13 @@ Game.prototype.setIsometric = function(isometric) {
 // Signs or ends the deals chosen in the window of the neighbouring cities: [{side, kind, signed}]
 Game.prototype.handleNeighboursWindowClosure = function(changes) {
   this.genericDialogClosure();
-
-  changes.forEach(function(change) {
-    this.simulation.neighbours.setDeal(change.side, change.kind, change.signed);
-    this.tickerNews.record(change.signed ? 'deal' : 'dealEnded');
-  }, this);
+  this.controller.applyDeals(changes);
 };
 
 
 Game.prototype.handleDebugWindowClosure = function(actions) {
   this.dialogOpen = false;
-
-  for (var i = 0, l = actions.length; i < l; i++) {
-    var a = actions[i];
-
-    switch (a.action) {
-      case DebugWindow.ADD_FUNDS:
-        this.simulation.budget.spend(-20000);
-        break;
-
-      default:
-        console.warn('Unexpected action', a);
-    }
-  }
+  this.controller.applyDebug(actions);
 };
 
 
@@ -687,23 +614,7 @@ Game.prototype.getPictureData = function() {
 
 Game.prototype.handleBudgetWindowClosure = function(data) {
   this.dialogOpen = false;
-
-  if (!data.cancelled) {
-    this.recordBudgetChanges(data);
-    this.simulation.budget.roadPercent = data.roadPercent / 100;
-    this.simulation.budget.firePercent = data.firePercent / 100;
-    this.simulation.budget.policePercent = data.policePercent / 100;
-    this.simulation.budget.setTax(data.taxPercent - 0);
-  }
-
-  // The simulation waits for the yearly budget to be confirmed: it must be completed even if the player cancels
-  // the window, keeping the existing values, or the simulation would stay frozen
-  if (this.simNeededBudget) {
-    this.simulation.budget.doBudgetWindow();
-    this.simNeededBudget = false;
-  } else if (!data.cancelled) {
-    this.simulation.budget.updateFundEffects();
-  }
+  this.controller.applyBudget(data, this._windowShown);
 };
 
 
@@ -740,10 +651,21 @@ var makeWindowOpenHandler = function(winName, customFn) {
     var win = winName + 'Window';
     var data = [];
 
-    if (customFn)
-      data = customFn();
+    try {
+      if (customFn)
+        data = customFn();
 
-    this[win].open.apply(this[win], data);
+      this[win].open.apply(this[win], data);
+
+      // A shared city's windows show only what the player's role may change
+      if (this.remote)
+        this._lockWindow(winName);
+    } catch (e) {
+      // A window that failed to open must not leave the game paused, as if it were open
+      this.dialogOpen = false;
+      this._openWindow = null;
+      throw e;
+    }
   };
 };
 
@@ -760,62 +682,22 @@ Game.prototype.handleMandatoryBudget = function() {
 
 
 // The warning for a tool that can't act until the land is bulldozed: hint at the setting when it is off
-var needsDozeText = function() {
-  return I18n.t(BaseTool.getAutoBulldoze() ? Text.toolMessages.needsDoze : Text.toolMessages.needsDozeManual);
+var needsDozeText = LocalController.needsDozeText;
+
+
+// Applies the current tool at each of the given placements in turn, stopping if we run out of money (or, in a shared
+// city, asks the server to)
+Game.prototype.handleTool = function(data) {
+  this.controller.applyTool(data);
 };
 
 
-// Applies the current tool at each of the given placements in turn, stopping if we run out of money
-Game.prototype.handleTool = function(data) {
-  var tool = this.inputStatus.gameTools[data.toolName];
-  if (tool === undefined || this.dialogOpen)
-    return;
-
-  var budget = this.simulation.budget;
-  var blockMaps = this.simulation.blockMaps;
-  var placements = data.placements;
-  var succeeded = 0;
-  var failure = null;
-
-  if (tool.startBatch)
-    tool.startBatch();
-
-  for (var i = 0, l = placements.length; i < l; i++) {
-    var p = placements[i];
-    tool.doTool(p.x, p.y, blockMaps);
-
-    if (tool.modifyIfEnoughFunding(budget)) {
-      succeeded++;
-      continue;
-    }
-
-    if (tool.result === tool.TOOLRESULT_NO_MONEY) {
-      failure = tool.result;
-      break;
-    }
-
-    if (failure === null)
-      failure = tool.result;
-  }
-
-  if (tool.endBatch)
-    tool.endBatch();
-
-  this._preview = null;
-
-  if (succeeded > 0)
-    this.tickerNews.record(data.toolName, succeeded);
-  if (failure === tool.TOOLRESULT_NO_MONEY)
-    this.tickerNews.record('noMoney');
-  else if (succeeded === 0 && failure === tool.TOOLRESULT_NEEDS_BULLDOZE)
-    this.tickerNews.record('needsBulldoze');
-
-  if (failure === tool.TOOLRESULT_NO_MONEY)
-    $('#toolOutput').text(I18n.t(Text.toolMessages.noMoney));
-  else if (succeeded === 0 && failure === tool.TOOLRESULT_NEEDS_BULLDOZE)
-    $('#toolOutput').text(needsDozeText());
-  else
+// Shows a text under the tools (a tool's result), or the current tool's name (text null)
+Game.prototype.showToolOutput = function(text) {
+  if (text === null)
     this._showToolLabel();
+  else
+    $('#toolOutput').text(text);
 };
 
 
@@ -939,17 +821,7 @@ Game.prototype.computeOverlay = function() {
 
 
 Game.prototype.handleSave = function() {
-  this.tickerNews.record('save');
-  var saveData = this.getSaveData();
-  var succeeded = Storage.saveGame(saveData);
-
-  // The game can also be kept as a file, to be opened from the title screen
-  var fileName = (this.name || 'city').replace(/[^A-Za-z0-9_-]+/g, '_') + '.kawacity';
-  var file = new Blob([Storage.exportGame(saveData)], {type: 'application/json'});
-
-  this.dialogOpen = true;
-  this._openWindow = 'saveWindow';
-  this.saveWindow.open(succeeded, URL.createObjectURL(file), fileName);
+  this.controller.save();
 };
 
 
@@ -957,31 +829,13 @@ Game.prototype.handlePause = function() {
   if (this.dialogOpen)
     return;
 
-  this.isPaused = !this.isPaused;
-
-  if (this.isPaused) {
-    this.tickerNews.record('pause');
-    this.simulation.setSpeed(Simulation.SPEED_PAUSED);
-  } else {
-    this.simulation.setSpeed(this.defaultSpeed);
-  }
-
-  this._updateSpeedButtons();
+  this.controller.togglePause();
 };
 
 
 // Sets the running speed (resuming the game if it was paused)
 Game.prototype.setSpeed = function(speed) {
-  if (speed !== Simulation.SPEED_SLOW && speed !== Simulation.SPEED_MED && speed !== Simulation.SPEED_FAST)
-    return;
-
-  if (speed !== this.defaultSpeed && speed !== Simulation.SPEED_MED)
-    this.tickerNews.record(speed === Simulation.SPEED_FAST ? 'fast' : 'slow');
-
-  this.defaultSpeed = speed;
-  this.isPaused = false;
-  this.simulation.setSpeed(speed);
-  this._updateSpeedButtons();
+  this.controller.setSpeed(speed);
 };
 
 
@@ -1008,6 +862,11 @@ Game.prototype.translate = function() {
   this._scenarioPanelText = null;
   this._preview = null;
   this.ticker.reset();
+
+  if (this.remote) {
+    this._labelSaveButton();
+    this.controller.translate();
+  }
 };
 
 
@@ -1084,9 +943,8 @@ Game.prototype.processFrontEndMessage = function(message) {
     }
 
     if (cMessage !== null) {
-      this.dialogOpen = true;
-      this._openWindow = 'congratsWindow';
-      this.congratsWindow.open(I18n.t(cMessage, {city: this.name}));
+      this._congrats.push(I18n.t(cMessage, {city: this.name}));
+      this.showCongrats();
     }
 
     return;
@@ -1142,6 +1000,101 @@ Game.prototype.updateClock = function() {
 };
 
 
+// --- A shared city (see RemoteController) ---
+
+// The controls follow the player's role, the save button downloads a copy of the city, the power overlay is read
+// from the tiles, and the players panel appears
+Game.prototype._startRemote = function() {
+  var self = this;
+  var city = this.controller.city;
+
+  this.inputStatus.clampToMap = true;
+  this.inputStatus.isToolAllowed = function(toolName) {
+    return toolName === 'query' || self.controller.can('build');
+  };
+  this.minimap.setPowerSource(city.poweredTiles.bind(city));
+
+  $('#scenarioPanel').addClass('hidden');
+  $('#saveRequest').prop('disabled', false);
+  this._labelSaveButton();
+
+  this.controller.attach(this);
+  this.applyRole();
+};
+
+
+Game.prototype._labelSaveButton = function() {
+  var label = I18n.t('Download a copy');
+  $('#saveRequest').attr('title', label).children('[data-i18n]').text(label);
+};
+
+
+// Disables the controls the player's role does not allow (see RemoteController.can), and puts down a tool it does
+// not allow
+Game.prototype.applyRole = function() {
+  var controller = this.controller;
+  var build = controller.can('build');
+
+  $('.toolButton').each(function() {
+    $(this).prop('disabled', !build && $(this).attr('data-tool') !== 'query');
+  });
+  $('.categoryButton').prop('disabled', !build);
+  if (!build) {
+    Toolbar.closeFlyout();
+    if (this.inputStatus.toolName !== null && this.inputStatus.toolName !== 'query')
+      this.inputStatus.clearTool();
+  }
+
+  $('#pauseRequest, .speedButton').prop('disabled', !controller.can('speed'));
+  $('#disasterRequest').prop('disabled', !controller.can('disasters'));
+  $('#debugRequest').prop('disabled', true);
+};
+
+
+// A window of a shared city that opened: what the role may not change is read only
+Game.prototype._lockWindow = function(winName) {
+  var controller = this.controller;
+
+  switch (winName) {
+    case 'budget':
+      $('#roadRate, #fireRate, #policeRate, #taxRate, #budgetReset').prop('disabled', !controller.can('budget'));
+      break;
+
+    case 'settings':
+      $('#autoBudgetSelect, #autoBulldozeSelect, #levelSelect').prop('disabled', !controller.can('settings'));
+      $('#speedSelect').prop('disabled', !controller.can('speed'));
+      $('#disastersSelect').prop('disabled', !controller.can('disasters'));
+      break;
+
+    case 'neighbours':
+      $('#neighboursList .dealToggle').prop('disabled', !controller.can('deals'));
+      break;
+  }
+};
+
+
+// The city's speed and pause, as the server last said
+Game.prototype.refreshSpeed = function() {
+  this.defaultSpeed = this.controller.city.speed;
+  this.isPaused = this.controller.city.paused;
+  this._updateSpeedButtons();
+};
+
+
+// The city has a new name
+Game.prototype.setCityName = function(name) {
+  this.name = name;
+  this._showInfoBar.set('name', name);
+  this.tickerNews.setCityName(name);
+};
+
+
+// Shows a text in the notification bar (kind: 'good', 'bad' or 'neutral')
+Game.prototype.notify = function(text, kind) {
+  this._notificationBar.showText(text, kind);
+};
+
+
 Game.prototype.calculateSpritesForPaint = function(canvas) {
   var rect = canvas.getVisibleWorldRect();
   var tileSize = GameCanvas.TILE_SIZE;
@@ -1157,6 +1110,19 @@ Game.prototype.calculateSpritesForPaint = function(canvas) {
     return null;
 
   return spriteList;
+};
+
+
+// Opens the congratulations that wait, one at a time, once no other window is open. A shared city's messages come
+// whatever the player is doing (the server's city does not stop for a window): opened over another window, they would
+// mix up which one shows (see ModalWindow), so they wait for it to close (see commonAnimate).
+Game.prototype.showCongrats = function() {
+  if (this.dialogOpen || this._congrats.length === 0)
+    return;
+
+  this.dialogOpen = true;
+  this._openWindow = 'congratsWindow';
+  this.congratsWindow.open(this._congrats.shift());
 };
 
 
@@ -1179,9 +1145,13 @@ var commonAnimate = function(timestamp) {
   this._lastFrameTime = timestamp;
 
   this.inputStatus.update(elapsed);
+  this.showCongrats();
 
-  // Trains, ships, planes, monsters and tornadoes move 60 times a second, whatever the display's refresh rate
-  if (!this.isPaused && !this.dialogOpen) {
+  // Trains, ships, planes, monsters and tornadoes move 60 times a second, whatever the display's refresh rate. A
+  // shared city's move on the server: they are drawn between the last positions it sent.
+  if (this.remote) {
+    this.controller.animate(performance.now());
+  } else if (!this.isPaused && !this.dialogOpen) {
     this._spriteTime = Math.min((this._spriteTime || 0) + elapsed, SPRITE_STEP * 4);
     while (this._spriteTime >= SPRITE_STEP) {
       this.simulation.spriteManager.moveObjects(this.simulation._constructSimData());
@@ -1189,11 +1159,14 @@ var commonAnimate = function(timestamp) {
     }
   }
 
-  // Run this even when paused: you can still build when paused
+  // Run this even when paused: you can still build when paused. A shared city also shows the other players' pointers.
   this.overlay = this.computeOverlay();
+  if (this.remote)
+    this.overlay = this.controller.decorateOverlay(this.overlay, performance.now());
 
   this.minimap.paint();
-  this.ambientLife.update(elapsed, this.gameCanvas.getVisibleWorldRect(), !this.isPaused && !this.dialogOpen);
+  this.ambientLife.update(elapsed, this.gameCanvas.getVisibleWorldRect(),
+                         !this.isPaused && (this.remote || !this.dialogOpen));
   this.updateClock();
   this.updateScenarioPanel();
   this.ticker.update(elapsed);

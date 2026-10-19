@@ -1,0 +1,30 @@
+# KawaCity built from this checkout, with Mailpit catching the mails it sends:
+#
+#   docker compose -f docker-compose.yml -f compose.dev.yml up --build
+#
+# then open http://localhost:8080, and the mails at http://localhost:8025
+
+services:
+  kawacity:
+    image: kawacity:dev
+    build:
+      context: .
+      args:
+        BUILD_ID: dev
+    environment:
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_SECURE: "false"
+      # Mailpit speaks plain SMTP
+      SMTP_REQUIRE_TLS: "false"
+      SMTP_USER: ""
+      SMTP_PASSWORD: ""
+      MAIL_FROM: KawaCity <kawacity@kawacity.localhost>
+    depends_on:
+      - mailpit
+
+  mailpit:
+    image: axllent/mailpit:v1.31.6
+    ports:
+      - "8025:8025"
+    restart: unless-stopped

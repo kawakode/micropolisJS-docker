@@ -319,6 +319,15 @@ var strings = {
   'Needs a power line to this edge.': 'Demande une ligne électrique jusqu\'à ce bord.',
   'Not delivered: the grid does not reach this edge, or has no power to spare.':
     'Non livrée : le réseau n\'atteint pas ce bord, ou n\'a pas d\'électricité en trop.',
+  'Mayor: {owner}': 'Maire : {owner}',
+  '{owner} offers this deal: tick it to accept.': '{owner} propose cet accord : cochez-le pour l\'accepter.',
+  'Proposed: waiting for {owner} to sign it too.': 'Proposé : en attente de la signature de {owner}.',
+  'On hold: {owner} has no road or railway at this edge yet.':
+    'En attente : {owner} n\'a pas encore de route ni de voie ferrée jusqu\'à ce bord.',
+  'On hold: {owner} has no power line at this edge yet.':
+    'En attente : {owner} n\'a pas encore de ligne électrique jusqu\'à ce bord.',
+  'Not delivered: {owner} has no power to spare at this edge.':
+    'Non livrée : {owner} n\'a pas d\'électricité en trop à ce bord.',
   'Deals in force: {amount}.': 'Accords en vigueur : {amount}.',
 
   // The query window
@@ -401,7 +410,6 @@ var strings = {
   'Sorry, the game could not be saved in this browser: it may be blocking storage, or it may be full. You can still keep it as a file.':
     'Désolé, la partie n\'a pas pu être sauvée dans ce navigateur : il bloque peut-être le stockage, ou celui-ci est plein. Vous pouvez quand même la garder dans un fichier.',
   'saveFile': 'Ou <a id="saveDownload" href="#" download="city.kawacity">gardez-en une copie dans un fichier</a>, à ouvrir depuis l\'écran titre.',
-  'nag': 'Ouah ! Vous jouez à ce truc depuis une demi-heure ?!? Si ça vous plaît, Graeme McCutcheon, l\'auteur de micropolisJS sur lequel KawaCity est basé, serait ravi que votre argent aille à <a class="nag" href="https://www.refuweegee.co.uk/your-donations" target="_blank" rel="noopener">Refuweegee</a>, une association qui aide les réfugiés en Écosse.',
   'Automatic budget': 'Budget automatique',
   'On': 'Oui',
   'Off': 'Non',
@@ -603,6 +611,17 @@ var strings = {
     'La vente d\'électricité à {name} est en attente : construisez une ligne électrique jusqu\'au bord {side} de la carte.',
   '{name} gets none of the electricity it buys: link the power line at the {side} edge to the grid, or build another power plant.':
     '{name} ne reçoit pas l\'électricité achetée : reliez au réseau la ligne électrique du bord {side}, ou construisez une autre centrale.',
+  'No electricity comes from {name}: {owner} has none to spare at their edge.':
+    'Aucune électricité n\'arrive de {name} : {owner} n\'en a pas en trop à son bord.',
+  'Deal proposed to {name} ({deal}): it waits for {owner} to sign it too.':
+    'Accord proposé à {name} ({deal}) : il attend la signature de {owner}.',
+  '{owner}, mayor of {name}, offers a deal ({deal}): sign it in the Neighbours window to accept.':
+    '{owner}, maire de {name}, propose un accord ({deal}) : signez-le dans la fenêtre Voisins pour l\'accepter.',
+  'The trade agreement with {name} waits for {owner} to build a road or a railway to their edge.':
+    'L\'accord commercial avec {name} attend que {owner} construise une route ou une voie ferrée jusqu\'à son bord.',
+  'The power deal with {name} waits for {owner} to build a power line to their edge.':
+    'L\'accord d\'électricité avec {name} attend que {owner} construise une ligne électrique jusqu\'à son bord.',
+  '{name} ({owner})': '{name} ({owner})',
   'Citizens demand a police station: crime grows unchecked without one.':
     'Les habitants réclament un commissariat : sans lui, la criminalité prospère.',
   'Citizens demand a fire station: nothing would stop a fire today.':
@@ -636,8 +655,475 @@ var strings = {
   '{city} welcomed {n} new residents last year.': '{city} a accueilli {n} nouveaux habitants l\'an dernier.',
   'Treasury: {funds}, with taxes at {tax}%.': 'Trésorerie : {funds}, avec des impôts à {tax} %.',
   'All quiet in {city}: no disaster, no crisis. Enjoy it while it lasts.':
-    'Tout est calme à {city} : ni catastrophe, ni crise. Profitez-en tant que ça dure.'
+    'Tout est calme à {city} : ni catastrophe, ni crise. Profitez-en tant que ça dure.',
+
+  // What the server reports (see apiErrors.js)
+  'Something in this form is not right. Please check it and try again.':
+    'Quelque chose ne va pas dans ce formulaire. Vérifiez-le et réessayez.',
+  'This request did not come from the game\'s page. Please reload the page and try again.':
+    'Cette demande ne vient pas de la page du jeu. Rechargez la page et réessayez.',
+  'The server did not understand this request. Please reload the page and try again.':
+    'Le serveur n\'a pas compris cette demande. Rechargez la page et réessayez.',
+  'This is too big to send to the server.': 'C\'est trop gros pour être envoyé au serveur.',
+  'Not found. It may have been deleted.': 'Introuvable. Cela a peut-être été supprimé.',
+  'The server cannot do that.': 'Le serveur ne peut pas faire ça.',
+  'Please log in to do that.': 'Connectez-vous pour faire ça.',
+  'You are not allowed to do that.': 'Vous n\'avez pas le droit de faire ça.',
+  'The check that you are not a robot failed. Please try again.':
+    'La vérification que vous n\'êtes pas un robot a échoué. Réessayez.',
+  'The check that you are not a robot expired. Please try again.':
+    'La vérification que vous n\'êtes pas un robot a expiré. Réessayez.',
+  'Too many requests at once. Please wait a moment and try again.':
+    'Trop de demandes à la fois. Patientez un instant et réessayez.',
+  'Too many failed attempts. Please wait a while before trying again.':
+    'Trop de tentatives manquées. Patientez un moment avant de réessayer.',
+  'Wrong username, email or password.': 'Nom d\'utilisateur, e-mail ou mot de passe incorrect.',
+  'This username is already taken. Please choose another one.': 'Ce nom d\'utilisateur est déjà pris. Choisissez-en un autre.',
+  'Please choose a stronger password.': 'Choisissez un mot de passe plus solide.',
+  'This link does not work any more: it has expired or was already used.':
+    'Ce lien ne marche plus : il a expiré ou a déjà servi.',
+  'The server is very busy. Please try again in a moment.': 'Le serveur est très occupé. Réessayez dans un instant.',
+  'This is already done, or can no longer be done.': 'C\'est déjà fait, ou ce n\'est plus possible.',
+  'You have reached the limit: this cannot be done for now.': 'Vous avez atteint la limite : impossible pour l\'instant.',
+  'New accounts cannot be created on this server.': 'Impossible de créer de nouveaux comptes sur ce serveur.',
+  'Something went wrong on the server. Please try again later.':
+    'Quelque chose s\'est mal passé sur le serveur. Réessayez plus tard.',
+  'The server cannot be reached. Please check your connection and try again.':
+    'Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.',
+  'The server took too long to answer. Please try again.': 'Le serveur a mis trop de temps à répondre. Réessayez.',
+  'Please fill this in.': 'Remplissez ce champ.',
+  'This does not look right.': 'Ceci ne semble pas correct.',
+  'This is too short.': 'C\'est trop court.',
+  'This is too long.': 'C\'est trop long.',
+  'This password is too common: anyone could guess it.':
+    'Ce mot de passe est trop courant : n\'importe qui pourrait le deviner.',
+  'Your password must not contain your username.': 'Votre mot de passe ne doit pas contenir votre nom d\'utilisateur.',
+  'Your password must not contain your email address.': 'Votre mot de passe ne doit pas contenir votre adresse e-mail.',
+  'This password is too simple: use more different characters.':
+    'Ce mot de passe est trop simple : utilisez plus de caractères différents.',
+  'This name is reserved. Please choose another one.': 'Ce nom est réservé. Choisissez-en un autre.',
+  'This city was deleted.': 'Cette ville a été supprimée.',
+  'You are no longer a member of this city.': 'Vous n\'êtes plus membre de cette ville.',
+  'You were logged out. Please log in again.': 'Votre session a pris fin. Reconnectez-vous.',
+  'Something went wrong with this city on the server. Please try again later.':
+    'Quelque chose s\'est mal passé avec cette ville sur le serveur. Réessayez plus tard.',
+  'The server is shutting down. The city was saved: please come back in a moment.':
+    'Le serveur s\'arrête. La ville a été sauvegardée : revenez dans un moment.',
+  'You were away for a long while, so you were disconnected from this city. You can open it again from the lobby.':
+    'Vous étiez absent depuis longtemps : vous avez été déconnecté de cette ville. Vous pouvez la rouvrir depuis le salon.',
+  'That cannot be built there': 'Impossible de construire ça ici',
+
+  // The accounts (see AccountScreens)
+  'Log in': 'Se connecter',
+  'Log out': 'Se déconnecter',
+  'Log out everywhere': 'Me déconnecter partout',
+  'Create an account': 'Créer un compte',
+  'Your account:': 'Votre compte :',
+  'Your account': 'Votre compte',
+  'Accounts on this server are created by its administrator.':
+    'Sur ce serveur, les comptes sont créés par son administrateur.',
+  'Accounts and multiplayer are at {url}': 'Les comptes et le multijoueur sont sur {url}',
+  'Username or email address': 'Nom d\'utilisateur ou adresse e-mail',
+  'Username': 'Nom d\'utilisateur',
+  'Email address': 'Adresse e-mail',
+  'New email address': 'Nouvelle adresse e-mail',
+  'Password': 'Mot de passe',
+  'Current password': 'Mot de passe actuel',
+  'New password': 'Nouveau mot de passe',
+  'Forgot password?': 'Mot de passe oublié ?',
+  'No account yet?': 'Pas encore de compte ?',
+  'OK': 'OK',
+  'Send the link': 'Envoyer le lien',
+  'Enter your email address: we will send you a link to choose your username and password.':
+    'Indiquez votre adresse e-mail : nous vous enverrons un lien pour choisir votre nom d\'utilisateur et votre mot de passe.',
+  'Your address is only used for your account.': 'Votre adresse ne sert qu\'à votre compte.',
+  'We sent an email to {email}. Open its link within 24 hours to choose your username and password. If it does not arrive, look in your spam folder.':
+    'Nous avons envoyé un e-mail à {email}. Ouvrez son lien dans les 24 heures pour choisir votre nom d\'utilisateur et votre mot de passe. S\'il n\'arrive pas, regardez dans vos courriers indésirables.',
+  'Finish creating your account': 'Terminez la création de votre compte',
+  'Choose your username and your password. Your username is public: the other players see it.':
+    'Choisissez votre nom d\'utilisateur et votre mot de passe. Votre nom d\'utilisateur est public : les autres joueurs le voient.',
+  'From {min} to {max} characters: letters, digits, and . _ - between them. The other players see it.':
+    'De {min} à {max} caractères : lettres, chiffres, et . _ - entre eux. Les autres joueurs le voient.',
+  'At least {min} characters ({count} so far). A few words make a good password, easy to remember.':
+    'Au moins {min} caractères ({count} pour l\'instant). Quelques mots font un bon mot de passe, facile à retenir.',
+  'Create my account': 'Créer mon compte',
+  'Welcome, {username}! Your account is ready.': 'Bienvenue, {username} ! Votre compte est prêt.',
+  'Welcome back, {username}!': 'Bon retour, {username} !',
+  'Enter the email address of your account: we will send you a link to choose a new password.':
+    'Indiquez l\'adresse e-mail de votre compte : nous vous enverrons un lien pour choisir un nouveau mot de passe.',
+  'If an account uses {email}, we sent it a link to choose a new password. It works for one hour.':
+    'Si un compte utilise {email}, nous lui avons envoyé un lien pour choisir un nouveau mot de passe. Il marche pendant une heure.',
+  'Choose a new password': 'Choisissez un nouveau mot de passe',
+  'Change the password': 'Changer le mot de passe',
+  'Your password was changed. Log in with your new password.':
+    'Votre mot de passe a été changé. Connectez-vous avec le nouveau.',
+  'Confirming your new email address…': 'Confirmation de votre nouvelle adresse e-mail…',
+  'Your email address was changed.': 'Votre adresse e-mail a été changée.',
+  'Your email address was changed. You can log in with it now.':
+    'Votre adresse e-mail a été changée. Vous pouvez désormais vous connecter avec.',
+  'You are no longer logged in. Please log in again.': 'Vous n\'êtes plus connecté. Reconnectez-vous.',
+  'Checking that you are not a robot…': 'Vérification que vous n\'êtes pas un robot…',
+  'Ready': 'Prêt',
+  'You can try again in {seconds} s.': 'Vous pourrez réessayer dans {seconds} s.',
+  'You can try again in {minutes} min.': 'Vous pourrez réessayer dans {minutes} min.',
+  'You can try again in {hours} h.': 'Vous pourrez réessayer dans {hours} h.',
+  'Language of the emails': 'Langue des e-mails',
+  '(the game\'s language)': '(celle du jeu)',
+  'Change your password': 'Changer votre mot de passe',
+  'Wrong password.': 'Mot de passe incorrect.',
+  'Your password was changed. Your other devices were logged out.':
+    'Votre mot de passe a été changé. Vos autres appareils ont été déconnectés.',
+  'Change your email address': 'Changer votre adresse e-mail',
+  'Send a confirmation link': 'Envoyer un lien de confirmation',
+  'This is already your email address.': 'C\'est déjà votre adresse e-mail.',
+  'We sent a link to {email}. Open it to confirm your new address: until then, your address stays the same.':
+    'Nous avons envoyé un lien à {email}. Ouvrez-le pour confirmer votre nouvelle adresse : d\'ici là, votre adresse ne change pas.',
+  'Delete your account': 'Supprimer votre compte',
+  'This deletes your account and everything kept with it, at once and for good.':
+    'Cela supprime votre compte et tout ce qui s\'y rattache, tout de suite et pour de bon.',
+  'Delete my account': 'Supprimer mon compte',
+  'Your account was deleted.': 'Votre compte a été supprimé.',
+  'Download my data': 'Télécharger mes données',
+  'Your data was saved in the file {file}.': 'Vos données ont été enregistrées dans le fichier {file}.',
+  'You are logged out.': 'Vous êtes déconnecté.',
+  'You are logged out on all your devices.': 'Vous êtes déconnecté sur tous vos appareils.',
+  'Privacy': 'Confidentialité',
+  'An account is only needed to play with others. Alone, you play without one, and your cities stay in your browser.':
+    'Un compte ne sert qu\'à jouer avec d\'autres. Seul, vous jouez sans compte, et vos villes restent dans votre navigateur.',
+  'What the server keeps': 'Ce que le serveur conserve',
+  'Your username, your email address, your password (in a form that cannot be read back), the language of your emails, the sessions of the devices where you are logged in, when your account was created, changed and last used, its failed logins (to protect it), and a new email address until you confirm it. If you play with others: your shared cities and regions, the ones you are a member of, and the invitations you send and receive. The chat is never stored: the server keeps the last 50 messages of a city in memory while it is open, and forgets them when it closes, at most a minute after its last player leaves.':
+    'Votre nom d\'utilisateur, votre adresse e-mail, votre mot de passe (sous une forme qui ne permet pas de le relire), la langue de vos e-mails, les sessions des appareils où vous êtes connecté, les dates de création, de modification et de dernière connexion de votre compte, ses tentatives de connexion manquées (pour le protéger), et une nouvelle adresse e-mail tant que vous ne l\'avez pas confirmée. Si vous jouez avec d\'autres : vos villes et régions partagées, celles dont vous êtes membre, et les invitations que vous envoyez et recevez. La discussion n\'est jamais enregistrée : le serveur garde en mémoire les 50 derniers messages d\'une ville tant qu\'elle est ouverte, et les oublie quand elle se ferme, au plus une minute après le départ de son dernier joueur.',
+  'The server\'s logs record the IP addresses and the accounts behind requests, to protect it against abuse. Old logs are deleted as new ones are written, by the log rotation that the people who run this server set up.':
+    'Les journaux du serveur notent les adresses IP et les comptes à l\'origine des requêtes, pour le protéger des abus. Les anciens journaux sont effacés à mesure que de nouveaux s\'écrivent, par la rotation des journaux que les responsables de ce serveur mettent en place.',
+  'Backups of the server\'s data, made by the people who run it, keep what they hold until they delete them.':
+    'Les sauvegardes des données du serveur, faites par ses responsables, gardent ce qu\'elles contiennent jusqu\'à ce qu\'ils les effacent.',
+  'Why': 'Pourquoi',
+  'Only to run your account and the cities you play with others: nothing is sold or shared, and there is no advertising and no tracking.':
+    'Uniquement pour faire fonctionner votre compte et les villes auxquelles vous jouez avec d\'autres : rien n\'est vendu ni partagé, et il n\'y a ni publicité ni pistage.',
+  'Cookies': 'Cookies',
+  'A single cookie keeps you logged in. It is strictly necessary, so the game does not ask for your consent. Your browser also remembers your language, your view and your saved city, without sending them anywhere.':
+    'Un seul cookie vous garde connecté. Il est strictement nécessaire : le jeu ne demande donc pas votre consentement. Votre navigateur retient aussi votre langue, votre vue et votre ville sauvée, sans les envoyer nulle part.',
+  'Your data': 'Vos données',
+  'On your account\'s screen, you can download everything kept about your account, change your email address and password, and delete the account with all it holds.':
+    'Sur l\'écran de votre compte, vous pouvez télécharger tout ce qui est conservé sur votre compte, changer votre adresse e-mail et votre mot de passe, et supprimer le compte avec tout ce qu\'il contient.',
+  'Contact': 'Contact',
+  'The people who run this server can be reached at: {contact}': 'Pour joindre les responsables de ce serveur : {contact}',
+  'The people who run this server have not given a contact.':
+    'Les responsables de ce serveur n\'ont pas indiqué de contact.',
+
+  // A shared city's game (see Multiplayer, RemoteController and PlayersPanel)
+  'Players': 'Joueurs',
+  'Players (1 new message)': 'Joueurs (1 nouveau message)',
+  'Players ({count} new messages)': 'Joueurs ({count} nouveaux messages)',
+  'Players of this city': 'Les joueurs de cette ville',
+  'Chat': 'Discussion',
+  'Message to the other players': 'Message aux autres joueurs',
+  'Message': 'Message',
+  'Send': 'Envoyer',
+  'Back to the lobby': 'Retour au salon',
+  'Connection lost. Reconnecting…': 'Connexion perdue. Reconnexion…',
+  'Connected': 'Connecté',
+  'Connecting…': 'Connexion…',
+  'Reconnecting…': 'Reconnexion…',
+  'Disconnected': 'Déconnecté',
+  'role|Owner': 'Propriétaire',
+  'role|Player': 'Joueur',
+  'role|Viewer': 'Spectateur',
+  '(you)': '(vous)',
+  'online': 'en ligne',
+  'offline': 'hors ligne',
+  '{name}: {message}': '{name} : {message}',
+  'You are watching this city: you can chat, and look at it with the query tool.':
+    'Vous regardez cette ville : vous pouvez discuter, et l\'examiner avec l\'outil Infos.',
+  'Your role: {role}': 'Votre rôle : {role}',
+  'Your role in this city is now: {role}.': 'Votre rôle dans cette ville est désormais : {role}.',
+  '{name} joined the city.': '{name} a rejoint la ville.',
+  '{name} left the city.': '{name} a quitté la ville.',
+  'Not sent yet: the chat takes about one message a second. Send it again in a moment.':
+    'Pas encore envoyé : la discussion prend environ un message par seconde. Renvoyez-le dans un instant.',
+  'The city is now called {name}.': 'La ville s\'appelle désormais {name}.',
+  'The yearly budget was applied with the current rates.': 'Le budget annuel a été appliqué avec les taux actuels.',
+  'Shared city': 'Ville partagée',
+  'Joining the city…': 'Connexion à la ville…',
+  'The city cannot be reached for now. Shared cities may be open in too many tabs (3 at most), or the server may be busy or stopped. The game keeps trying.':
+    'La ville est injoignable pour l\'instant. Des villes partagées sont peut-être ouvertes dans trop d\'onglets (3 au plus), ou le serveur est peut-être occupé ou arrêté. Le jeu réessaie.',
+  'The game was updated on the server. Please reload the page.':
+    'Le jeu a été mis à jour sur le serveur. Rechargez la page.',
+  'Download a copy': 'Télécharger une copie',
+
+  // The multiplayer lobby, and the making of a shared city (see Lobby and SplashScreen)
+  'Multiplayer': 'Multijoueur',
+  'Log in to play with others.': 'Connectez-vous pour jouer avec d\'autres.',
+  'Invitations': 'Invitations',
+  'Your shared cities': 'Vos villes partagées',
+  'No shared city yet: start one, or ask a friend to invite you to theirs.':
+    'Pas encore de ville partagée : fondez-en une, ou demandez à un ami de vous inviter dans la sienne.',
+  'New shared city': 'Nouvelle ville partagée',
+  'Regions': 'Régions',
+  'A region is a map of cities: each city is the neighbour of the cities beside it, and their mayors can trade with each other.':
+    'Une région est une carte de villes : chaque ville est la voisine des villes à côté d\'elle, et leurs maires peuvent commercer entre eux.',
+  'No region yet.': 'Pas encore de région.',
+  'Create a region': 'Créer une région',
+  'Name of the region': 'Nom de la région',
+  'Size, in cities': 'Taille, en villes',
+  'Columns': 'Colonnes',
+  'Rows': 'Lignes',
+  'Create the region': 'Créer la région',
+  'Refresh': 'Actualiser',
+  'Your role': 'Votre rôle',
+  'Year': 'Année',
+  'Region': 'Région',
+  'Members': 'Membres',
+  'Invitations not answered yet': 'Invitations sans réponse',
+  'Invite a player': 'Inviter un joueur',
+  'Role': 'Rôle',
+  'A player builds and runs the city with you. A viewer watches it, and chats.':
+    'Un joueur bâtit et gère la ville avec vous. Un spectateur la regarde, et discute.',
+  'Invite': 'Inviter',
+  'Rename the city': 'Renommer la ville',
+  'Rename': 'Renommer',
+  'Leave this city': 'Quitter cette ville',
+  'You will no longer be a member of this city. Its owner can invite you again.':
+    'Vous ne serez plus membre de cette ville. Son propriétaire pourra vous inviter à nouveau.',
+  'Leave the city': 'Quitter la ville',
+  'Delete this city': 'Supprimer cette ville',
+  'This deletes the city for all its members, at once and for good. Download a copy first to keep it.':
+    'Cela supprime la ville pour tous ses membres, tout de suite et pour de bon. Téléchargez-en d\'abord une copie pour la garder.',
+  'Delete the city': 'Supprimer la ville',
+  'Map of the region': 'Carte de la région',
+  'Each city is the neighbour of the cities beside it. Every member of the region can build a city on a free place.':
+    'Chaque ville est la voisine des villes à côté d\'elle. Chaque membre de la région peut bâtir une ville sur une place libre.',
+  'Rename the region': 'Renommer la région',
+  'Leave this region': 'Quitter cette région',
+  'Your cities in this region leave it, and stay yours.': 'Vos villes de cette région la quittent, et restent à vous.',
+  'Leave the region': 'Quitter la région',
+  'Delete this region': 'Supprimer cette région',
+  'The region is deleted for all its members. Its cities stay, out of the region.':
+    'La région est supprimée pour tous ses membres. Ses villes restent, hors de la région.',
+  'Delete the region': 'Supprimer la région',
+  'Owner: {name}': 'Propriétaire : {name}',
+  'Population: {population}': 'Habitants : {population}',
+  'Year: {year}': 'Année : {year}',
+  '1 player online': '1 joueur en ligne',
+  '{count} players online': '{count} joueurs en ligne',
+  'Region: {region}': 'Région : {region}',
+  '{name} invites you to the region {region}.': '{name} vous invite dans la région {region}.',
+  '{name} invites you to play the city {city} with them.': '{name} vous invite à jouer dans sa ville {city}.',
+  '{name} invites you to watch the city {city}.': '{name} vous invite à regarder sa ville {city}.',
+  'Accept': 'Accepter',
+  'Decline': 'Refuser',
+  'Decline all the invitations from {name}': 'Refuser toutes les invitations de {name}',
+  'Invitation declined.': 'Invitation refusée.',
+  'You joined the region {region}.': 'Vous avez rejoint la région {region}.',
+  'You joined the city {city}.': 'Vous avez rejoint la ville {city}.',
+  'You declined all the invitations from {name}.': 'Vous avez refusé toutes les invitations de {name}.',
+  'Manage': 'Gérer',
+  'Your region': 'Votre région',
+  '{columns} × {rows} places': '{columns} × {rows} places',
+  'No city yet': 'Pas encore de ville',
+  '1 city': '1 ville',
+  '{count} cities': '{count} villes',
+  'Open': 'Ouvrir',
+  'Role of {name}': 'Rôle de {name}',
+  'Remove': 'Retirer',
+  'Remove {name} from the city?': 'Retirer {name} de la ville ?',
+  'The role of {name} is now: {role}.': 'Le rôle de {name} est désormais : {role}.',
+  '{name} is no longer a member of this city.': '{name} n\'est plus membre de cette ville.',
+  'Cancel the invitation': 'Annuler l\'invitation',
+  'The invitation of {name} was cancelled.': 'L\'invitation de {name} a été annulée.',
+  '{region}, row {row}, column {column}': '{region}, ligne {row}, colonne {column}',
+  'No player has this username.': 'Aucun joueur n\'a ce nom d\'utilisateur.',
+  'This player is already a member of this region.': 'Ce joueur est déjà membre de cette région.',
+  'This player is already a member of this city.': 'Ce joueur est déjà membre de cette ville.',
+  'Invitation sent to {name}. It shows in their lobby.': 'Invitation envoyée à {name}. Elle s\'affiche dans son salon.',
+  'You left the city {city}.': 'Vous avez quitté la ville {city}.',
+  'The city {city} was deleted.': 'La ville {city} a été supprimée.',
+  'The copy of the city was saved in the file {file}.': 'La copie de la ville a été enregistrée dans le fichier {file}.',
+  'Row {row}, column {column}': 'Ligne {row}, colonne {column}',
+  'Take out of the region': 'Retirer de la région',
+  'Take {city} out of the region? It cannot come back to this place.':
+    'Retirer {city} de la région ? Elle ne pourra pas revenir à cette place.',
+  'Take it out': 'La retirer',
+  'Free place': 'Place libre',
+  'Build here': 'Bâtir ici',
+  'Remove {name} from the region? Their cities leave it.': 'Retirer {name} de la région ? Ses villes la quittent.',
+  '{city} left the region.': '{city} a quitté la région.',
+  '{name} is no longer a member of this region.': '{name} n\'est plus membre de cette région.',
+  'The region is now called {region}.': 'La région s\'appelle désormais {region}.',
+  'You left the region {region}.': 'Vous avez quitté la région {region}.',
+  'The region {region} was deleted.': 'La région {region} a été supprimée.',
+  'The server could not open this city. Choose another map or city.':
+    'Le serveur n\'a pas pu ouvrir cette ville. Choisissez une autre carte ou une autre ville.',
+  'You own as many shared cities as you can: delete one of them to make another.':
+    'Vous possédez déjà autant de villes partagées que possible : supprimez-en une pour en fonder une autre.',
+  'You already own {count} shared cities, as many as you can: delete one of them to make another.':
+    'Vous possédez déjà {count} villes partagées, autant que possible : supprimez-en une pour en fonder une autre.',
+  '{city} is no longer in this place: nothing was taken out. Here is the region as it is now.':
+    '{city} n\'est plus à cette place : rien n\'a été retiré. Voici la région telle qu\'elle est maintenant.',
+  'Another city was built on this place meanwhile. Choose another place.':
+    'Une autre ville a été bâtie sur cette place entre-temps. Choisissez-en une autre.',
+  'The city {city} was created.': 'La ville {city} a été fondée.',
+  'Choose the map of your shared city, in the region {region}':
+    'Choisissez la carte de votre ville partagée, dans la région {region}',
+  'Choose the map of your shared city': 'Choisissez la carte de votre ville partagée',
+  'Create the shared city': 'Fonder la ville partagée',
+
+  // The emails' subjects (see emailTexts.js; their texts follow)
+  'Finish creating your KawaCity account': 'Terminez la création de votre compte KawaCity',
+  'You already have a KawaCity account': 'Vous avez déjà un compte KawaCity',
+  'Choose a new KawaCity password': 'Choisissez un nouveau mot de passe KawaCity',
+  'Your KawaCity password was changed': 'Le mot de passe de votre compte KawaCity a changé',
+  'Confirm your new email address for KawaCity': 'Confirmez votre nouvelle adresse e-mail pour KawaCity',
+  'Your KawaCity email address is about to change': 'L\'adresse e-mail de votre compte KawaCity va changer',
+  'Your KawaCity email address was changed': 'L\'adresse e-mail de votre compte KawaCity a changé',
+  'Your KawaCity account is locked for now': 'Votre compte KawaCity est bloqué pour l\'instant'
 };
+
+
+// The emails' texts (see emailTexts.js) are long: each is written paragraph by paragraph, the English text and then its
+// translation
+var paragraphs = function(list) {
+  return list.join('\n\n');
+};
+
+[
+  [[
+    'Hello,',
+    'Someone, probably you, asked to create a KawaCity account on {site} with this email address.',
+    'To choose your username and password, open this link within {hours} h:',
+    '{link}',
+    'If it was not you, just ignore this email: no account will be created.'
+  ], [
+    'Bonjour,',
+    'Quelqu\'un, sans doute vous, a demandé à créer un compte KawaCity sur {site} avec cette adresse e-mail.',
+    'Pour choisir votre nom d\'utilisateur et votre mot de passe, ouvrez ce lien dans les {hours} h :',
+    '{link}',
+    'Si ce n\'était pas vous, ignorez simplement cet e-mail : aucun compte ne sera créé.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'Someone, probably you, asked to create a KawaCity account on {site} with this email address. You already have ' +
+    'one: your username is {username}.',
+    'You can log in with it as usual. If you forgot your password, open this link within {hours} h to choose a new ' +
+    'one:',
+    '{link}',
+    'If it was not you, just ignore this email: your account has not changed.'
+  ], [
+    'Bonjour {username},',
+    'Quelqu\'un, sans doute vous, a demandé à créer un compte KawaCity sur {site} avec cette adresse e-mail. Vous en ' +
+    'avez déjà un : votre nom d\'utilisateur est {username}.',
+    'Vous pouvez vous connecter comme d\'habitude. Si vous avez oublié votre mot de passe, ouvrez ce lien dans les ' +
+    '{hours} h pour en choisir un nouveau :',
+    '{link}',
+    'Si ce n\'était pas vous, ignorez simplement cet e-mail : votre compte n\'a pas changé.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'Someone, probably you, asked to reset the password of your KawaCity account on {site}.',
+    'To choose a new password, open this link within {hours} h:',
+    '{link}',
+    'If it was not you, just ignore this email: your password has not changed.'
+  ], [
+    'Bonjour {username},',
+    'Quelqu\'un, sans doute vous, a demandé à réinitialiser le mot de passe de votre compte KawaCity sur {site}.',
+    'Pour choisir un nouveau mot de passe, ouvrez ce lien dans les {hours} h :',
+    '{link}',
+    'Si ce n\'était pas vous, ignorez simplement cet e-mail : votre mot de passe n\'a pas changé.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'The password of your KawaCity account on {site} has just been changed.',
+    'If it was you, all is well: there is nothing else to do.',
+    'If it was not you, choose a new password at once with "Forgot password?" on the login screen of {site}.'
+  ], [
+    'Bonjour {username},',
+    'Le mot de passe de votre compte KawaCity sur {site} vient d\'être changé.',
+    'Si c\'était vous, tout va bien : il n\'y a rien d\'autre à faire.',
+    'Si ce n\'était pas vous, choisissez tout de suite un nouveau mot de passe avec « Mot de passe oublié ? » sur ' +
+    'l\'écran de connexion de {site}.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'Someone, probably you, asked to use this email address for your KawaCity account on {site}.',
+    'To confirm it, open this link within {hours} h:',
+    '{link}',
+    'If it was not you, just ignore this email: nothing will change.'
+  ], [
+    'Bonjour {username},',
+    'Quelqu\'un, sans doute vous, a demandé à utiliser cette adresse e-mail pour votre compte KawaCity sur {site}.',
+    'Pour la confirmer, ouvrez ce lien dans les {hours} h :',
+    '{link}',
+    'Si ce n\'était pas vous, ignorez simplement cet e-mail : rien ne changera.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'Someone, probably you, asked to change the email address of your KawaCity account on {site}. The change is ' +
+    'made once the new address is confirmed.',
+    'If it was you, there is nothing else to do.',
+    'If it was not you, someone else knows your password: log in at once and change it, which also cancels the ' +
+    'change of address.'
+  ], [
+    'Bonjour {username},',
+    'Quelqu\'un, sans doute vous, a demandé à changer l\'adresse e-mail de votre compte KawaCity sur {site}. Le ' +
+    'changement sera fait une fois la nouvelle adresse confirmée.',
+    'Si c\'était vous, il n\'y a rien d\'autre à faire.',
+    'Si ce n\'était pas vous, quelqu\'un d\'autre connaît votre mot de passe : connectez-vous tout de suite et ' +
+    'changez-le, ce qui annule aussi le changement d\'adresse.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'Someone, maybe you, asked to use this email address for another KawaCity account on {site}. It is already the ' +
+    'address of your account, so nothing was changed.',
+    'There is nothing to do: your account has not changed.'
+  ], [
+    'Bonjour {username},',
+    'Quelqu\'un, peut-être vous, a demandé à utiliser cette adresse e-mail pour un autre compte KawaCity sur {site}. ' +
+    'C\'est déjà l\'adresse de votre compte : rien n\'a donc été changé.',
+    'Il n\'y a rien à faire : votre compte n\'a pas changé.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'The email address of your KawaCity account on {site} has just been changed. The account\'s emails now go to ' +
+    'the new address, and this one no longer works to log in.',
+    'If it was you, there is nothing else to do.',
+    'If it was not you, someone else knows your password: log in at once with your username, change your password ' +
+    'and set your email address back. If you cannot, contact the people who run {site}.'
+  ], [
+    'Bonjour {username},',
+    'L\'adresse e-mail de votre compte KawaCity sur {site} vient d\'être changée. Les e-mails du compte partent ' +
+    'désormais à la nouvelle adresse, et celle-ci ne permet plus de se connecter.',
+    'Si c\'était vous, il n\'y a rien d\'autre à faire.',
+    'Si ce n\'était pas vous, quelqu\'un d\'autre connaît votre mot de passe : connectez-vous tout de suite avec ' +
+    'votre nom d\'utilisateur, changez votre mot de passe et remettez votre adresse e-mail. Si vous n\'y arrivez ' +
+    'pas, contactez les responsables de {site}.'
+  ]],
+
+  [[
+    'Hello {username},',
+    'There were too many failed attempts to log in to your KawaCity account on {site}, so it is locked for ' +
+    '{hours} h.',
+    'To unlock it now, choose a new password with "Forgot password?" on the login screen.',
+    'If these attempts were not yours, someone may be trying to guess your password. A new one, long and used ' +
+    'nowhere else, keeps your account safe.'
+  ], [
+    'Bonjour {username},',
+    'Il y a eu trop de tentatives de connexion manquées à votre compte KawaCity sur {site} : il est donc bloqué ' +
+    'pendant {hours} h.',
+    'Pour le débloquer tout de suite, choisissez un nouveau mot de passe avec « Mot de passe oublié ? » sur l\'écran ' +
+    'de connexion.',
+    'Si ces tentatives n\'étaient pas les vôtres, quelqu\'un essaie peut-être de deviner votre mot de passe. Un ' +
+    'nouveau, long et utilisé nulle part ailleurs, protège votre compte.'
+  ]]
+].forEach(function(text) {
+  strings[paragraphs(text[0])] = paragraphs(text[1]);
+});
 
 
 var jokes = {

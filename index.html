@@ -19,7 +19,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-visual">
     <meta name="description" content="Play KawaCity and build a virtual city in your browser! KawaCity is based on micropolisJS, a handwritten HTML5/Javascript port of the open-source city simulator Micropolis.">
     <meta name="theme-color" content="#0b1220">
     <link rel="stylesheet" media="screen" type="text/css" href="css/style.css?v=<%= htmlWebpackPlugin.options.gitHash %>">
@@ -60,6 +60,7 @@
         <button id="speedFastRequest" class="hudButton speedButton" data-speed="3" title="Fast" data-i18n-title>3×</button>
       </div>
       <nav id="miscButtons" class="hudMenu" aria-label="Game menu" data-i18n-aria-label>
+        <button id="playersRequest" class="hudButton playersButton hidden" type="button" aria-controls="playersPanel" aria-expanded="false" data-status="connecting"><span class="statusDot" aria-hidden="true"></span><span data-i18n>Players</span><span id="playersUnread" class="unreadBadge hidden" aria-hidden="true">0</span></button>
         <button id="budgetRequest" class="hudButton" data-icon="budget" title="Budget" data-i18n-title><span data-i18n>Budget</span></button>
         <button id="evalRequest" class="hudButton" data-icon="evaluation" title="Evaluation" data-i18n-title><span data-i18n>Evaluation</span></button>
         <button id="graphsRequest" class="hudButton" data-icon="graphs" title="Graphs" data-i18n-title><span data-i18n>Graphs</span></button>
@@ -130,6 +131,17 @@
               <p class="splashHint" data-i18n>Drag to build roads and zones, right-drag or use the arrow keys to move around, and the mouse wheel to zoom.</p>
             </div>
           </div>
+          <div id="accountStrip" class="accountStrip">
+            <p id="accountStatus" class="accountStatus" role="status"></p>
+            <div id="accountButtons" class="accountButtons">
+              <button type="button" id="accountMultiplayer" class="button small" data-i18n>Multiplayer</button>
+              <button type="button" id="accountLogin" class="button small" data-i18n>Log in</button>
+              <button type="button" id="accountRegister" class="button small" data-i18n>Create an account</button>
+              <button type="button" id="accountOpen" class="button small accountOpen"><span class="srOnly" data-i18n>Your account:</span> <span id="accountOpenName"></span></button>
+            </div>
+            <p id="accountAdminOnly" class="accountNote" data-i18n>Accounts on this server are created by its administrator.</p>
+            <p id="accountElsewhere" class="accountNote"></p>
+          </div>
           <div class="credits">
             <p data-i18n-html="credits">KawaCity by <a href="https://github.com/kawakode" target="_blank" rel="noopener">kawakode</a>, based on <a href="https://github.com/graememcc/micropolisJS" target="_blank" rel="noopener">micropolisJS</a> by <a href="http://www.graememcc.co.uk" target="_blank" rel="noopener">Graeme McCutcheon</a> and <a href="https://github.com/graememcc/micropolisJS/graphs/contributors" target="_blank" rel="noopener">contributors</a>, a port of the open-source city simulator Micropolis. &middot; <a href="about.html" target="_blank" rel="noopener">About</a> &middot; <a href="https://github.com/kawakode/micropolisJS-docker" target="_blank" rel="noopener">GitHub</a></p>
             <p class="nameLicense">Micropolis is a registered trademark of <a href="https://www.micropolis.com" target="_blank" rel="noopener">Micropolis Corporation (Micropolis GmbH)</a> and is licensed here as a courtesy of the owner under the <a href="name_license.html" target="_blank" rel="noopener">Micropolis Public Name License</a>.</p>
@@ -170,13 +182,449 @@
               <input type="radio" class="difficulty" name="difficulty" id="difficultyMed" value="1"><label for="difficultyMed" data-i18n>Medium</label>
               <input type="radio" class="difficulty" name="difficulty" id="difficultyHard" value="2"><label for="difficultyHard" data-i18n>Hard</label>
             </fieldset>
+            <p id="startError" class="splashError startError" role="alert"></p>
             <div id="playSubmitDiv">
+              <button type="button" id="startBack" class="button cancel" data-i18n>Back</button>
               <input id="playit" class="button primary" type="submit" value="Found the city" data-i18n-value>
             </div>
           </form>
         </div>
 
+        <!-- Accounts (see AccountScreens): only shown when the game's server offers them -->
+        <section id="loginCard" class="card centred accountCard" aria-labelledby="loginTitle">
+          <h2 id="loginTitle" class="cardTitle" tabindex="-1" data-i18n>Log in</h2>
+          <p id="loginNote" class="cardNote" role="status"></p>
+          <form id="loginForm" class="accountForm" novalidate>
+            <label for="loginName" class="fieldLabel" data-i18n>Username or email address</label>
+            <input id="loginName" name="login" type="text" required autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254">
+            <label for="loginPassword" class="fieldLabel" data-i18n>Password</label>
+            <div class="passwordField">
+              <input id="loginPassword" name="password" type="password" required autocomplete="current-password">
+              <button type="button" class="button small passwordToggle" aria-controls="loginPassword" aria-pressed="false" data-i18n>Show</button>
+            </div>
+            <p class="formLinks"><button type="button" id="loginForgot" class="linkButton" data-i18n>Forgot password?</button></p>
+            <p id="loginCaptcha" class="captchaStatus" role="status"></p>
+            <p class="formError splashError" role="alert"></p>
+            <div class="modalButtons">
+              <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+              <button type="submit" class="button primary accountSubmit" data-i18n>Log in</button>
+            </div>
+          </form>
+          <p id="loginRegister" class="cardFooter"><span data-i18n>No account yet?</span> <button type="button" id="loginRegisterButton" class="linkButton" data-i18n>Create an account</button></p>
+        </section>
+
+        <section id="registerCard" class="card centred accountCard" aria-labelledby="registerTitle">
+          <h2 id="registerTitle" class="cardTitle" tabindex="-1" data-i18n>Create an account</h2>
+          <form id="registerForm" class="accountForm" novalidate>
+            <p class="cardText" data-i18n>Enter your email address: we will send you a link to choose your username and password.</p>
+            <label for="registerEmail" class="fieldLabel" data-i18n>Email address</label>
+            <input id="registerEmail" name="email" type="email" required autocomplete="email" maxlength="254">
+            <div class="honeypot" aria-hidden="true">
+              <label for="registerWebsite">Website</label>
+              <input id="registerWebsite" name="website" type="text" tabindex="-1" autocomplete="off">
+            </div>
+            <p class="cardText smallPrint"><span data-i18n>Your address is only used for your account.</span> <button type="button" class="linkButton privacyLink" data-i18n>Privacy</button></p>
+            <p id="registerCaptcha" class="captchaStatus" role="status"></p>
+            <p class="formError splashError" role="alert"></p>
+            <div class="modalButtons">
+              <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+              <button type="submit" class="button primary accountSubmit" data-i18n>Send the link</button>
+            </div>
+          </form>
+          <div id="registerDone" class="accountDone">
+            <p id="registerDoneText" class="cardText" role="status"></p>
+            <div class="modalButtons">
+              <button type="button" class="button primary accountBack" data-i18n>OK</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="signupCard" class="card centred accountCard" aria-labelledby="signupTitle">
+          <h2 id="signupTitle" class="cardTitle" tabindex="-1" data-i18n>Finish creating your account</h2>
+          <form id="signupForm" class="accountForm" novalidate>
+            <p class="cardText" data-i18n>Choose your username and your password. Your username is public: the other players see it.</p>
+            <label for="signupUsername" class="fieldLabel" data-i18n>Username</label>
+            <input id="signupUsername" name="username" type="text" required autocomplete="username" autocapitalize="none" spellcheck="false" aria-describedby="signupUsernameHint">
+            <p id="signupUsernameHint" class="fieldHint usernameHint"></p>
+            <label for="signupPassword" class="fieldLabel" data-i18n>Password</label>
+            <div class="passwordField">
+              <input id="signupPassword" name="password" type="password" required autocomplete="new-password" aria-describedby="signupPasswordHint">
+              <button type="button" class="button small passwordToggle" aria-controls="signupPassword" aria-pressed="false" data-i18n>Show</button>
+            </div>
+            <p id="signupPasswordHint" class="fieldHint passwordHint" data-for="signupPassword"></p>
+            <p class="formError splashError" role="alert"></p>
+            <div class="modalButtons">
+              <button type="button" class="button cancel accountBack" data-i18n>Cancel</button>
+              <button type="submit" class="button primary accountSubmit" data-i18n>Create my account</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="forgotCard" class="card centred accountCard" aria-labelledby="forgotTitle">
+          <h2 id="forgotTitle" class="cardTitle" tabindex="-1" data-i18n>Forgot password?</h2>
+          <form id="forgotForm" class="accountForm" novalidate>
+            <p class="cardText" data-i18n>Enter the email address of your account: we will send you a link to choose a new password.</p>
+            <label for="forgotEmail" class="fieldLabel" data-i18n>Email address</label>
+            <input id="forgotEmail" name="email" type="email" required autocomplete="email" maxlength="254">
+            <div class="honeypot" aria-hidden="true">
+              <label for="forgotWebsite">Website</label>
+              <input id="forgotWebsite" name="website" type="text" tabindex="-1" autocomplete="off">
+            </div>
+            <p id="forgotCaptcha" class="captchaStatus" role="status"></p>
+            <p class="formError splashError" role="alert"></p>
+            <div class="modalButtons">
+              <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+              <button type="submit" class="button primary accountSubmit" data-i18n>Send the link</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="resetCard" class="card centred accountCard" aria-labelledby="resetTitle">
+          <h2 id="resetTitle" class="cardTitle" tabindex="-1" data-i18n>Choose a new password</h2>
+          <form id="resetForm" class="accountForm" novalidate>
+            <label for="resetPassword" class="fieldLabel" data-i18n>New password</label>
+            <div class="passwordField">
+              <input id="resetPassword" name="password" type="password" required autocomplete="new-password" aria-describedby="resetPasswordHint">
+              <button type="button" class="button small passwordToggle" aria-controls="resetPassword" aria-pressed="false" data-i18n>Show</button>
+            </div>
+            <p id="resetPasswordHint" class="fieldHint passwordHint" data-for="resetPassword"></p>
+            <p class="formError splashError" role="alert"></p>
+            <div class="modalButtons">
+              <button type="button" class="button cancel accountBack" data-i18n>Cancel</button>
+              <button type="submit" class="button primary accountSubmit" data-i18n>Change the password</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="accountCard" class="card centred accountCard" aria-labelledby="accountTitle">
+          <h2 id="accountTitle" class="cardTitle" tabindex="-1" data-i18n>Your account</h2>
+          <p id="accountNote" class="cardNote" role="status"></p>
+          <dl class="accountFacts">
+            <dt data-i18n>Username</dt>
+            <dd id="accountUsername"></dd>
+            <dt data-i18n>Email address</dt>
+            <dd id="accountEmail"></dd>
+            <dt data-i18n>Language of the emails</dt>
+            <dd><span id="accountLanguage"></span> <span class="factNote" data-i18n>(the game's language)</span></dd>
+          </dl>
+          <details id="passwordSection" class="accountSection">
+            <summary data-i18n>Change your password</summary>
+            <form id="passwordForm" class="accountForm" novalidate>
+              <label for="passwordCurrent" class="fieldLabel" data-i18n>Current password</label>
+              <div class="passwordField">
+                <input id="passwordCurrent" name="currentPassword" type="password" required autocomplete="current-password">
+                <button type="button" class="button small passwordToggle" aria-controls="passwordCurrent" aria-pressed="false" data-i18n>Show</button>
+              </div>
+              <label for="passwordNew" class="fieldLabel" data-i18n>New password</label>
+              <div class="passwordField">
+                <input id="passwordNew" name="newPassword" type="password" required autocomplete="new-password" aria-describedby="passwordNewHint">
+                <button type="button" class="button small passwordToggle" aria-controls="passwordNew" aria-pressed="false" data-i18n>Show</button>
+              </div>
+              <p id="passwordNewHint" class="fieldHint passwordHint" data-for="passwordNew"></p>
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button primary accountSubmit" data-i18n>Change the password</button>
+              </div>
+            </form>
+          </details>
+          <details id="emailSection" class="accountSection">
+            <summary data-i18n>Change your email address</summary>
+            <form id="emailForm" class="accountForm" novalidate>
+              <label for="emailNew" class="fieldLabel" data-i18n>New email address</label>
+              <input id="emailNew" name="newEmail" type="email" required autocomplete="email" maxlength="254">
+              <label for="emailCurrent" class="fieldLabel" data-i18n>Current password</label>
+              <div class="passwordField">
+                <input id="emailCurrent" name="currentPassword" type="password" required autocomplete="current-password">
+                <button type="button" class="button small passwordToggle" aria-controls="emailCurrent" aria-pressed="false" data-i18n>Show</button>
+              </div>
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button primary accountSubmit" data-i18n>Send a confirmation link</button>
+              </div>
+            </form>
+          </details>
+          <details id="deleteSection" class="accountSection">
+            <summary data-i18n>Delete your account</summary>
+            <form id="deleteForm" class="accountForm" novalidate>
+              <p class="cardText" data-i18n>This deletes your account and everything kept with it, at once and for good.</p>
+              <label for="deletePassword" class="fieldLabel" data-i18n>Password</label>
+              <div class="passwordField">
+                <input id="deletePassword" name="password" type="password" required autocomplete="current-password">
+                <button type="button" class="button small passwordToggle" aria-controls="deletePassword" aria-pressed="false" data-i18n>Show</button>
+              </div>
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button danger accountSubmit" data-i18n>Delete my account</button>
+              </div>
+            </form>
+          </details>
+          <div class="accountActions">
+            <button type="button" id="accountExport" class="button small" data-i18n>Download my data</button>
+            <button type="button" id="accountLogoutAll" class="button small" data-i18n>Log out everywhere</button>
+            <button type="button" class="button small privacyLink" data-i18n>Privacy</button>
+          </div>
+          <p id="accountError" class="splashError" role="alert"></p>
+          <div class="modalButtons">
+            <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+            <button type="button" id="accountLogout" class="button primary" data-i18n>Log out</button>
+          </div>
+        </section>
+
+        <section id="privacyCard" class="card centred accountCard" aria-labelledby="privacyTitle">
+          <h2 id="privacyTitle" class="cardTitle" tabindex="-1" data-i18n>Privacy</h2>
+          <div class="privacyText">
+            <p data-i18n>An account is only needed to play with others. Alone, you play without one, and your cities stay in your browser.</p>
+            <h3 data-i18n>What the server keeps</h3>
+            <p data-i18n>Your username, your email address, your password (in a form that cannot be read back), the language of your emails, the sessions of the devices where you are logged in, when your account was created, changed and last used, its failed logins (to protect it), and a new email address until you confirm it. If you play with others: your shared cities and regions, the ones you are a member of, and the invitations you send and receive. The chat is never stored: the server keeps the last 50 messages of a city in memory while it is open, and forgets them when it closes, at most a minute after its last player leaves.</p>
+            <p data-i18n>The server's logs record the IP addresses and the accounts behind requests, to protect it against abuse. Old logs are deleted as new ones are written, by the log rotation that the people who run this server set up.</p>
+            <p data-i18n>Backups of the server's data, made by the people who run it, keep what they hold until they delete them.</p>
+            <h3 data-i18n>Why</h3>
+            <p data-i18n>Only to run your account and the cities you play with others: nothing is sold or shared, and there is no advertising and no tracking.</p>
+            <h3 data-i18n>Cookies</h3>
+            <p data-i18n>A single cookie keeps you logged in. It is strictly necessary, so the game does not ask for your consent. Your browser also remembers your language, your view and your saved city, without sending them anywhere.</p>
+            <h3 data-i18n>Your data</h3>
+            <p data-i18n>On your account's screen, you can download everything kept about your account, change your email address and password, and delete the account with all it holds.</p>
+            <h3 data-i18n>Contact</h3>
+            <p id="privacyOperator"></p>
+          </div>
+          <div class="modalButtons">
+            <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+          </div>
+        </section>
+
+        <!-- The multiplayer lobby (see Lobby): the shared cities and the regions of the player logged in -->
+        <section id="lobbyCard" class="card centred accountCard lobbyCard" aria-labelledby="lobbyTitle">
+          <h2 id="lobbyTitle" class="cardTitle" tabindex="-1" data-i18n>Multiplayer</h2>
+          <p id="lobbyNote" class="cardNote" role="status"></p>
+          <p id="lobbyStatus" class="lobbyStatus" role="status"></p>
+          <p id="lobbyError" class="splashError lobbyError" role="alert"></p>
+          <section id="lobbyInvitationsSection" class="lobbySection" aria-labelledby="lobbyInvitationsTitle">
+            <h3 id="lobbyInvitationsTitle" class="lobbyHeading" data-i18n>Invitations</h3>
+            <ul id="lobbyInvitations" class="lobbyList"></ul>
+          </section>
+          <section class="lobbySection" aria-labelledby="lobbyCitiesTitle">
+            <h3 id="lobbyCitiesTitle" class="lobbyHeading" data-i18n>Your shared cities</h3>
+            <ul id="lobbyCities" class="lobbyList"></ul>
+            <p id="lobbyNoCity" class="lobbyEmpty" data-i18n>No shared city yet: start one, or ask a friend to invite you to theirs.</p>
+            <div class="lobbyActions">
+              <button type="button" id="lobbyNewCity" class="button small primary" data-i18n>New shared city</button>
+            </div>
+          </section>
+          <section class="lobbySection" aria-labelledby="lobbyRegionsTitle">
+            <h3 id="lobbyRegionsTitle" class="lobbyHeading" data-i18n>Regions</h3>
+            <p class="lobbyHint" data-i18n>A region is a map of cities: each city is the neighbour of the cities beside it, and their mayors can trade with each other.</p>
+            <ul id="lobbyRegions" class="lobbyList"></ul>
+            <p id="lobbyNoRegion" class="lobbyEmpty" data-i18n>No region yet.</p>
+            <details id="regionCreateSection" class="accountSection">
+              <summary data-i18n>Create a region</summary>
+              <form id="regionCreateForm" class="accountForm" novalidate>
+                <label for="regionCreateName" class="fieldLabel" data-i18n>Name of the region</label>
+                <input id="regionCreateName" name="name" type="text" required maxlength="30" autocomplete="off">
+                <fieldset class="regionSize">
+                  <legend class="fieldLabel" data-i18n>Size, in cities</legend>
+                  <label class="mapOption"><span data-i18n>Columns</span>
+                    <select id="regionCreateWidth">
+                      <option value="2">2</option>
+                      <option value="3" selected>3</option>
+                      <option value="4">4</option>
+                    </select>
+                  </label>
+                  <label class="mapOption"><span data-i18n>Rows</span>
+                    <select id="regionCreateHeight">
+                      <option value="2">2</option>
+                      <option value="3" selected>3</option>
+                      <option value="4">4</option>
+                    </select>
+                  </label>
+                </fieldset>
+                <p class="formError splashError" role="alert"></p>
+                <div class="modalButtons">
+                  <button type="submit" class="button primary accountSubmit" data-i18n>Create the region</button>
+                </div>
+              </form>
+            </details>
+          </section>
+          <div class="modalButtons">
+            <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+            <button type="button" id="lobbyRefresh" class="button" data-i18n>Refresh</button>
+          </div>
+        </section>
+
+        <section id="cityCard" class="card centred accountCard lobbyCard" aria-labelledby="cityTitle">
+          <h2 id="cityTitle" class="cardTitle" tabindex="-1"><bdi id="cityName"></bdi></h2>
+          <p id="cityNote" class="cardNote" role="status"></p>
+          <p id="cityStatus" class="lobbyStatus" role="status"></p>
+          <dl class="accountFacts">
+            <dt data-i18n="role|Owner">Owner</dt>
+            <dd><bdi id="cityOwner"></bdi></dd>
+            <dt data-i18n>Your role</dt>
+            <dd id="cityRole"></dd>
+            <dt data-i18n>Population</dt>
+            <dd id="cityPopulation"></dd>
+            <dt data-i18n>Year</dt>
+            <dd id="cityYear"></dd>
+            <dt data-i18n>Region</dt>
+            <dd id="cityRegion"></dd>
+          </dl>
+          <div class="accountActions">
+            <button type="button" id="cityPlay" class="button small primary" data-i18n>Play</button>
+            <button type="button" id="cityDownload" class="button small" data-i18n>Download a copy</button>
+          </div>
+          <section class="lobbySection" aria-labelledby="cityMembersTitle">
+            <h3 id="cityMembersTitle" class="lobbyHeading" data-i18n>Members</h3>
+            <ul id="cityMembers" class="lobbyList memberList"></ul>
+          </section>
+          <section id="cityInvitationsSection" class="lobbySection" aria-labelledby="cityInvitationsTitle">
+            <h3 id="cityInvitationsTitle" class="lobbyHeading" data-i18n>Invitations not answered yet</h3>
+            <ul id="cityInvitations" class="lobbyList memberList"></ul>
+          </section>
+          <details id="cityInviteSection" class="accountSection">
+            <summary data-i18n>Invite a player</summary>
+            <form id="cityInviteForm" class="accountForm" novalidate>
+              <label for="cityInviteName" class="fieldLabel" data-i18n>Username</label>
+              <input id="cityInviteName" name="username" type="text" required autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64">
+              <label for="cityInviteRole" class="fieldLabel" data-i18n>Role</label>
+              <select id="cityInviteRole" aria-describedby="cityInviteHint">
+                <option value="player" data-i18n="role|Player">Player</option>
+                <option value="viewer" data-i18n="role|Viewer">Viewer</option>
+              </select>
+              <p id="cityInviteHint" class="fieldHint" data-i18n>A player builds and runs the city with you. A viewer watches it, and chats.</p>
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button primary accountSubmit" data-i18n>Invite</button>
+              </div>
+            </form>
+          </details>
+          <details id="cityRenameSection" class="accountSection">
+            <summary data-i18n>Rename the city</summary>
+            <form id="cityRenameForm" class="accountForm" novalidate>
+              <label for="cityRenameName" class="fieldLabel" data-i18n>City name</label>
+              <input id="cityRenameName" name="name" type="text" required maxlength="15" autocomplete="off">
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button primary accountSubmit" data-i18n>Rename</button>
+              </div>
+            </form>
+          </details>
+          <details id="cityLeaveSection" class="accountSection">
+            <summary data-i18n>Leave this city</summary>
+            <p class="cardText" data-i18n>You will no longer be a member of this city. Its owner can invite you again.</p>
+            <div class="modalButtons">
+              <button type="button" id="cityLeave" class="button danger" data-i18n>Leave the city</button>
+            </div>
+          </details>
+          <details id="cityDeleteSection" class="accountSection">
+            <summary data-i18n>Delete this city</summary>
+            <p class="cardText" data-i18n>This deletes the city for all its members, at once and for good. Download a copy first to keep it.</p>
+            <div class="modalButtons">
+              <button type="button" id="cityDelete" class="button danger" data-i18n>Delete the city</button>
+            </div>
+          </details>
+          <p id="cityError" class="splashError lobbyError" role="alert"></p>
+          <div class="modalButtons">
+            <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+          </div>
+        </section>
+
+        <section id="regionCard" class="card centred accountCard lobbyCard regionCard" aria-labelledby="regionTitle">
+          <h2 id="regionTitle" class="cardTitle" tabindex="-1"><bdi id="regionName"></bdi></h2>
+          <p id="regionNote" class="cardNote" role="status"></p>
+          <p id="regionStatus" class="lobbyStatus" role="status"></p>
+          <p id="regionFacts" class="lobbyFacts"></p>
+          <section class="lobbySection" aria-labelledby="regionMapTitle">
+            <h3 id="regionMapTitle" class="lobbyHeading" data-i18n>Map of the region</h3>
+            <p class="lobbyHint" data-i18n>Each city is the neighbour of the cities beside it. Every member of the region can build a city on a free place.</p>
+            <ol id="regionGrid" class="regionGrid" aria-labelledby="regionMapTitle"></ol>
+          </section>
+          <section class="lobbySection" aria-labelledby="regionMembersTitle">
+            <h3 id="regionMembersTitle" class="lobbyHeading" data-i18n>Members</h3>
+            <ul id="regionMembers" class="lobbyList memberList"></ul>
+          </section>
+          <section id="regionInvitationsSection" class="lobbySection" aria-labelledby="regionInvitationsTitle">
+            <h3 id="regionInvitationsTitle" class="lobbyHeading" data-i18n>Invitations not answered yet</h3>
+            <ul id="regionInvitations" class="lobbyList memberList"></ul>
+          </section>
+          <details id="regionInviteSection" class="accountSection">
+            <summary data-i18n>Invite a player</summary>
+            <form id="regionInviteForm" class="accountForm" novalidate>
+              <label for="regionInviteName" class="fieldLabel" data-i18n>Username</label>
+              <input id="regionInviteName" name="username" type="text" required autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64">
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button primary accountSubmit" data-i18n>Invite</button>
+              </div>
+            </form>
+          </details>
+          <details id="regionRenameSection" class="accountSection">
+            <summary data-i18n>Rename the region</summary>
+            <form id="regionRenameForm" class="accountForm" novalidate>
+              <label for="regionRenameName" class="fieldLabel" data-i18n>Name of the region</label>
+              <input id="regionRenameName" name="name" type="text" required maxlength="30" autocomplete="off">
+              <p class="formError splashError" role="alert"></p>
+              <div class="modalButtons">
+                <button type="submit" class="button primary accountSubmit" data-i18n>Rename</button>
+              </div>
+            </form>
+          </details>
+          <details id="regionLeaveSection" class="accountSection">
+            <summary data-i18n>Leave this region</summary>
+            <p class="cardText" data-i18n>Your cities in this region leave it, and stay yours.</p>
+            <div class="modalButtons">
+              <button type="button" id="regionLeave" class="button danger" data-i18n>Leave the region</button>
+            </div>
+          </details>
+          <details id="regionDeleteSection" class="accountSection">
+            <summary data-i18n>Delete this region</summary>
+            <p class="cardText" data-i18n>The region is deleted for all its members. Its cities stay, out of the region.</p>
+            <div class="modalButtons">
+              <button type="button" id="regionDelete" class="button danger" data-i18n>Delete the region</button>
+            </div>
+          </details>
+          <p id="regionError" class="splashError lobbyError" role="alert"></p>
+          <div class="modalButtons">
+            <button type="button" class="button cancel accountBack" data-i18n>Back</button>
+          </div>
+        </section>
+
+        <!-- While a shared city is being made on the title screen (see Lobby and SplashScreen.share) -->
+        <div id="sharedBanner" class="sharedBanner" role="region" aria-label="New shared city" data-i18n-aria-label>
+          <p id="sharedBannerText" class="sharedBannerText" role="status"></p>
+          <button type="button" id="sharedCancel" class="button small cancel" data-i18n>Cancel</button>
+        </div>
+
         <div id="notifications" class="initialHidden neutral" role="status" aria-live="polite"></div>
+
+        <div id="mpReconnecting" class="mpReconnecting hidden" role="status">
+          <span class="mpReconnectingText" data-i18n>Connection lost. Reconnecting&hellip;</span>
+          <button type="button" id="mpReconnectingLobby" class="button small" data-i18n>Back to the lobby</button>
+        </div>
+
+        <aside id="playersPanel" class="panel playersPanel hidden" aria-labelledby="playersTitle">
+          <div class="playersHeader">
+            <h2 id="playersTitle" class="panelTitle" data-i18n>Players</h2>
+            <button type="button" id="playersClose" class="button small cancel" data-i18n>Close</button>
+          </div>
+          <p id="playersConnection" class="playersConnection" data-status="connecting"><span class="statusDot" aria-hidden="true"></span><span id="playersStatus"></span></p>
+          <p id="playersRole" class="playersRole"></p>
+          <ul id="playersList" class="playersList" aria-label="Players of this city" data-i18n-aria-label></ul>
+          <div id="chatLog" class="chatLog inset" role="log" aria-live="polite" aria-label="Chat" data-i18n-aria-label tabindex="0"></div>
+          <form id="chatForm" class="chatForm">
+            <label class="srOnly" for="chatInput" data-i18n>Message to the other players</label>
+            <input id="chatInput" type="text" maxlength="300" autocomplete="off" enterkeyhint="send" placeholder="Message" data-i18n-placeholder>
+            <button type="submit" id="chatSend" class="button small primary" data-i18n>Send</button>
+          </form>
+          <button type="button" id="backToLobby" class="button small" data-i18n>Back to the lobby</button>
+        </aside>
+
+        <div id="mpScreen" class="mpScreen hidden">
+          <section id="mpCard" class="card mpCard" role="alertdialog" aria-labelledby="mpCardTitle" aria-describedby="mpCardText">
+            <h2 id="mpCardTitle" class="cardTitle">Shared city</h2>
+            <p id="mpCardText" class="mpCardText" role="status"></p>
+            <div class="modalButtons">
+              <button type="button" id="mpCardLobby" class="button primary">Back to the lobby</button>
+            </div>
+          </section>
+        </div>
 
         <div id="tooSmall" data-hasscript="false"><div id="tooSmallInner" class="card"><h2 class="cardTitle" data-i18n>Uh-oh!</h2><p data-i18n>This window is too small to fit the city and all the controls. Try a bigger window, or rotating your device.</p></div></div>
         <noscript>
@@ -353,12 +801,12 @@
             <p class="graphsHint" data-i18n>Drag across the graph to look at those years.</p>
             <fieldset class="choice graphsLegend" id="graphsSeriesSelect">
               <legend class="visuallyHidden" data-i18n>Show</legend>
-              <input type="checkbox" class="graphsSeries" id="graphsRes" value="res" checked="checked"><label for="graphsRes"><span class="swatch" style="background: #4cc464"></span><span data-i18n>Residential</span></label>
-              <input type="checkbox" class="graphsSeries" id="graphsCom" value="com" checked="checked"><label for="graphsCom"><span class="swatch" style="background: #5c9cff"></span><span data-i18n>Commercial</span></label>
-              <input type="checkbox" class="graphsSeries" id="graphsInd" value="ind" checked="checked"><label for="graphsInd"><span class="swatch" style="background: #f8c838"></span><span data-i18n>Industrial</span></label>
-              <input type="checkbox" class="graphsSeries" id="graphsMoney" value="money" checked="checked"><label for="graphsMoney"><span class="swatch" style="background: #6ee0d0"></span><span data-i18n>Cash flow</span></label>
-              <input type="checkbox" class="graphsSeries" id="graphsCrime" value="crime" checked="checked"><label for="graphsCrime"><span class="swatch" style="background: #e04836"></span><span data-i18n>Crime</span></label>
-              <input type="checkbox" class="graphsSeries" id="graphsPollution" value="pollution" checked="checked"><label for="graphsPollution"><span class="swatch" style="background: #b08850"></span><span data-i18n>Pollution</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsRes" value="res" checked="checked"><label for="graphsRes"><span class="swatch swatchRes"></span><span data-i18n>Residential</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsCom" value="com" checked="checked"><label for="graphsCom"><span class="swatch swatchCom"></span><span data-i18n>Commercial</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsInd" value="ind" checked="checked"><label for="graphsInd"><span class="swatch swatchInd"></span><span data-i18n>Industrial</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsMoney" value="money" checked="checked"><label for="graphsMoney"><span class="swatch swatchMoney"></span><span data-i18n>Cash flow</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsCrime" value="crime" checked="checked"><label for="graphsCrime"><span class="swatch swatchCrime"></span><span data-i18n>Crime</span></label>
+              <input type="checkbox" class="graphsSeries" id="graphsPollution" value="pollution" checked="checked"><label for="graphsPollution"><span class="swatch swatchPollution"></span><span data-i18n>Pollution</span></label>
             </fieldset>
             <div class="modalButtons">
               <input type="submit" id="graphsOK" class="button primary dialogOK" value="OK">
@@ -473,18 +921,6 @@
           <div id="congratsMessage" class="alignCenter">Congratulations!</div>
           <form id="congratsForm" class="modalButtons">
             <input type="submit" id="congratsOK" class="button primary dialogOK" value="OK">
-          </form>
-        </div>
-      </div>
-
-      <div class="hidden modal" id="nagWindow" role="dialog" aria-labelledby="nagHeader">
-        <header id="nagHeader" class="modalHeader" data-icon="heart"><span>KawaCity</span></header>
-        <div id="nagContainer" class="modalBody">
-          <div id="nagMessage" data-i18n-html="nag">
-            Whoa! You've been playing this thing for half an hour?!? If you're enjoying it, Graeme McCutcheon, the author of micropolisJS on which KawaCity is based, would be glad to see your money reach <a class="nag" href="https://www.refuweegee.co.uk/your-donations" target="_blank" rel="noopener">Refuweegee</a>, a charity assisting refugees in Scotland.
-          </div>
-          <form id="nagForm" class="modalButtons">
-            <input type="submit" id="nagOK" class="button primary dialogOK" value="OK">
           </form>
         </div>
       </div>
@@ -632,11 +1068,6 @@
       <div class="tickerLabel" aria-hidden="true">Kawa News</div>
       <div class="tickerTrack" role="marquee" aria-label="City news" data-i18n-aria-label></div>
     </footer>
-    <script>
-      // If we got here, then we have script. Note we don't necessarily have jQuery though
-      [].forEach.call(document.querySelectorAll('[data-hasscript]'), function(elem) {
-        elem.setAttribute('data-hasscript', 'true');
-      });
-    </script>
+    <script src="src/hasScript.js?v=<%= htmlWebpackPlugin.options.gitHash %>"></script>
   </body>
 </html>

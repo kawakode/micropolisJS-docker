@@ -17,11 +17,21 @@ import { BIGPARK, LASTTINYEXP, LIGHTNINGBOLT, TILE_COUNT, TILE_INVALID } from ".
 import { TileUtils } from './tileUtils.js';
 
 
-function AnimationManager(map, animationPeriod, blinkPeriod) {
+// KawaCity: options (optional, also accepted in place of animationPeriod) is {animationPeriod, blinkPeriod, noWrite}.
+// With noWrite, the animations never change the map: an explosion holds its last frame until the map changes (the copy
+// of a shared city gets its rubble from the server).
+function AnimationManager(map, animationPeriod, blinkPeriod, options) {
+  if (animationPeriod !== null && typeof(animationPeriod) === 'object') {
+    options = animationPeriod;
+    animationPeriod = options.animationPeriod;
+    blinkPeriod = options.blinkPeriod;
+  }
+
   animationPeriod = animationPeriod || 50;
   blinkPeriod = blinkPeriod || 500;
 
   this._map = map;
+  this.noWrite = !!(options && options.noWrite);
   this.animationPeriod = animationPeriod;
   this.lastAnimation = new Date(1970, 1, 1);
   this.lastBlink = new Date(1970, 1, 1);
@@ -128,8 +138,8 @@ AnimationManager.prototype.getTiles = function(tileValues, offsetX, offsetY, xBo
         if (last && this.inSequence(tileValue, last)) {
           // To ensure demolition explosions are animated smoothly, we adjust the map here when we have run to the
           // end of the animation. We would otherwise have to wait on MapScan running and picking up the explosion
-          // tile, which may not happen for several frames
-          if (last === LASTTINYEXP) {
+          // tile, which may not happen for several frames. Without writing, the last frame stays (it leads to itself).
+          if (last === LASTTINYEXP && !this.noWrite) {
             this._map.setTo(mapX, mapY, TileUtils.randomRubble());
             newTile = this._map.getTileValue(mapX, mapY);
           } else {

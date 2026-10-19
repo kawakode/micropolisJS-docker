@@ -125,6 +125,13 @@ Notification.prototype.goodNews = function(message) {
 };
 
 
+// Shows a text of its own (kind: 'good', 'bad' or 'neutral')
+Notification.prototype.showText = function(text, kind) {
+  this._element.removeClass('good bad neutral').addClass(kind === 'good' || kind === 'bad' ? kind : 'neutral');
+  this._displayText(text);
+};
+
+
 Notification.prototype.news = function(message) {
   this._element.removeClass('good');
   this._element.removeClass('bad');

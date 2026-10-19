@@ -1,12 +1,17 @@
 import * as fs from "fs";
 import * as path from "path";
 
+import { ERROR_TEXTS, FIELD_TEXTS, KICK_TEXTS, TOOL_TEXTS } from "../src/apiErrors.js";
+import { EMAIL_TEXTS } from "../src/emailTexts.js";
 import { I18n } from "../src/i18n.js";
 import { Scenarios } from "../src/scenarios.js";
 import { Text } from "../src/text.js";
 import { Toolbar } from "../src/toolbar.js";
 
 const French = (I18n as any).dictionaries.fr;
+
+// The texts whose translation is HTML (data-i18n-html): their keys are names, not English texts
+const HTML_KEYS = ["credits", "saveFile"];
 
 // The literal texts the code passes to I18n.t: the first argument's literals, except those given to another function
 // ($('.selector'), attr('data-label')...), compared (tab === 'cities') or only a prefix ('legend|' + ...)
@@ -55,6 +60,86 @@ const literalsPassedToT = (source: string): string[] => {
 };
 
 
+// The page, read the way I18n.translateDocument reads it, without a browser
+const ENTITIES: {[name: string]: string} = {amp: "&", lt: "<", gt: ">", quot: "\"", apos: "'", nbsp: "\u00a0",
+                                            hellip: "\u2026", middot: "\u00b7", minus: "\u2212", mdash: "\u2014",
+                                            ndash: "\u2013", times: "\u00d7", copy: "\u00a9"};
+
+const decode = (text: string): string => text.replace(/&(#x[0-9a-f]+|#[0-9]+|\w+);/gi, (entity, name) => {
+    if (name[0] === "#")
+        return String.fromCharCode(/^#x/i.test(name) ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10));
+    if (ENTITIES[name] === undefined)
+        throw new Error("Unknown entity in index.html: " + entity);
+    return ENTITIES[name];
+});
+
+const START_TAG = /<([a-zA-Z][\w-]*)((?:\s+[^\s"'>\/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*\/?>/g;
+const ATTRIBUTE = /([^\s"'>\/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
+
+interface PageElement {
+    name: string;
+    attributes: {[name: string]: string};
+    // Where its content starts
+    contentStart: number;
+}
+
+const readElements = (html: string): PageElement[] => {
+    const elements: PageElement[] = [];
+    let tag;
+    START_TAG.lastIndex = 0;
+    while ((tag = START_TAG.exec(html)) !== null) {
+        const attributes: {[name: string]: string} = {};
+        let attribute;
+        ATTRIBUTE.lastIndex = 0;
+        while ((attribute = ATTRIBUTE.exec(tag[2])) !== null) {
+            const value = attribute[2] !== undefined ? attribute[2] : attribute[3] !== undefined ? attribute[3] :
+                          attribute[4] || "";
+            attributes[attribute[1].toLowerCase()] = decode(value);
+        }
+        elements.push({name: tag[1].toLowerCase(), attributes: attributes, contentStart: tag.index + tag[0].length});
+    }
+    return elements;
+};
+
+// The text of an element, as its textContent: everything up to its end tag, without the tags
+const textContent = (html: string, element: PageElement): string => {
+    const tags = new RegExp("<(/?)" + element.name + "(?=[\\s/>])[^>]*>", "gi");
+    tags.lastIndex = element.contentStart;
+    let depth = 1;
+    let tag;
+    while ((tag = tags.exec(html)) !== null) {
+        depth += tag[1] ? -1 : 1;
+        if (depth === 0)
+            return decode(html.slice(element.contentStart, tag.index).replace(START_TAG, "").replace(/<\/[^>]*>/g, ""));
+    }
+    throw new Error("No end tag in index.html for <" + element.name + "> " + JSON.stringify(element.attributes));
+};
+
+const normalise = (text: string): string => text.replace(/\s+/g, " ").trim();
+
+// The keys of the texts of the page: [{marker, key}], marker being the attribute that asks for the translation
+const pageTexts = (): {marker: string, key: string}[] => {
+    const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8")
+        .replace(/<!--[\s\S]*?-->/g, "")
+        .replace(/<%[\s\S]*?%>/g, "");
+    const texts: {marker: string, key: string}[] = [];
+
+    readElements(html).forEach(element => {
+        Object.keys(element.attributes).filter(name => /^data-i18n(-|$)/.test(name)).forEach(marker => {
+            const value = element.attributes[marker];
+            if (marker === "data-i18n")
+                texts.push({marker: marker, key: value || normalise(textContent(html, element))});
+            else if (marker === "data-i18n-html")
+                texts.push({marker: marker, key: value});
+            else
+                texts.push({marker: marker, key: value || element.attributes[marker.slice("data-i18n-".length)] || ""});
+        });
+    });
+
+    return texts;
+};
+
+
 describe("Translations", () => {
 
     afterEach(() => {
@@ -94,6 +179,31 @@ describe("Translations", () => {
         expect(I18n.t("budget|Fire")).toBe("Pompiers");
         expect(I18n.t("disaster|Fire")).toBe("Incendie");
         expect(I18n.t("Tax rate: {tax}%", {tax: 7})).toBe("Taux d'imposition : 7 %");
+    });
+
+    it("translate into a given language, whatever the current one", () => {
+        expect(I18n.translate("fr", "budget|Fire")).toBe("Pompiers");
+        expect(I18n.translate("en", "budget|Fire")).toBe("Fire");
+        expect(I18n.translate("fr", "Tax rate: {tax}%", {tax: 7})).toBe("Taux d'imposition\u00a0: 7\u00a0%");
+        expect(I18n.translate("en", "Tax rate: {tax}%", {tax: 7})).toBe("Tax rate: 7%");
+        expect(I18n.getLanguage()).toBe("en");
+
+        I18n.setLanguage("fr", false);
+        expect(I18n.translate("en", "budget|Fire")).toBe("Fire");
+        expect(I18n.translate("en", "Goal reached: {goal}.", {goal: "be big"})).toBe("Goal reached: be big.");
+        expect(I18n.translate("fr", "disaster|Fire")).toBe("Incendie");
+        expect(I18n.t("disaster|Fire")).toBe(I18n.translate("fr", "disaster|Fire"));
+    });
+
+    it("translate into English what a language lacks, without noting it", () => {
+        expect(I18n.translate("fr", "context|Not a text of the game")).toBe("Not a text of the game");
+        expect(I18n.translate("de", "budget|Fire")).toBe("Fire");
+        expect((I18n.missing as any)["context|Not a text of the game"]).toBeUndefined();
+
+        // Nothing is taken from the objects' prototypes
+        expect(I18n.translate("constructor", "budget|Fire")).toBe("Fire");
+        expect(I18n.translate("fr", "constructor")).toBe("constructor");
+        expect(I18n.translate("en", "{toString} {n}", {n: 1})).toBe("{toString} 1");
     });
 
     it("fall back on English, and note what is missing", () => {
@@ -155,14 +265,42 @@ describe("Translations", () => {
             add(scenario.text);
         });
         add(Scenarios.GOAL_TEXT);
+        [ERROR_TEXTS, FIELD_TEXTS, KICK_TEXTS, TOOL_TEXTS, EMAIL_TEXTS].forEach(add);
 
+        expect(texts).toEqual(expect.arrayContaining([ERROR_TEXTS.invalid_credentials, EMAIL_TEXTS.signup.subject,
+                                                      EMAIL_TEXTS.accountLocked.text]));
         expect(texts.filter(text => French[text] === undefined)).toEqual([]);
+    });
+
+    it("have a French translation for every text of the page", () => {
+        const texts = pageTexts();
+        const keys = texts.map(text => text.key);
+
+        expect(keys).toEqual(expect.arrayContaining(["Loading\u2026", "budget|Fire", "Found the city",
+                                                     "Max. 15 letters", "City news", "credits"]));
+        expect(keys).not.toContain("");
+        expect(texts.filter(text => text.marker === "data-i18n-html").map(text => text.key).sort())
+            .toEqual(HTML_KEYS.slice().sort());
+        const attribute = (marker: string) => marker.slice("data-i18n-".length);
+        expect(texts.filter(text => text.marker !== "data-i18n" && text.marker !== "data-i18n-html" &&
+                                    I18n.ATTRIBUTES.indexOf(attribute(text.marker)) === -1)).toEqual([]);
+        expect(texts.filter(text => French[text.key] === undefined)).toEqual([]);
+    });
+
+    it("name the login screen's buttons as the emails do", () => {
+        const keys = pageTexts().map(text => text.key);
+
+        expect(keys).toEqual(expect.arrayContaining(["Forgot password?", "Log in"]));
+        expect(French["Forgot password?"]).toBe("Mot de passe oublié ?");
+        [EMAIL_TEXTS.passwordChanged.text, EMAIL_TEXTS.accountLocked.text].forEach(text => {
+            expect(text).toContain("\"Forgot password?\"");
+            expect(French[text]).toContain("« Mot de passe oublié ? »");
+        });
     });
 
     it("keep the parameters of each text", () => {
         const parameters = (text: string) => (text.match(/\{\w+\}/g) || []).sort().join(",");
-        const html = ["credits", "nag", "saveFile"];
-        const wrong = Object.keys(French).filter(key => html.indexOf(key) === -1 &&
+        const wrong = Object.keys(French).filter(key => HTML_KEYS.indexOf(key) === -1 &&
                                                         parameters(key) !== parameters(French[key]));
         expect(wrong).toEqual([]);
     });

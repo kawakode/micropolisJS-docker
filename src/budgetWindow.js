@@ -161,4 +161,11 @@ BudgetWindow.prototype.open = function(budgetData) {
 };
 
 
+// The rate a window shows for the share of a service's needs that is funded (0 to 1): rounded, as 0.29 * 100 is
+// 28.999...
+BudgetWindow.rateOf = function(share) {
+  return Math.round(share * 100);
+};
+
+
 export { BudgetWindow };

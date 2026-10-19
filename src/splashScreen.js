@@ -13,6 +13,8 @@
 
 import $ from "jquery";
 
+import { AccountScreens } from './accountScreens.js';
+import { FIELD_TEXTS } from './apiErrors.js';
 import { CityFile } from './cityFile.js';
 import { Config } from './config.js';
 import { Game } from './game.js';
@@ -94,6 +96,9 @@ function SplashScreen(tileSet, snowTileSet, spriteSheet) {
   $('.awaitGeneration').toggle();
   $('#splashPlay').focus();
 
+  // The accounts, when the game's server offers them
+  AccountScreens.start();
+
   // Playing a scenario again (see Game) comes back here with the scenario in the address
   var match = /^#scenario=([a-z]+)$/.exec(window.location.hash);
   if (match && Scenarios.get(match[1])) {
@@ -123,8 +128,17 @@ var mapOptions = function() {
 };
 
 
-// Launches the game with the given saved game (from storage, a file, or a scenario). We won't return from here
+// Launches the game with the given saved game (from storage, a file, or a scenario). We won't return from here (but
+// for a shared city in the making, which takes the saved game as its start: see share)
 var launch = function(savedGame) {
+  if (sharing !== null) {
+    $('#pickerPlay').prop('disabled', false);
+    askSharedName.call(this, {save: savedGame}, savedGame.name, savedGame._gameLevel);
+    return;
+  }
+
+  AccountScreens.stop();
+
   // Remove installed event listeners
   $('#splashLoad, #splashGenerate, #splashPlay, #splashScenarios, #splashOpen, #pickerBack, #pickerPlay').off('click');
   $('#splashFile, #mapOptions select').off('change');
@@ -199,7 +213,9 @@ var showScenarios = function(e) {
 
   $('#splash').hide();
   $('#scenarioPicker').show();
-  showTab.call(this, this._pickerTab || 'scenarios');
+  // A shared city plays no scenario: only the cities are offered
+  $('#scenarioPicker .pickerTabs').toggle(sharing === null);
+  showTab.call(this, sharing !== null ? 'cities' : this._pickerTab || 'scenarios');
   $('#scenarioList .scenarioChoice[aria-selected="true"]').focus();
 };
 
@@ -354,7 +370,13 @@ var handleLoad = function(e) {
 var acquireNameAndDifficulty = function(e) {
   e.preventDefault();
 
+  if (sharing !== null) {
+    askSharedName.call(this, {map: this.map}, null, null);
+    return;
+  }
+
   // Remove the initial event listeners
+  AccountScreens.stop();
   $('#splashLoad, #splashGenerate, #splashPlay, #splashScenarios, #splashOpen, #pickerBack, #pickerPlay').off('click');
   $('#splashFile, #mapOptions select').off('change');
 
@@ -389,6 +411,156 @@ var play = function(e) {
 
   // Launch a new game
   var g = new Game(this.map, this.tileSet, this.snowTileSet, this.spriteSheet, difficulty, name);
+};
+
+
+// --- A shared city in the making (see Lobby) ---
+
+// While the lobby makes a shared city, the title screen chooses its start, as for a city played alone: a generated map
+// (Play this map), a sample city (Scenarios & cities, without the scenarios) or a city file, then the city's name and
+// difficulty; the city is then given to the lobby instead of being played here. Otherwise null:
+// {create(choice, name, level): a Promise, rejected with the text that says why the city was not made; cancel()}, and
+// choice is {map: the GameMap} or {save: the saved game}.
+var sharing = null;
+
+// The start chosen, while the name and difficulty are asked
+var sharedChoice = null;
+
+
+var showSharedError = function(text, field) {
+  $('#startError').text(text || '');
+  $('#nameForm').attr('aria-invalid', field ? 'true' : null).attr('aria-describedby', field ? 'startError' : null);
+};
+
+
+var setSharedBusy = function(busy) {
+  $('#playForm').attr('aria-busy', busy ? 'true' : null);
+  $('#playit').toggleClass('busy', busy).attr('aria-disabled', busy ? 'true' : null);
+};
+
+
+// Asks the name and difficulty of the shared city made from choice ({map} or {save}): those of a saved game to begin
+// with (name and level, or null)
+var askSharedName = function(choice, name, level) {
+  sharedChoice = choice;
+  showSharedError('', false);
+
+  if (typeof(name) === 'string' && name !== '')
+    $('#nameForm').val(Array.from(name).slice(0, 15).join(''));
+  if (level === Simulation.LEVEL_EASY || level === Simulation.LEVEL_MED || level === Simulation.LEVEL_HARD)
+    $('.difficulty').each(function(i, input) { $(input).prop('checked', $(input).val() - 0 === level); });
+
+  $('#splash').hide();
+  $('#scenarioPicker').hide();
+  $('#start').show();
+  $('#nameForm').focus();
+};
+
+
+// From the name and difficulty back to the title screen (and its Play this map)
+var backToSharedTitle = function(e) {
+  if (e)
+    e.preventDefault();
+  if ($('#playForm').attr('aria-busy') === 'true')
+    return;
+
+  sharedChoice = null;
+  showSharedError('', false);
+  $('#start').hide();
+  $('#scenarioPicker').hide();
+  $('#splash').show();
+  $('#splashPlay').focus();
+};
+
+
+var submitShared = function(e) {
+  e.preventDefault();
+  if (sharing === null || sharedChoice === null || $('#playForm').attr('aria-busy') === 'true')
+    return;
+
+  var name = String($('#nameForm').val() || '').normalize('NFC').replace(/[\p{Cc}\p{Cf}]/gu, '').trim();
+  if (name === '') {
+    showSharedError(I18n.t(FIELD_TEXTS.required), true);
+    $('#nameForm').focus();
+    return;
+  }
+
+  showSharedError('', false);
+  setSharedBusy(true);
+  var done = sharing;
+  done.create(sharedChoice, name, $('.difficulty:checked').val() - 0).then(function() {
+    setSharedBusy(false);
+  }, function(text) {
+    setSharedBusy(false);
+    if (sharing !== done)
+      return;
+    showSharedError(typeof(text) === 'string' ? text : I18n.t('Sorry, the city could not be loaded.'), false);
+    $('#playit').focus();
+  });
+};
+
+
+var onSharedKey = function(e) {
+  if (e.key !== 'Escape' || sharing === null)
+    return;
+
+  if ($('#start').is(':visible')) {
+    e.preventDefault();
+    backToSharedTitle();
+  } else if ($('#scenarioPicker').is(':visible')) {
+    e.preventDefault();
+    hideScenarios();
+  } else if ($('#splash').is(':visible') && !AccountScreens.isOpen()) {
+    e.preventDefault();
+    sharing.cancel();
+  }
+};
+
+
+// The title screen chooses the start of a shared city (see sharing), until stopSharing
+var share = function(handlers) {
+  sharing = handlers;
+  sharedChoice = null;
+
+  $('#splash').addClass('sharedCity');
+  $('#start').addClass('sharedCity');
+  $('#start .cardTitle').text(I18n.t('New shared city'));
+  $('#playit').val(I18n.t('Create the shared city'));
+  $('#startBack').off('click').on('click', backToSharedTitle);
+  $('#playForm').off('submit.sharedCity').on('submit.sharedCity', submitShared);
+  $(document).off('keydown.sharedCity').on('keydown.sharedCity', onSharedKey);
+  showSharedError('', false);
+};
+
+
+// Back to the title screen of a city played alone
+var stopSharing = function() {
+  if (sharing === null)
+    return;
+
+  sharing = null;
+  sharedChoice = null;
+  setSharedBusy(false);
+  showSharedError('', false);
+  $(document).off('keydown.sharedCity');
+  $('#playForm').off('submit.sharedCity');
+  $('#startBack').off('click');
+  $('#start .cardTitle').text(I18n.t('New city'));
+  $('#playit').val(I18n.t('Found the city'));
+  $('#splash, #start').removeClass('sharedCity');
+  $('#scenarioPicker .pickerTabs').show();
+  $('#pickerPlay').prop('disabled', false);
+
+  $('#start').hide();
+  $('#scenarioPicker').hide();
+  $('#splash').show();
+};
+
+
+SplashScreen.share = share;
+SplashScreen.stopSharing = stopSharing;
+SplashScreen.isSharing = function() {
+  return sharing !== null;
 };
 
 
