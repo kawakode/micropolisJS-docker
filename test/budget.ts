@@ -74,6 +74,42 @@ describe("The budget", () => {
         expect(saved.upkeepFund).toBe(-450);
     });
 
+    it("lends money, repaid with interest each year, up to a limit", () => {
+        const budget = new (Budget as any)();
+        budget.setFunds(0);
+        expect(budget.loansAvailable()).toBe(5);
+        expect(budget.borrow(7)).toBe(5);
+        expect([budget.totalFunds, budget.debt, budget.debtPayment]).toEqual([50000, 60000, 6000]);
+        expect(budget.loansAvailable()).toBe(0);
+        expect(budget.borrow(1)).toBe(0);
+
+        const census = {totalPop: 0, policeStationPop: 0, fireStationPop: 0, roadTotal: 0, railTotal: 0,
+                        landValueAverage: 0};
+        budget.collectTax(0, census, 0);
+        expect([budget.loanFund, budget.totalFunds, budget.debt]).toEqual([-6000, 44000, 54000]);
+        expect(budget.loansAvailable()).toBe(0);
+        for (let year = 0; year < 9; year++)
+            budget.collectTax(0, census, 0);
+        expect([budget.totalFunds, budget.debt, budget.debtPayment]).toEqual([0, 0, 0]);
+    });
+
+    it("pays off the whole debt at once, only with the money for it", () => {
+        const budget = new (Budget as any)();
+        budget.setFunds(0);
+        budget.borrow(1);
+        expect(budget.repay()).toBe(false);
+        budget.setFunds(12000);
+        expect(budget.repay()).toBe(true);
+        expect([budget.totalFunds, budget.debt, budget.debtPayment]).toEqual([0, 0, 0]);
+
+        const saved: any = {};
+        budget.borrow(1);
+        budget.save(saved);
+        const loaded = new (Budget as any)();
+        loaded.load(saved);
+        expect([loaded.debt, loaded.debtPayment]).toEqual([12000, 1200]);
+    });
+
     it("shows each rate as it is: 29% stays 29% (0.29 * 100 is 28.999...)", () => {
         for (let percent = 0; percent <= 100; percent++)
             expect([percent, (BudgetWindow as any).rateOf(percent / 100)]).toEqual([percent, percent]);

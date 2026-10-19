@@ -1356,6 +1356,28 @@ a.hudButton, a.hudButton:visited {
   color: var(--muted);
 }
 
+/* The loans take the whole width (see BudgetWindow) */
+.budgetSliders .loanFieldset {
+  grid-column: 1 / -1;
+}
+
+#debtInfo {
+  margin: 4px 0 0;
+}
+
+.budgetCheck:not(.hidden) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+.budgetCheck.disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 #flagsTable {
   width: 100%;
   border-collapse: collapse;

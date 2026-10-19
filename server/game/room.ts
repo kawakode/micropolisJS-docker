@@ -615,6 +615,20 @@ export class Room {
         this.ok(client, message.seq);
         return;
 
+      case 'loan':
+        if (!builds) {
+          this.error(client, 'forbidden', message.seq);
+          return;
+        }
+        if (!this.city.applyLoan(message.borrow, message.repay)) {
+          this.error(client, 'invalid_input', message.seq);
+          return;
+        }
+        this.dirty = true;
+        this.statsDirty = true;
+        this.ok(client, message.seq);
+        return;
+
       case 'settings': {
         if (!builds || (message.disasters !== undefined && role !== 'owner')) {
           this.error(client, 'forbidden', message.seq);

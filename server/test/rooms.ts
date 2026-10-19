@@ -245,6 +245,7 @@ describe('The protocol', () => {
     expect(read({t: 'disaster', kind: 'Earthquake'})).toEqual({t: 'disaster', seq: null, kind: 'Earthquake'});
     expect(read({t: 'deal', side: 'west', kind: 'sellPower', signed: false}))
       .toEqual({t: 'deal', seq: null, side: 'west', kind: 'sellPower', signed: false});
+    expect(read({t: 'loan', seq: 4, borrow: 2, repay: false})).toEqual({t: 'loan', seq: 4, borrow: 2, repay: false});
     expect(read({t: 'chat', text: ' a\u0000b '})).toEqual({t: 'chat', seq: null, text: 'ab'});
     expect(read({t: 'cursor', x: 3, y: 4})).toEqual({t: 'cursor', x: 3, y: 4, tool: null, ax: null, ay: null});
     expect(read({t: 'cursor', x: 3, y: 4, tool: 'query', ax: null, ay: null}))
@@ -262,6 +263,7 @@ describe('The protocol', () => {
                        {t: 'budget', roadPercent: 1, firePercent: 0, policePercent: 0, taxPercent: 0.5},
                        {t: 'settings', disasters: 'off'}, {t: 'settings', extra: true},
                        {t: 'disaster', kind: 'toString'}, {t: 'deal', side: 'north', kind: 'trade'},
+                       {t: 'loan', borrow: 6, repay: false}, {t: 'loan', borrow: 1}, {t: 'loan', borrow: 1, repay: 1},
                        {t: 'chat', text: 'x'.repeat(1201)}, {t: 'chat', text: ['x']},
                        {t: 'cursor', x: 1, y: 1, tool: 'laser'}, {t: 'cursor', x: 1, y: 1, ax: 1},
                        {t: 'cursor', x: null, y: 1}, {t: 'speed', seq: 1.5, speed: 1},

@@ -26,6 +26,7 @@ import { Text } from './text.js';
 // - {t: 'tool', seq, tool, from: {x, y}, to: {x, y}}: a drag of a tool, from where it started to where it ended (the
 //   server works the placements out as the game does, see Placements). The query tool only reads the copy.
 // - {t: 'budget', seq, roadPercent, firePercent, policePercent, taxPercent}
+// - {t: 'loan', seq, borrow, repay}
 // - {t: 'settings', seq, autoBudget?, autoBulldoze?, disasters?, level?}: only those that changed
 // - {t: 'disaster', seq, kind}, {t: 'deal', seq, side, kind, signed}, {t: 'speed', seq, speed}, {t: 'pause', seq,
 //   paused}
@@ -274,6 +275,11 @@ var BUDGET_KEYS = ['roadPercent', 'firePercent', 'policePercent', 'taxPercent'];
 RemoteController.prototype.applyBudget = function(data, shown) {
   if (data.cancelled || !this.can('budget'))
     return;
+
+  // The loans, as chosen: they don't depend on what the window showed
+  var borrow = integer(data.borrow, 0, 5);
+  if ((borrow !== null && borrow > 0) || data.repay === true)
+    this._command({t: 'loan', borrow: borrow || 0, repay: data.repay === true});
 
   var values = {
     roadPercent: integer(data.roadPercent, 0, 100),

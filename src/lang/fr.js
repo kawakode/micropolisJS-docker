@@ -525,6 +525,17 @@ var strings = {
   'Goal reached: {goal}.': 'Objectif atteint : {goal}.',
   'Goal missed: {goal}.': 'Objectif manqué : {goal}.',
 
+  // Loans (see Budget.borrow)
+  'Loans': 'Emprunts',
+  'Loan repayment': 'Remboursement des emprunts',
+  'No new loan': 'Pas de nouvel emprunt',
+  'No more loans: the debt is at its limit.': 'Plus d\'emprunt possible : la dette est à son maximum.',
+  'Borrow {amount}, repaid {payment} a year for {years} years':
+    'Emprunter {amount}, remboursés {payment} par an pendant {years} ans',
+  'Debt: {debt}, repaid {payment} a year': 'Dette : {debt}, remboursée {payment} par an',
+  'No debt': 'Aucune dette',
+  'Pay off the whole debt now ({debt})': 'Rembourser toute la dette maintenant ({debt})',
+
   // The weather (see Weather)
   'Weather': 'Météo',
   'Snow': 'Neige',

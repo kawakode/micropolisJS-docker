@@ -49,6 +49,9 @@ const EXPLOSION_MOVES = Math.round(EXPLOSION_MS * 60 / 1000);
 // The most messages kept for the room between two calls of takeMessages: older ones go first
 const MAX_MESSAGES = 200;
 
+// The most loans the budget window takes at once (see Budget.MAX_DEBT)
+export const MAX_LOANS = 5;
+
 // The disasters a player can unleash, as the disaster window names them (see DisasterWindow)
 export const DISASTER_KINDS = ['Monster', 'Fire', 'Flood', 'Crash', 'Meltdown', 'Tornado', 'Earthquake'] as const;
 export type DisasterKind = typeof DISASTER_KINDS[number];
@@ -179,6 +182,8 @@ export interface BudgetObject {
   setAutoBudget(value: boolean): void;
   updateFundEffects(): void;
   doBudgetWindow(): void;
+  borrow(count: number): number;
+  repay(): boolean;
 }
 
 export interface EvaluationObject {
@@ -696,6 +701,20 @@ export class HeadlessCity {
   }
 
   // Signs or ends a deal with a neighbour (see Neighbours.setDeal)
+  // The loans of the budget window (see Budget.borrow and Budget.repay): the whole debt repaid, then count loans taken.
+  // Returns false, and changes nothing, if the values are not valid or the debt can't be repaid.
+  applyLoan(borrow: unknown, repay: unknown): boolean {
+    if (!isIntegerIn(borrow, 0, MAX_LOANS) || typeof repay !== 'boolean')
+      return false;
+
+    const budget = this.simulation.budget;
+    if (repay && !budget.repay())
+      return false;
+
+    budget.borrow(borrow as number);
+    return true;
+  }
+
   applyDeal(side: unknown, kind: unknown, signed: unknown): boolean {
     if (!SIDES.includes(side as string) || !KINDS.includes(kind as string) || typeof signed !== 'boolean')
       return false;

@@ -811,6 +811,7 @@
               <div id="currentInfo" class="budgetData"><span data-i18n>Current funds</span> <span id="currentFunds"></span></div>
               <div id="dealsInfo" class="budgetData"><span data-i18n>Neighbour deals</span> <span id="dealsFund"></span></div>
               <div id="upkeepInfo" class="budgetData"><span data-i18n>Schools upkeep</span> <span id="upkeepFund"></span></div>
+              <div id="loanInfo" class="budgetData"><span data-i18n>Loan repayment</span> <span id="loanFund"></span></div>
             </div>
             <div class="budgetSliders">
               <fieldset>
@@ -832,6 +833,14 @@
                 <legend data-i18n>Tax</legend>
                 <input type="range" id="taxRate" min="0" max="20" step="1">
                 <label for="taxRate" class="budgetData" id="taxRateLabel">100% of $100 = $100</label>
+              </fieldset>
+              <!-- Loans, repaid with interest over the years (see Budget.borrow) -->
+              <fieldset class="loanFieldset">
+                <legend data-i18n>Loans</legend>
+                <input type="range" id="loanCount" min="0" max="5" step="1" value="0">
+                <label for="loanCount" class="budgetData" id="loanCountLabel"></label>
+                <p class="budgetData" id="debtInfo"></p>
+                <label class="budgetData budgetCheck" id="repayDebtLabel"><input type="checkbox" id="repayDebt"> <span id="repayDebtText"></span></label>
               </fieldset>
             </div>
             <div id="budgetButtons" class="modalButtons">

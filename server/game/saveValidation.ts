@@ -5,6 +5,7 @@
  *
  */
 
+import { Budget } from '../../src/budget.js';
 import { Evaluation } from '../../src/evaluation.js';
 import { Neighbours } from '../../src/neighbours.js';
 import { Scenarios } from '../../src/scenarios.js';
@@ -40,6 +41,7 @@ export class SaveError extends Error {
 
 const INT32_MAX = 2 ** 31 - 1;
 const INT32_MIN = -(2 ** 31);
+const MAX_DEBT: number = Budget.MAX_DEBT;
 const TILES = CITY_WIDTH * CITY_HEIGHT;
 const HISTORY_LENGTH = 120;
 // The longest name a save may carry: the city takes the name the player gives it
@@ -112,6 +114,9 @@ const RULES: Readonly<Record<string, Rule>> = {
   fireEffect: {type: 'integer', min: 0, max: 1000},
   dealsFund: {type: 'integer', min: INT32_MIN, max: INT32_MAX, optional: true},
   upkeepFund: {type: 'integer', min: INT32_MIN, max: 0, optional: true},
+  debt: {type: 'integer', min: 0, max: MAX_DEBT, optional: true},
+  debtPayment: {type: 'integer', min: 0, max: MAX_DEBT, optional: true},
+  loanFund: {type: 'integer', min: -MAX_DEBT, max: 0, optional: true},
 
   // Census (the histories are checked apart)
   resPop: {type: 'integer', min: 0, max: INT32_MAX},
