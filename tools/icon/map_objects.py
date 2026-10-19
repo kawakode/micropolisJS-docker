@@ -12,7 +12,7 @@
 import math
 
 from iso import (Box, Line, Solid, Sprite, cylinder, gable, lit, mix, render, shade, sphere, transparent, GREY, GREY_DARK,
-                 GREY_LIGHT, RED, RED_DARK, WATER, WATER_LIGHT, WHITE, YELLOW)
+                 GREY_LIGHT, RED, RED_DARK, WATER, WATER_FOAM, WATER_LIGHT, WHITE, YELLOW)
 
 U = 16
 
@@ -575,6 +575,23 @@ def bus_depot():
     return shapes, [], [], []
 
 
+def dam():
+    concrete = plain((214, 212, 204), (176, 174, 166), (226, 224, 216))
+
+    def spillway(face, u, v):
+        if STATE['lights']:
+            return None
+        if face == 'top':
+            return (226, 224, 216)
+        return WATER_FOAM if int(v * 2 + u) % 3 else WATER_LIGHT
+
+    house_ = facade((214, 212, 204), (176, 174, 166), (120, 122, 138), (250, 210, 72), 3, 4, 3, seed=104)
+    # The water on either side is the ground's (see IsoTiles): the wall stands across it
+    shapes = [box(0, 20, 48, 28, 8, concrete), box(18, 28, 30, 36, 6, spillway),
+              box(4, 29, 14, 39, 6, house_), box(34, 29, 44, 39, 6, house_)]
+    return shapes, [], [], []
+
+
 def stadium(full):
     cx, cy, rx, ry = 32, 32, 28, 24
 
@@ -858,7 +875,7 @@ def objects():
             ('university', 4, university), ('library', 2, library), ('police_post', 2, police_post),
             ('fire_post', 2, fire_post), ('statue', 1, statue), ('town_hall', 3, town_hall), ('tower', 2, tower),
             ('recycling', 3, recycling), ('waterworks', 3, waterworks), ('bus_stop', 1, bus_stop),
-            ('bus_depot', 3, bus_depot), ('stadium', 4, lambda: stadium(False)), ('stadium_full', 4, lambda: stadium(True)),
+            ('bus_depot', 3, bus_depot), ('dam', 3, dam), ('stadium', 4, lambda: stadium(False)), ('stadium_full', 4, lambda: stadium(True)),
             ('port', 4, port), ('airport', 6, airport), ('coal', 4, coal), ('nuclear', 4, nuclear), ('gas', 3, gas),
             ('solar', 3, solar), ('bigpark', 3, bigpark), ('garden', 1, garden), ('plaza', 1, lambda: fountain(True)),
             ('fountain', 1, lambda: fountain(False))]

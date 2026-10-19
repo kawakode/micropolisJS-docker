@@ -268,6 +268,12 @@ var addLot = function(first, last, lot) {
   addBuilding('recycling', 3, TileValues.RECYCLINGBASE);
   addBuilding('waterworks', 3, TileValues.WATERWORKSBASE);
   addBuilding('bus_depot', 3, TileValues.BUSDEPOTBASE);
+  addBuilding('dam', 3, TileValues.DAMBASE);
+  // The dam stands across the water
+  range(TileValues.DAMBASE, TileValues.DAMBASE + 8, function(tile) {
+    ground[tile] = WATER;
+    overWater[tile] = 1;
+  });
   addLot(TileValues.GASBASE, TileValues.GASBASE + 8, 'concrete');
   addLot(TileValues.SOLARBASE, TileValues.SOLARBASE + 8, 'lawn');
   addLot(TileValues.SCHOOLBASE, TileValues.SCHOOLBASE + 8, 'lawn');

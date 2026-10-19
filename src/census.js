@@ -86,6 +86,7 @@ Census.prototype.clearCensus = function() {
   this.gasPowerPop = 0;
   this.solarPowerPop = 0;
   this.windPowerPop = 0;
+  this.hydroPowerPop = 0;
   this.schoolPop = 0;
   this.universityPop = 0;
   this.libraryPop = 0;

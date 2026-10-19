@@ -66,6 +66,7 @@ var SIZES = {
   waterworks: 3,
   busstop: 1,
   busdepot: 3,
+  dam: 3,
   university: 4,
   bigpark: 3
 };

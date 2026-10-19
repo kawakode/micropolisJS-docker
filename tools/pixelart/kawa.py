@@ -339,7 +339,21 @@ def bus_depot():
     return a
 
 
-# Tile numbers: keep in sync with src/tileValues.ts. Each entry: (first tile, size, drawing)
+def dam():
+    a = Art(3, 'water')
+    # The reservoir above, the river below, and between them the concrete wall, its spillway and its power house
+    a.rect(0, 20, 48, 9, 'lgrey').rect(0, 20, 48, 1, 'white').rect(0, 28, 48, 1, 'grey')
+    for x in range(4, 46, 6):
+        a.rect(x, 22, 1, 5, 'grey')
+    a.rect(18, 29, 12, 8, 'white')
+    for y in range(30, 37, 2):
+        a.rect(18 + (y % 4), y, 8, 1, 'water')
+    a.rect(4, 31, 10, 8, 'lgrey').rect(4, 31, 10, 2, 'dgrey').rect(6, 35, 2, 2, 'yellow')
+    a.rect(34, 31, 10, 8, 'lgrey').rect(34, 31, 10, 2, 'dgrey').rect(40, 35, 2, 2, 'yellow')
+    return a
+
+
+# Tile numbers: keep in sync with src/tileValues.ts. Each entry: (first tile, size, drawing[, kind for remastering])
 WIND = 1024
 WIND_FRAMES = [1025, 1026, 1027]
 GASBASE = 1028
@@ -359,6 +373,7 @@ RECYCLINGBASE = 1108
 WATERWORKSBASE = 1117
 BUSSTOP = 1126
 BUSDEPOTBASE = 1127
+DAMBASE = 1136
 
 BUILDINGS = [
     (WIND, 1, lambda: wind_turbine(0)),
@@ -382,6 +397,7 @@ BUILDINGS = [
     (WATERWORKSBASE, 3, waterworks),
     (BUSSTOP, 1, bus_stop),
     (BUSDEPOTBASE, 3, bus_depot),
+    (DAMBASE, 3, dam, 'port'),
 ]
 
 
@@ -397,9 +413,11 @@ def extend(tiles, season):
     for index in range(1024, 2048):
         g.put_tile(out, index, tex['grass'])
 
-    for base, size, draw in BUILDINGS:
+    for entry in BUILDINGS:
+        base, size, draw = entry[:3]
         art = draw()
-        block = g.remaster(art.rgb(), art.names, season, tex, (0, 0), 'building')
+        # Water is a building's colour, but for a building on water (the dam), whose water stays water
+        block = g.remaster(art.rgb(), art.names, season, tex, (0, 0), entry[3] if len(entry) > 3 else 'building')
         for i in range(size * size):
             g.put_tile(out, base + i, block[(i // size) * TS:(i // size + 1) * TS, (i % size) * TS:(i % size + 1) * TS])
 
@@ -415,7 +433,7 @@ def extend_lights(lights):
     out[:original.shape[0]] = original
     lit = []
 
-    for base, size, draw in BUILDINGS:
+    for base, size, draw in (entry[:3] for entry in BUILDINGS):
         if base in (BIGPARKBASE, GARDEN, SOLARBASE) or base in WIND_FRAMES or base == WIND:
             continue
         names = draw().names

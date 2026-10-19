@@ -29,10 +29,10 @@ var ACHIEVEMENTS = [
    met: function(f) { return f.census.seaportPop > 0; }},
   {id: 'airport', bit: 7, name: 'Taking off', goal: 'Build an airport.',
    met: function(f) { return f.census.airportPop > 0; }},
-  {id: 'cleanPower', bit: 8, name: 'Clean energy', goal: 'Power a city of 2,000 people with the sun and the wind only.',
+  {id: 'cleanPower', bit: 8, name: 'Clean energy', goal: 'Power a city of 2,000 people with clean energy only.',
    met: function(f) {
      var census = f.census;
-     return f.population >= 2000 && census.solarPowerPop + census.windPowerPop > 0 &&
+     return f.population >= 2000 && census.solarPowerPop + census.windPowerPop + (census.hydroPowerPop || 0) > 0 &&
             census.coalPowerPop + census.gasPowerPop + census.nuclearPowerPop === 0;
    }},
   {id: 'quietStreets', bit: 9, name: 'Quiet streets', goal: 'Reach 10,000 people with little crime.',

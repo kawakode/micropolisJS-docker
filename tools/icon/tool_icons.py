@@ -472,6 +472,17 @@ def bus_depot():
     return shapes, [], []
 
 
+def dam():
+    def river(x, y):
+        return WATER_LIGHT if (x * 3 + y) % 7 == 0 else WATER
+
+    concrete = walls((214, 212, 204), (176, 174, 166), (226, 224, 216))
+    shapes = [land(river, edge=None), Box(0, 5, 0, 13, 8, 3.5, concrete),
+              Box(5, 8, 0, 8, 10, 2.5, walls(WATER_FOAM, WATER_LIGHT, (226, 224, 216))),
+              Box(1, 8.5, 0, 4, 11, 2.5, concrete), Box(9, 8.5, 0, 12, 11, 2.5, concrete)]
+    return shapes, [], []
+
+
 def park():
     def path(x, y):
         return (214, 196, 150) if abs(x - y) <= 1 else grass(x, y)
@@ -634,6 +645,7 @@ ICONS = [
     ('waterworks', waterworks),
     ('busstop', bus_stop),
     ('busdepot', bus_depot),
+    ('dam', dam),
 ]
 
 

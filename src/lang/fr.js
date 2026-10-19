@@ -165,6 +165,9 @@ var strings = {
     'Fait monter les prix fonciers et baisser la criminalité alentour. 100 $ par an.',
   'Hospital': 'Hôpital',
   'Environment': 'Écologie',
+  'Hydroelectric dam': 'Barrage',
+  'Built across a river or a lake: 600 MW, clean, whatever the weather.':
+    'Construit en travers d\'une rivière ou d\'un lac : 600 MW, propre, quel que soit le temps.',
   'Bus stop': 'Arrêt de bus',
   'Beside a road: fewer cars around it, once the city has a bus depot. $5 a year.':
     'Au bord d\'une route : moins de voitures alentour, dès que la ville a un dépôt de bus. 5 $ par an.',
@@ -655,8 +658,8 @@ var strings = {
   'Taking off': 'Décollage',
   'Build an airport.': 'Construire un aéroport.',
   'Clean energy': 'Énergie propre',
-  'Power a city of 2,000 people with the sun and the wind only.':
-    'Alimenter une ville de 2 000 habitants avec le soleil et le vent seulement.',
+  'Power a city of 2,000 people with clean energy only.':
+    'Alimenter une ville de 2 000 habitants avec de l\'énergie propre seulement.',
   'Quiet streets': 'Rues tranquilles',
   'Reach 10,000 people with little crime.': 'Atteindre 10 000 habitants avec peu de criminalité.',
   'Green city': 'Ville verte',

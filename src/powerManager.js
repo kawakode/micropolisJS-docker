@@ -18,7 +18,7 @@ import { Position } from './position.ts';
 import { NOT_ENOUGH_POWER } from './messages.ts';
 import { Random } from './random.ts';
 import { ANIMBIT, BURNBIT, CONDBIT, POWERBIT } from "./tileFlags.ts";
-import { GASPLANT, NUCLEAR, POWERPLANT, SOLARPLANT, WINDTURBINE } from "./tileValues.ts";
+import { DAM, GASPLANT, NUCLEAR, POWERPLANT, SOLARPLANT, WINDTURBINE } from "./tileValues.ts";
 
 var COAL_POWER_STRENGTH = 700;
 var NUCLEAR_POWER_STRENGTH = 2000;
@@ -26,11 +26,13 @@ var NUCLEAR_POWER_STRENGTH = 2000;
 var GAS_POWER_STRENGTH = 500;
 var SOLAR_POWER_STRENGTH = 400;
 var WIND_POWER_STRENGTH = 50;
+// A dam gives as much whatever the weather
+var HYDRO_POWER_STRENGTH = 600;
 
 // The tiles that produce power
 var isPowerSource = function(tileValue) {
   return tileValue === NUCLEAR || tileValue === POWERPLANT || tileValue === GASPLANT || tileValue === SOLARPLANT ||
-         tileValue === WINDTURBINE;
+         tileValue === WINDTURBINE || tileValue === DAM;
 };
 
 
@@ -93,7 +95,8 @@ PowerManager.prototype.doPowerScan = function(census, supply, weather) {
                  census.nuclearPowerPop * NUCLEAR_POWER_STRENGTH +
                  census.gasPowerPop * GAS_POWER_STRENGTH +
                  census.solarPowerPop * Math.round(SOLAR_POWER_STRENGTH * (weather ? weather.solarFactor() : 1)) +
-                 census.windPowerPop * Math.round(WIND_POWER_STRENGTH * (weather ? weather.windFactor() : 1));
+                 census.windPowerPop * Math.round(WIND_POWER_STRENGTH * (weather ? weather.windFactor() : 1)) +
+                 (census.hydroPowerPop || 0) * HYDRO_POWER_STRENGTH;
 
   if (supply) {
     maxPower += supply.capacity;
@@ -187,6 +190,7 @@ var makePlantHandler = function(counter) {
 PowerManager.prototype.gasPowerFound = makePlantHandler('gasPowerPop');
 PowerManager.prototype.solarPowerFound = makePlantHandler('solarPowerPop');
 PowerManager.prototype.windPowerFound = makePlantHandler('windPowerPop');
+PowerManager.prototype.hydroPowerFound = makePlantHandler('hydroPowerPop');
 
 
 PowerManager.prototype.registerHandlers = function(mapScanner, repairManager) {
@@ -195,8 +199,10 @@ PowerManager.prototype.registerHandlers = function(mapScanner, repairManager) {
   mapScanner.addAction(GASPLANT, this.gasPowerFound.bind(this));
   mapScanner.addAction(SOLARPLANT, this.solarPowerFound.bind(this));
   mapScanner.addAction(WINDTURBINE, this.windPowerFound.bind(this));
+  mapScanner.addAction(DAM, this.hydroPowerFound.bind(this));
   repairManager.addAction(GASPLANT, 7, 3);
   repairManager.addAction(SOLARPLANT, 7, 3);
+  repairManager.addAction(DAM, 7, 3);
   repairManager.addAction(POWERPLANT, 7, 4);
   repairManager.addAction(NUCLEAR, 7, 4);
 };

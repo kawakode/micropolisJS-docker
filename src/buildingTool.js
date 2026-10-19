@@ -13,14 +13,16 @@
 
 import { ConnectingTool } from './connectingTool.js';
 import { ANIMBIT, BNCNBIT, ZONEBIT } from "./tileFlags.ts";
-import { DIRT } from "./tileValues.ts";
+import { DIRT, WATER_HIGH, WATER_LOW } from "./tileValues.ts";
 import { TileUtils } from './tileUtils.js';
 
-var BuildingTool = ConnectingTool(function(cost, centreTile, map, size, animated) {
+// KawaCity: a building onWater (the dam) is built over water only, rather than on clear land
+var BuildingTool = ConnectingTool(function(cost, centreTile, map, size, animated, onWater) {
   this.init(cost, map, false);
   this.centreTile = centreTile;
   this.size = size;
   this.animated = animated;
+  this.onWater = !!onWater;
 });
 
 
@@ -67,6 +69,9 @@ BuildingTool.prototype.prepareBuildingSite = function(leftX, topY) {
 
   var posX, posY, tileValue;
 
+  if (this.onWater)
+    return this.isAllWater(leftX, topY) ? this.TOOLRESULT_OK : this.TOOLRESULT_FAILED;
+
   // Check whether the tiles are clear
   for (var dy = 0; dy < this.size; dy++) {
     posY = topY + dy;
@@ -95,6 +100,19 @@ BuildingTool.prototype.prepareBuildingSite = function(leftX, topY) {
   }
 
   return this.TOOLRESULT_OK;
+};
+
+
+BuildingTool.prototype.isAllWater = function(leftX, topY) {
+  for (var dy = 0; dy < this.size; dy++) {
+    for (var dx = 0; dx < this.size; dx++) {
+      var tileValue = this._worldEffects.getTileValue(leftX + dx, topY + dy);
+      if (tileValue < WATER_LOW || tileValue > WATER_HIGH)
+        return false;
+    }
+  }
+
+  return true;
 };
 
 

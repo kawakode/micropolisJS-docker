@@ -66,6 +66,17 @@ BulldozerTool.prototype.putRubble = function(x, y, size) {
 };
 
 
+BulldozerTool.prototype.putWater = function(x, y, size) {
+  for (var xx = x; xx < x + size; xx++) {
+    for (var yy = y; yy < y + size; yy++) {
+      this._worldEffects.setTile(xx, yy, TileValues.RIVER, 0);
+      if (this._demolished !== null)
+        this._demolished.add(xx + ',' + yy);
+    }
+  }
+};
+
+
 BulldozerTool.prototype.layDoze = function(x, y) {
   var tile = this._worldEffects.getTile(x, y);
 
@@ -157,6 +168,14 @@ BulldozerTool.prototype.doTool = function(x, y, blockMaps) {
     var dozeY = y;
     var centerX = x + deltaX;
     var centerY = y + deltaY;
+
+    // KawaCity: a dam demolished gives the water back
+    if (this._worldEffects.getTileValue(centerX, centerY) === TileValues.DAM) {
+      this._emitEvent(SOUND_EXPLOSIONHIGH);
+      this.putWater(centerX - 1, centerY - 1, 3);
+      this.result = this.TOOLRESULT_OK;
+      return;
+    }
 
     switch (zoneSize) {
       case 1:

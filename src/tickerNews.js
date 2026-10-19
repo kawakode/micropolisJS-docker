@@ -570,7 +570,8 @@ TickerNews.prototype.cityReport = function(status) {
 
   // Power
   var zones = census.poweredZoneCount + census.unpoweredZoneCount;
-  var plants = census.coalPowerPop + census.nuclearPowerPop + census.gasPowerPop + census.solarPowerPop + census.windPowerPop;
+  var plants = census.coalPowerPop + census.nuclearPowerPop + census.gasPowerPop + census.solarPowerPop + census.windPowerPop +
+               (census.hydroPowerPop || 0);
   var homesAndJobs = census.resZonePop + census.comZonePop + census.indZonePop;
 
   if (homesAndJobs === 0)

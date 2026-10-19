@@ -352,7 +352,9 @@ export const WATERWORKS     = 1121;
 export const BUSSTOP        = 1126; // A 1x1 bus stop, its own centre
 export const BUSDEPOTBASE   = 1127; // Bus depot (tiles 1127--1135)
 export const BUSDEPOT       = 1131;
-export const KAWALAST       = 1135;
+export const DAMBASE        = 1136; // Hydroelectric dam, built over water (tiles 1136--1144)
+export const DAM            = 1140;
+export const KAWALAST       = 1144;
 
 export const TILE_COUNT     = 2048;
 

@@ -573,6 +573,7 @@ Simulation.prototype._sendMessages = function() {
   var totalZonePop = this._census.resZonePop + this._census.comZonePop +
                      this._census.indZonePop;
   var powerPop = this._census.nuclearPowerPop + this._census.coalPowerPop + this._census.gasPowerPop +
+                 this._census.hydroPowerPop +
                  this._census.solarPowerPop + this._census.windPowerPop;
 
   // KawaCity: a cap on demand lifts as soon as the stadium, seaport or airport it asks for is there, instead of at

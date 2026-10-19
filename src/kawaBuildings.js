@@ -151,6 +151,7 @@ var getZoneSize = function(tileValue) {
     case TileValues.RECYCLING:
     case TileValues.WATERWORKS:
     case TileValues.BUSDEPOT:
+    case TileValues.DAM:
       return 3;
 
     case TileValues.UNIVERSITY:
