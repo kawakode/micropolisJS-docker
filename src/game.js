@@ -37,7 +37,6 @@ import { MonsterTV } from './monsterTV.js';
 import { NeighboursWindow } from './neighboursWindow.js';
 import { Notification } from './notification.js';
 import { QueryWindow } from './queryWindow.js';
-import { Random } from './random.ts';
 import { RCI } from './rci.js';
 import { SaveWindow } from './saveWindow.js';
 import { ScreenshotWindow } from './screenshotWindow.js';
@@ -281,10 +280,6 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
 
   // Escape closes dialogs, or deselects the current tool
   this.inputStatus.addEventListener(Messages.ESCAPE_PRESSED, this.handleEscape.bind(this));
-
-  // And date changes
-  // XXX Not yet activated
-  //this.simulation.addEventListener(Messages.DATE_UPDATED, this.onDateChange.bind(this));
 
   this.infoBar = InfoBar('cclass', 'population', 'score', 'funds', 'date', 'name');
   var initialValues;
@@ -629,17 +624,30 @@ Game.prototype.revealControls = function() {
 };
 
 
+// The weather's wind, by strength (see Weather)
+var WIND_TEXT = ['Calm', 'Fair', 'Windy'];
+
+
 var genericDialogClosure = function() {
   this.dialogOpen = false;
   this._openWindow = null;
 };
 
 
-Game.prototype.onDateChange = function(date) {
-  if (date.month === 10 && Random.getChance(10))
-    this.gameCanvas.changeTileSet(this.snowTileSet);
-  else if (date.month === 1)
-    this.gameCanvas.changeTileSet(this.tileSet);
+// Shows the weather in the heads-up display, and snow on the map while it lies (see Weather)
+Game.prototype.updateWeather = function() {
+  var weather = this.simulation.getWeather();
+  var key = weather.snow + '|' + weather.wind + '|' + weather.solar;
+  if (key === this._weatherKey)
+    return;
+
+  this._weatherKey = key;
+  $('#weather').text(I18n.t(weather.snow ? 'Snow' : WIND_TEXT[weather.wind]));
+  $('#weatherStat').attr('title', I18n.t('Solar farms give {solar}% of their power, wind turbines {wind}%.',
+                                         {solar: weather.solar, wind: weather.windPower}));
+  this.ambientLife.setSnow(weather.snow);
+  if (this.snowTileSet && this.snowTileSet.isValid)
+    this.gameCanvas.changeTileSet(weather.snow ? this.snowTileSet : this.tileSet);
 };
 
 
@@ -1283,6 +1291,7 @@ var commonAnimate = function(timestamp) {
   this.ambientLife.update(elapsed, this.gameCanvas.getVisibleWorldRect(),
                          !this.isPaused && (this.remote || !this.dialogOpen));
   this.updateClock();
+  this.updateWeather();
   this.updateScenarioPanel();
   this.updateGoalPanel();
   this.ticker.update(elapsed);

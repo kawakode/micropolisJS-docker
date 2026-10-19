@@ -87,6 +87,7 @@ export const SOUND_EXPLOSIONLOW = "Explosion! Bang!";
 export const SOUND_HEAVY_TRAFFIC = "Heavy Traffic sound";
 export const SOUND_HONKHONK = "HonkHonk sound";
 export const SOUND_MONSTER = "Monster sound";
+export const SNOW_FELL = "Snow fell";
 export const SPEED_CHANGE = "Speed change";
 export const SPRITE_DYING = "Sprite dying";
 export const SPRITE_MOVED = "Sprite move";

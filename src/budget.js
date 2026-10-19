@@ -265,8 +265,9 @@ Budget.prototype.otherFunds = function() {
 };
 
 
-// dealsFund: what the deals with the neighbouring cities earned (or cost) over the year
-Budget.prototype.collectTax = function(gameLevel, census, dealsFund) {
+// dealsFund: what the deals with the neighbouring cities earned (or cost) over the year. snowFactor: how much more
+// the roads cost to keep clear after the snow of the year (see Weather.closeYear), 1 by default.
+Budget.prototype.collectTax = function(gameLevel, census, dealsFund, snowFactor) {
   this.cashFlow = 0;
   this.dealsFund = dealsFund || 0;
   var upkeep = Object.keys(UPKEEP).reduce(function(total, counter) {
@@ -278,7 +279,7 @@ Budget.prototype.collectTax = function(gameLevel, census, dealsFund) {
   this.policeMaintenanceBudget = census.policeStationPop * policeMaintenanceCost;
   this.fireMaintenanceBudget = census.fireStationPop * fireMaintenanceCost;
 
-  var roadCost = Math.max(0, census.roadTotal + (census.roadUpkeep || 0)) * roadMaintenanceCost;
+  var roadCost = Math.max(0, census.roadTotal + (census.roadUpkeep || 0)) * roadMaintenanceCost * (snowFactor || 1);
   var railCost = census.railTotal * railMaintenanceCost;
   this.roadMaintenanceBudget = Math.floor((roadCost + railCost) * RLevels[gameLevel]);
 

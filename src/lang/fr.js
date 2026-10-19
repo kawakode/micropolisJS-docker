@@ -146,9 +146,10 @@ var strings = {
   'Power line': 'Ligne électrique',
   'Carries power to zones that don\'t touch a powered zone.': 'Amène le courant aux zones qui ne touchent pas une zone alimentée.',
   'Wind turbine': 'Éolienne',
-  '50 MW, clean. Build them in fields.': '50 MW, propre. À construire en pleine campagne.',
+  '50 MW, clean, more when it is windy. Build them in fields.':
+    '50 MW, propre, davantage par grand vent. À construire en pleine campagne.',
   'Solar farm': 'Centrale solaire',
-  '400 MW, clean.': '400 MW, propre.',
+  '400 MW, clean. Less in winter and under snow.': '400 MW, propre. Moins en hiver et sous la neige.',
   'Gas plant': 'Centrale à gaz',
   '500 MW, a little pollution.': '500 MW, un peu polluante.',
   'Coal plant': 'Centrale à charbon',
@@ -523,6 +524,17 @@ var strings = {
   '{months} months': '{months} mois',
   'Goal reached: {goal}.': 'Objectif atteint : {goal}.',
   'Goal missed: {goal}.': 'Objectif manqué : {goal}.',
+
+  // The weather (see Weather)
+  'Weather': 'Météo',
+  'Snow': 'Neige',
+  'Calm': 'Calme',
+  'Fair': 'Beau temps',
+  'Windy': 'Venteux',
+  'Solar farms give {solar}% of their power, wind turbines {wind}%.':
+    'Les centrales solaires donnent {solar} % de leur puissance, les éoliennes {wind} %.',
+  'Snow has fallen: solar farms give less, and clearing the roads costs more':
+    'Il a neigé : les centrales solaires produisent moins et le déneigement coûte plus cher',
 
   // The city's goals (see Achievements)
   'Next goal': 'Prochain objectif',

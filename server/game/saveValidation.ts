@@ -72,6 +72,9 @@ const RULES: Readonly<Record<string, Rule>> = {
   _speed: {type: 'integer', min: 0, max: 3},
   _gameLevel: {type: 'integer', min: 0, max: 2, optional: true},
   achievements: {type: 'integer', min: 0, max: INT32_MAX, optional: true},
+  weatherSnow: {type: 'boolean', optional: true},
+  weatherWind: {type: 'integer', min: 0, max: 2, optional: true},
+  snowMonths: {type: 'integer', min: 0, max: 12, optional: true},
 
   // GameMap (the tiles are checked apart)
   cityCentreX: {type: 'integer', min: 0, max: CITY_WIDTH - 1},

@@ -378,6 +378,10 @@ function RemoteCity(map, simulation) {
   simulation.getCityStatus = function() {
     return copyOf(self.cityStatus);
   };
+  var ownWeather = simulation.getWeather.bind(simulation);
+  simulation.getWeather = function() {
+    return isObject(self.cityStatus.weather) ? copyOf(self.cityStatus.weather) : ownWeather();
+  };
   simulation.neighbours.describe = function() {
     return copyOf(self.neighbours);
   };

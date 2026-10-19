@@ -39,6 +39,7 @@ import { Stadia } from './stadia.js';
 import { Traffic } from './traffic.js';
 import { Transport } from './transport.js';
 import { Valves } from './valves.js';
+import { Weather } from './weather.js';
 
 // KawaCity: options (optional) is {inert}. An inert simulation is the copy of a city simulated elsewhere (on a server):
 // it holds the city's state, as loaded and then updated from outside, but never changes it by itself (see init).
@@ -85,6 +86,9 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame, op
 
   // KawaCity: the cities around this one, and the deals made with them
   this.neighbours = new Neighbours(this._map);
+
+  // KawaCity: the sun, the wind and the snow, month by month
+  this.weather = new Weather();
 
   this.blockMaps = {
     // Holds a "distance score" for the block from the city centre, range  -64 to 64
@@ -212,6 +216,7 @@ Simulation.prototype.save = function(saveData) {
   this.budget.save(saveData);
   this._census.save(saveData);
   this.neighbours.save(saveData);
+  this.weather.save(saveData);
 };
 
 
@@ -228,6 +233,7 @@ Simulation.prototype.load = function(saveData) {
   this.budget.load(saveData);
   this._census.load(saveData);
   this.neighbours.load(saveData);
+  this.weather.load(saveData, this.getDate().month);
 };
 
 
@@ -405,6 +411,8 @@ var simulate = function(simData) {
           this._simCycle = 0;
 
       this._cityTime++;
+      if ((this._cityTime & 3) === 0)
+        this._newMonthWeather();
 
       if ((this._simCycle & 1) === 0)
         this._valves.setValves(this._gameLevel, this._census, this.budget, this.neighbours.demandBonus());
@@ -436,7 +444,7 @@ var simulate = function(simData) {
         this._census.take120Census(this.budget);
 
       if (this._cityTime % TAX_FREQUENCY === 0)  {
-        this.budget.collectTax(this._gameLevel, this._census, this.neighbours.closeYear());
+        this.budget.collectTax(this._gameLevel, this._census, this.neighbours.closeYear(), this.weather.closeYear());
         this.evaluation.cityEvaluation(simData);
       }
 
@@ -488,7 +496,7 @@ var simulate = function(simData) {
 // Scans the power grid, with the power bought from the neighbouring cities, then delivers the power sold to them
 Simulation.prototype._scanPower = function() {
   this.neighbours.findLinks();
-  this._powerManager.doPowerScan(this._census, this.neighbours.powerSupply());
+  this._powerManager.doPowerScan(this._census, this.neighbours.powerSupply(), this.weather);
   this.neighbours.deliverPower(this._powerManager.powerGridMap, this._powerManager.spare);
 };
 
@@ -667,6 +675,19 @@ Simulation.prototype._sendMessages = function() {
       this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.TRAFFIC_JAMS});
     break;
   }
+};
+
+
+// The weather of the new month: snow is told as it falls
+Simulation.prototype._newMonthWeather = function() {
+  if (this.weather.newMonth(this.getDate().month))
+    this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.SNOW_FELL});
+};
+
+
+// The weather, as the game shows it (see Weather.describe)
+Simulation.prototype.getWeather = function() {
+  return this.weather.describe();
 };
 
 
@@ -923,6 +944,7 @@ Simulation.prototype.getCityStatus = function() {
     flooding: this.disasterManager.isFlooding(),
     pollutionMax: {x: this._map.pollutionMaxX, y: this._map.pollutionMaxY},
     powerBought: this.neighbours.powerSupply().capacity,
+    weather: this.weather.describe(),
     dealsOnHold: this.neighbours.dealsOnHold().map(function(deal) {
       return Object.assign(deal, this.neighbours.edgeCentre(deal.side));
     }, this)
