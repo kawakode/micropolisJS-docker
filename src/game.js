@@ -1137,6 +1137,12 @@ Game.prototype.notify = function(text, kind) {
 };
 
 
+// The same, doing something when clicked
+Game.prototype.notifyAction = function(text, kind, action) {
+  this._notificationBar.showAction(text, kind, action);
+};
+
+
 Game.prototype.calculateSpritesForPaint = function(canvas) {
   var rect = canvas.getVisibleWorldRect();
   var tileSize = GameCanvas.TILE_SIZE;

@@ -30,9 +30,10 @@ function Notification(element, map, initialText) {
 
   this._handleClick = handleClick.bind(this);
 
-  // The position to centre on when the link is clicked
+  // The position to centre on when the link is clicked, or what a click on the notification does (see showAction)
   this._x = -1;
   this._y = -1;
+  this._action = null;
 
   this._element.click(this._handleClick);
   this.close = close.bind(this);
@@ -51,6 +52,7 @@ var close = function(e) {
 
 
 Notification.prototype._displayLink = function(text, x, y) {
+  this._action = null;
   if (this._timeout !== null) {
     window.clearTimeout(this._timeout);
     this._timeout = null;
@@ -71,6 +73,7 @@ Notification.prototype._displayLink = function(text, x, y) {
 
 
 Notification.prototype._displayText = function(text, x, y) {
+  this._action = null;
   if (this._timeout !== null) {
     window.clearTimeout(this._timeout);
     this._timeout = null;
@@ -90,6 +93,13 @@ Notification.prototype._displayText = function(text, x, y) {
 
 var handleClick = function(e) {
   e.preventDefault();
+
+  if (this._action !== null) {
+    var action = this._action;
+    this.close();
+    action();
+    return;
+  }
 
   if (this._x === -1 || this._y === -1)
     return;
@@ -129,6 +139,14 @@ Notification.prototype.goodNews = function(message) {
 Notification.prototype.showText = function(text, kind) {
   this._element.removeClass('good bad neutral').addClass(kind === 'good' || kind === 'bad' ? kind : 'neutral');
   this._displayText(text);
+};
+
+
+// Shows a text of its own, which does something when clicked
+Notification.prototype.showAction = function(text, kind, action) {
+  this.showText(text, kind);
+  this._action = action;
+  this._element.addClass('pointer');
 };
 
 

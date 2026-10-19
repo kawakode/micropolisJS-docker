@@ -42,6 +42,7 @@ var strings = {
   'Zoom out (-)': 'Dézoomer (-)',
   'Live': 'En direct',
   'Close': 'Fermer',
+  'Game saved. Click here to keep a copy as a file.': 'Partie sauvegardée. Cliquez ici pour en garder une copie dans un fichier.',
   'City news': 'Actualités de la ville',
   'Show on the map': 'Voir sur la carte',
 
