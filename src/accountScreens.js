@@ -267,8 +267,9 @@ var setFieldError = function(input, text) {
 };
 
 
+// The fields that may hold an error: not the radio buttons and checkboxes, whose label must follow them (see .choice)
 var fieldsOf = function(form) {
-  return $(form).find('input').not('.honeypot input');
+  return $(form).find('input').not('.honeypot input, [type="radio"], [type="checkbox"]');
 };
 
 
