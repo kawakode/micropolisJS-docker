@@ -493,6 +493,30 @@ Game.prototype._achievementMet = function(data, d) {
 };
 
 
+// What happened to a neighbouring city ({kind, name, side, gift}, see Neighbours.takeNews), told without stopping the
+// city; clicking the news opens the neighbours window
+var NEIGHBOUR_NEWS = {
+  boom: 'Economic boom in {name}: trading with it brings twice the business this year.',
+  recession: 'Recession in {name}: trading with it brings half the business this year.',
+  powerShortage: '{name} is short of power: it pays double for the power it buys, and has none to sell, this year.',
+  twinningRequest: '{name} would like to twin with your city: sign the twinning this year for a gift of {gift}.',
+  twinned: '{name} thanks you for the twinning, with a gift of {gift}.'
+};
+
+Game.prototype._neighbourNews = function(data, d) {
+  if (!data || !Object.prototype.hasOwnProperty.call(NEIGHBOUR_NEWS, data.kind) || typeof(data.name) !== 'string')
+    return;
+
+  if (this.lastBadMessageTime !== null && d - this.lastBadMessageTime <= disasterTimeout)
+    return;
+
+  this.lastBadMessageTime = null;
+  var text = I18n.t(NEIGHBOUR_NEWS[data.kind], {name: data.name, gift: I18n.money(data.gift || 0)});
+  var kind = data.kind === 'recession' ? 'neutral' : 'good';
+  this._notificationBar.showAction(text, kind, this.handleNeighboursRequest.bind(this));
+};
+
+
 // Keeps the goal panel up to date: the next goal, how many are met, and the list of all of them when it is open. It
 // is hidden while a scenario runs, which has a goal of its own (see updateScenarioPanel).
 Game.prototype.updateGoalPanel = function() {
@@ -1018,6 +1042,11 @@ Game.prototype.processFrontEndMessage = function(message) {
 
   if (subject === Messages.ACHIEVEMENT_MET) {
     this._achievementMet(message.data, d);
+    return;
+  }
+
+  if (subject === Messages.NEIGHBOUR_NEWS) {
+    this._neighbourNews(message.data, d);
     return;
   }
 

@@ -451,6 +451,7 @@ var simulate = function(simData) {
         this.evaluation.cityEvaluation(simData);
       }
 
+      this._tellNeighbourNews();
       break;
 
     case 10:
@@ -687,6 +688,21 @@ Simulation.prototype._demandBonus = function() {
   var bonus = this.neighbours.demandBonus();
   var effects = Ordinances.effects(this.budget.ordinances);
   return {res: bonus.res + effects.res, com: bonus.com + effects.com, ind: bonus.ind + effects.ind};
+};
+
+
+// What happened to the neighbours is told, and their gifts are added to the funds
+Simulation.prototype._tellNeighbourNews = function() {
+  var taken = this.neighbours.takeNews();
+  if (taken.gifts > 0)
+    this.budget.spend(-taken.gifts);
+
+  taken.news.forEach(function(news) {
+    var data = {kind: news.kind, name: news.name, side: news.side};
+    if (news.gift)
+      data.gift = news.gift;
+    this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.NEIGHBOUR_NEWS, data: data});
+  }, this);
 };
 
 

@@ -56,6 +56,7 @@ export const NEED_POLICE_STATION = "Police station needed";
 export const NEED_SEAPORT = "Seaport needed";
 export const NEED_STADIUM = "Stadium needed";
 export const NO_MONEY = "No money";
+export const NEIGHBOUR_NEWS = "Neighbour news";
 export const NOT_ENOUGH_POWER = "Not enough power";
 export const NEIGHBOURS_REQUESTED = "Neighbours window requested";
 export const NEIGHBOURS_WINDOW_CLOSED = "Neighbours window closed";

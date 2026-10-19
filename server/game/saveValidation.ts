@@ -52,6 +52,7 @@ const CITY_CLASSES: readonly string[] = ['CC_VILLAGE', 'CC_TOWN', 'CC_CITY', 'CC
                                          'CC_MEGALOPOLIS'].map(key => (Evaluation as unknown as Record<string, string>)[key]);
 const SIDES = Neighbours.SIDES as readonly string[];
 const KINDS = Neighbours.KINDS as readonly string[];
+const EVENTS = Neighbours.EVENTS as readonly string[];
 
 // The save's scalar values, in the order the game writes them: their type and range, and whether a save may leave
 // them out (the game then uses its own value, or the server sets it)
@@ -279,7 +280,7 @@ function checkNeighbours(value: unknown): Record<string, unknown>[] {
     const field = `neighbours.${side}`;
     check(isPlainObject(neighbour), field);
     const n = neighbour as Record<string, unknown>;
-    check(hasOnlyKeys(n, ['side', 'name', 'population', 'deals', 'months']), field);
+    check(hasOnlyKeys(n, ['side', 'name', 'population', 'deals', 'months', 'event']), field);
     check(n.side === side, field);
 
     const name = checkText(n.name, NEIGHBOUR_NAME_MAX);
@@ -291,6 +292,12 @@ function checkNeighbours(value: unknown): Record<string, unknown>[] {
       result.deals = checkKinds(field + '.deals', n.deals, v => typeof v === 'boolean');
     if (Object.hasOwn(n, 'months'))
       result.months = checkKinds(field + '.months', n.months, v => isIntegerIn(v, 0, 12));
+    if (Object.hasOwn(n, 'event') && n.event !== null) {
+      const event = n.event as Record<string, unknown>;
+      check(isPlainObject(event) && hasOnlyKeys(event, ['kind', 'months']) && EVENTS.includes(event.kind as string) &&
+            isIntegerIn(event.months, 1, Neighbours.EVENT_MONTHS), field + '.event');
+      result.event = {kind: event.kind, months: event.months};
+    }
     return result;
   });
 }

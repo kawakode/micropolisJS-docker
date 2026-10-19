@@ -217,7 +217,92 @@ describe("The neighbouring cities", () => {
         expect(neighbours.yearlyBalance()).toBe(-250);
         expect(neighbours.closeYear()).toBe(-250 - 50);
         expect(neighbours.closeYear()).toBe(0);
-        neighbours.list.forEach((n: any) => expect(n.population).toBeGreaterThan(100000));
+        // (unless a recession struck one of them)
+        neighbours.list.forEach((n: any) =>
+            expect(n.population).toBeGreaterThan(n.event && n.event.kind === "recession" ? 90000 : 100000));
+    });
+
+    describe("may go through a year of their own", () => {
+        // Neighbours to which nothing happens by chance
+        const calm = (map: any = makeMap()): any => {
+            const neighbours = makeNeighbours(map, 50000);
+            neighbours._random = () => 0.99;
+            return neighbours;
+        };
+
+        it("one at a time, a third of the years", () => {
+            const neighbours = calm();
+            neighbours.closeYear();
+            expect(neighbours.list.filter((n: any) => n.event)).toEqual([]);
+
+            // The chance, the neighbour, and what happens to it
+            const draws = [0.1, 0.3, 0.0];
+            neighbours._random = () => draws.shift();
+            neighbours._startEvent();
+            const struck = neighbours.list.filter((n: any) => n.event);
+            expect(struck.map((n: any) => [n.side, n.event])).toEqual([["east", {kind: "boom", months: 12}]]);
+            expect(struck[0].population).toBeGreaterThan(50000 * 1.15);
+            expect(neighbours.takeNews().news).toEqual([{kind: "boom", side: "east", name: struck[0].name}]);
+            expect(neighbours.takeNews().news).toEqual([]);
+        });
+
+        it("a boom doubling the demand that trade brings, for a year", () => {
+            const map = makeMap();
+            road(map, 0, 7);
+            const neighbours = calm(map);
+            neighbours.findLinks();
+            neighbours.setDeal("west", "trade", true);
+            const before = neighbours.demandBonus().com;
+            neighbours.get("west").event = {kind: "boom", months: 2};
+            expect(neighbours.demandBonus().com).toBe(before * 2);
+            neighbours.get("west").event = {kind: "recession", months: 2};
+            expect(neighbours.demandBonus().com).toBe(Math.round(before / 2));
+
+            neighbours.countMonth();
+            neighbours.countMonth();
+            expect(neighbours.get("west").event).toBeNull();
+            expect(neighbours.demandBonus().com).toBe(before);
+        });
+
+        it("a shortage of power doubling what power sold earns, with none to buy", () => {
+            const neighbours = calm();
+            const west = neighbours.get("west");
+            const earned = neighbours.yearly(west, "sellPower");
+            west.event = {kind: "powerShortage", months: 12};
+            expect(neighbours.yearly(west, "sellPower")).toBe(earned * 2);
+            wire(neighbours._map, 0, 5);
+            neighbours.findLinks();
+            expect(neighbours.dealState(west, "buyPower")).toBe("noPower");
+        });
+
+        it("a request to twin bringing a gift once the twinning is in force", () => {
+            const neighbours = calm();
+            const east = neighbours.get("east");
+            east.event = {kind: "twinningRequest", months: 12};
+            neighbours.countMonth();
+            expect(neighbours.takeNews()).toEqual({news: [], gifts: 0});
+
+            neighbours.setDeal("east", "twinning", true);
+            neighbours.countMonth();
+            expect(neighbours.takeNews()).toEqual({news: [{kind: "twinned", side: "east", name: east.name, gift: 2000}],
+                                                   gifts: 2000});
+            expect(east.event).toBeNull();
+        });
+
+        it("kept in the save, and only if it is one", () => {
+            const neighbours = calm();
+            neighbours.get("north").event = {kind: "recession", months: 5};
+            const saved: any = {};
+            neighbours.save(saved);
+            expect(saved.neighbours[0].event).toEqual({kind: "recession", months: 5});
+            expect(saved.neighbours[1].event).toBeUndefined();
+
+            saved.neighbours[1].event = {kind: "plague", months: 5};
+            saved.neighbours[2].event = {kind: "boom", months: 13};
+            const loaded = new (Neighbours as any)(makeMap());
+            loaded.load(JSON.parse(JSON.stringify(saved)));
+            expect(loaded.list.map((n: any) => n.event)).toEqual([{kind: "recession", months: 5}, null, null, null]);
+        });
     });
 
     it("tell which deals are on hold, and why", () => {
@@ -324,7 +409,7 @@ describe("A neighbour that is another player's city", () => {
         expect(everything(neighbours)).toBe(before);
         const described = neighbours.describe();
         described.forEach((n: any) => {
-            expect(Object.keys(n)).toEqual(["side", "name", "population", "links", "deals"]);
+            expect(Object.keys(n)).toEqual(["side", "name", "population", "event", "links", "deals"]);
             n.deals.forEach((deal: any) => expect(Object.keys(deal)).toEqual(["kind", "signed", "state", "yearly"]));
         });
         neighbours.dealsOnHold().forEach((deal: any) => expect(Object.keys(deal)).toEqual(["side", "name", "kind", "state"]));

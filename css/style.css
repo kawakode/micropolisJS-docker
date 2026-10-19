@@ -2177,6 +2177,18 @@ kbd {
   color: var(--muted);
 }
 
+/* What is happening to a neighbour (see Neighbours.EVENTS) */
+.neighbourEvent {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--gold);
+}
+
+.neighbourEvent.recession,
+.neighbourEvent.powerShortage {
+  color: var(--muted);
+}
+
 .neighbourLinks {
   display: flex;
   flex-wrap: wrap;

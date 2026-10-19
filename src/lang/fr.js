@@ -536,6 +536,25 @@ var strings = {
   'No debt': 'Aucune dette',
   'Pay off the whole debt now ({debt})': 'Rembourser toute la dette maintenant ({debt})',
 
+  // What happens to the neighbours (see Neighbours.EVENTS)
+  'Economic boom in {name}: trading with it brings twice the business this year.':
+    'Boom économique à {name} : commercer avec elle rapporte deux fois plus cette année.',
+  'Recession in {name}: trading with it brings half the business this year.':
+    'Récession à {name} : commercer avec elle rapporte deux fois moins cette année.',
+  '{name} is short of power: it pays double for the power it buys, and has none to sell, this year.':
+    '{name} manque d\'électricité : elle paie le double le courant qu\'elle achète, et n\'en vend plus, cette année.',
+  '{name} would like to twin with your city: sign the twinning this year for a gift of {gift}.':
+    '{name} aimerait se jumeler avec votre ville : signez le jumelage cette année pour recevoir {gift}.',
+  '{name} thanks you for the twinning, with a gift of {gift}.': '{name} vous remercie du jumelage et vous offre {gift}.',
+  'Economic boom ({months} months left): trade brings twice the business.':
+    'Boom économique (encore {months} mois) : le commerce rapporte deux fois plus.',
+  'Recession ({months} months left): trade brings half the business.':
+    'Récession (encore {months} mois) : le commerce rapporte deux fois moins.',
+  'Short of power ({months} months left): pays double for power, sells none.':
+    'Pénurie d\'électricité (encore {months} mois) : paie le courant le double, n\'en vend plus.',
+  'Asks to twin ({months} months left): a gift if the twinning is signed.':
+    'Demande de jumelage (encore {months} mois) : un cadeau si le jumelage est signé.',
+
   // Ordinances (see Ordinances)
   'Ordinances': 'Arrêtés municipaux',
   '{name} ({cost} a year)': '{name} ({cost} par an)',
