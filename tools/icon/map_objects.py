@@ -492,6 +492,48 @@ def tower():
     return shapes, [Sprite(16, 16, 80, ['r'], {'r': RED})], [], []
 
 
+def recycling():
+    hall = facade((140, 150, 160), (110, 118, 128), (160, 168, 178), (176, 214, 246), 4, 5, 3, seed=101)
+
+    def yard(u, v):
+        return (150, 150, 156) if (int(u) // 4 + int(v) // 4) % 2 else (162, 162, 168)
+
+    bins = [((52, 110, 210), (36, 80, 160)), ((58, 150, 70), (40, 110, 50)), ((236, 196, 60), (190, 150, 40))]
+    shapes = [flat(0, 0, 48, 48, yard), box(4, 4, 28, 24, 12, hall),
+              box(28, 12, 44, 15, 6, plain((70, 66, 84), (54, 50, 66), (90, 86, 100)))]
+    for i, (light, dark_) in enumerate(bins):
+        shapes.append(box(31 + 5 * i, 3, 35 + 5 * i, 9, 4, plain(light, dark_, mix(light, WHITE, 0.3))))
+    for i, (x, y) in enumerate(((5, 28), (12, 28), (19, 28), (5, 35), (12, 35))):
+        light, dark_ = bins[i % 3]
+        shapes.append(box(x, y, x + 5, y + 5, 4, plain(light, dark_, mix(light, WHITE, 0.3))))
+    return shapes, [], [], []
+
+
+def waterworks():
+    house_ = facade(WHITE, (204, 204, 210), (60, 110, 200), (110, 160, 220), 3, 4, 2, seed=102)
+    rim = ((226, 228, 236), (186, 190, 204), (146, 150, 168))
+
+    def basin(cx, cy):
+        def water(x, y):
+            d = math.hypot(x - cx, y - cy)
+            if d < 1.5 or (d < 8 and abs((x - cx) * 0.4 - (y - cy)) < 0.7 and x > cx):
+                return (210, 212, 222)
+            return WATER_LIGHT if int(x * 2 + y) % 7 == 0 else (90, 170, 230)
+
+        def paint(x, y, z):
+            if z > 2.7 and math.hypot(x - cx, y - cy) < 8.6:
+                return water(x, y)
+            return lit(rim[0], rim[1], rim[2], 0.5 + 0.4 * ((y - cy) - (x - cx)) / 10)
+
+        return [night(Solid(cx - 10, cy - 10, 0, cx + 10, cy + 10, 3, lambda x, y, z: math.hypot(x - cx, y - cy) <= 10,
+                            paint))]
+
+    shapes = [box(28, 28, 46, 44, 11, house_)]
+    for cx, cy in ((12, 12), (36, 12), (12, 36)):
+        shapes += basin(cx, cy)
+    return shapes, [], [], []
+
+
 def stadium(full):
     cx, cy, rx, ry = 32, 32, 28, 24
 
@@ -773,7 +815,8 @@ def objects():
         out.append(('worship%d' % kind, 3, lambda k=kind: worship(k)))
     out += [('fire_station', 3, fire_station), ('police', 3, police), ('school', 3, school),
             ('university', 4, university), ('library', 2, library), ('police_post', 2, police_post),
-            ('fire_post', 2, fire_post), ('statue', 1, statue), ('town_hall', 3, town_hall), ('tower', 2, tower), ('stadium', 4, lambda: stadium(False)), ('stadium_full', 4, lambda: stadium(True)),
+            ('fire_post', 2, fire_post), ('statue', 1, statue), ('town_hall', 3, town_hall), ('tower', 2, tower),
+            ('recycling', 3, recycling), ('waterworks', 3, waterworks), ('stadium', 4, lambda: stadium(False)), ('stadium_full', 4, lambda: stadium(True)),
             ('port', 4, port), ('airport', 6, airport), ('coal', 4, coal), ('nuclear', 4, nuclear), ('gas', 3, gas),
             ('solar', 3, solar), ('bigpark', 3, bigpark), ('garden', 1, garden), ('plaza', 1, lambda: fountain(True)),
             ('fountain', 1, lambda: fountain(False))]

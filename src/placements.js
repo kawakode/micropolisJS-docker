@@ -62,6 +62,8 @@ var SIZES = {
   statue: 1,
   townhall: 3,
   tower: 2,
+  recycling: 3,
+  waterworks: 3,
   university: 4,
   bigpark: 3
 };

@@ -285,6 +285,38 @@ def tower():
     return a
 
 
+def recycling():
+    a = Art(3, 'lgrey')
+    # The sorting hall, with a conveyor coming out of it
+    a.rect(2, 2, 26, 20, 'grey').rect(2, 2, 26, 4, 'dgrey')
+    for x in range(5, 27, 6):
+        a.rect(x, 9, 3, 3, 'water')
+    a.rect(10, 16, 8, 6, 'dgrey')
+    a.rect(28, 10, 16, 3, 'dgrey').rect(28, 11, 16, 1, 'black')
+    # Containers: paper, glass, plastic
+    for i, name in enumerate(('blue', 'dgreen', 'yellow')):
+        a.rect(31 + 5 * (i % 3), 2, 4, 6, name).rect(31 + 5 * (i % 3), 2, 4, 1, 'white')
+    # Bales and heaps waiting to be sorted
+    for x, y, name in ((4, 27, 'blue'), (10, 27, 'yellow'), (16, 27, 'blue'), (4, 33, 'yellow'), (10, 33, 'white')):
+        a.rect(x, y, 5, 5, name).frame(x, y, 5, 5, 'dgrey')
+    a.disc(34, 32, 8, 'brown').disc(33, 31, 5, 'olive').disc(31, 29, 2, 'yellow')
+    a.frame(0, 0, 48, 48, 'grey')
+    return a
+
+
+def waterworks():
+    a = Art(3)
+    # Round settling tanks, and the pumping house
+    for cx, cy in ((12, 12), (36, 12), (12, 36)):
+        a.disc(cx, cy, 10, 'lgrey').disc(cx, cy, 8, 'water').disc(cx, cy, 2, 'lgrey').line(cx, cy, cx + 7, cy - 3, 'lgrey')
+    a.rect(27, 28, 18, 16, 'white').rect(27, 28, 18, 3, 'blue')
+    for x in range(30, 44, 4):
+        a.rect(x, 34, 2, 3, 'water')
+    a.rect(34, 40, 4, 4, 'brown')
+    a.rect(22, 12, 4, 2, 'grey').rect(12, 22, 2, 4, 'grey').rect(22, 34, 5, 2, 'grey')
+    return a
+
+
 # Tile numbers: keep in sync with src/tileValues.ts. Each entry: (first tile, size, drawing)
 WIND = 1024
 WIND_FRAMES = [1025, 1026, 1027]
@@ -301,6 +333,8 @@ FIREPOSTBASE = 1090
 STATUE = 1094
 TOWNHALLBASE = 1095
 TOWERBASE = 1104
+RECYCLINGBASE = 1108
+WATERWORKSBASE = 1117
 
 BUILDINGS = [
     (WIND, 1, lambda: wind_turbine(0)),
@@ -320,6 +354,8 @@ BUILDINGS = [
     (STATUE, 1, statue),
     (TOWNHALLBASE, 3, town_hall),
     (TOWERBASE, 2, tower),
+    (RECYCLINGBASE, 3, recycling),
+    (WATERWORKSBASE, 3, waterworks),
 ]
 
 

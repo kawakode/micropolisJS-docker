@@ -20,7 +20,8 @@ import { MiscUtils } from './miscUtils.js';
 var policeMaintenanceCost = 100;
 
 // KawaCity: the yearly upkeep of the buildings that aren't funded by a slider (see collectTax)
-var UPKEEP = {schoolPop: 100, universityPop: 250, hospitalPop: 150, libraryPop: 50, townHallPop: 200, towerPop: 400};
+var UPKEEP = {schoolPop: 100, universityPop: 250, hospitalPop: 150, libraryPop: 50, townHallPop: 200, towerPop: 400,
+              recyclingPop: 200, waterworksPop: 250};
 
 // Cost of maintaining 1 fire station
 var fireMaintenanceCost = 100;

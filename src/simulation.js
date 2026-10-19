@@ -134,6 +134,13 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame, op
     landmarkMap: new BlockMap(this._map.width, this._map.height, 8),
     landmarkEffectMap: new BlockMap(this._map.width, this._map.height, 8),
 
+    // KawaCity: how much the recycling centres and water treatment plants clean up, and how much the plants make the
+    // waterfront sought after, then spread over the neighbourhood
+    cleanupMap: new BlockMap(this._map.width, this._map.height, 8),
+    cleanupEffectMap: new BlockMap(this._map.width, this._map.height, 8),
+    waterMap: new BlockMap(this._map.width, this._map.height, 8),
+    waterEffectMap: new BlockMap(this._map.width, this._map.height, 8),
+
     // Holds a value representing the rate of growth of a neighbourhood in the range -200 to +200
     rateOfGrowthMap: new BlockMap(this._map.width, this._map.height, 8),
 
@@ -312,6 +319,8 @@ Simulation.prototype._clearCensus = function() {
   this.blockMaps.educationMap.clear();
   this.blockMaps.healthMap.clear();
   this.blockMaps.landmarkMap.clear();
+  this.blockMaps.cleanupMap.clear();
+  this.blockMaps.waterMap.clear();
 };
 
 

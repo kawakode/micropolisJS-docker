@@ -13,7 +13,8 @@ import { Scenarios } from '../../src/scenarios.js';
 import { BIT_MASK, fromClassicValue, ZONEBIT } from '../../src/tileFlags';
 import { AIRPORT, BIGPARK, CHURCH, CHURCH1, CHURCH2, CHURCH3, CHURCH4, CHURCH5, CHURCH6, CHURCH7, FIREPOST,
          FIRESTATION, FULLSTADIUM, GASPLANT, HOSPITAL, KAWALAST, LIBRARY, NUCLEAR, POLICEPOST, POLICESTATION, PORT,
-         POWERPLANT, SCHOOL, SOLARPLANT, STADIUM, TOWER, TOWNHALL, UNIVERSITY, WINDTURBINE } from '../../src/tileValues';
+         POWERPLANT, RECYCLING, SCHOOL, SOLARPLANT, STADIUM, TOWER, TOWNHALL, UNIVERSITY, WATERWORKS,
+         WINDTURBINE } from '../../src/tileValues';
 import { ZoneUtils } from '../../src/zoneUtils.js';
 import { CITY_HEIGHT, CITY_WIDTH, CitySave, createHeadlessCity, EdgeState, MILESTONE_KEYS,
          SAVE_VERSION } from './headless';
@@ -216,7 +217,7 @@ function zoneFits(i: number, raw: number): boolean {
 const BUILDING_CENTRES: ReadonlySet<number> = new Set([
   HOSPITAL, CHURCH, CHURCH1, CHURCH2, CHURCH3, CHURCH4, CHURCH5, CHURCH6, CHURCH7, PORT, AIRPORT, POWERPLANT,
   FIRESTATION, POLICESTATION, STADIUM, FULLSTADIUM, NUCLEAR, WINDTURBINE, GASPLANT, SOLARPLANT, SCHOOL, UNIVERSITY,
-  BIGPARK, LIBRARY, POLICEPOST, FIREPOST, TOWNHALL, TOWER]);
+  BIGPARK, LIBRARY, POLICEPOST, FIREPOST, TOWNHALL, TOWER, RECYCLING, WATERWORKS]);
 
 // The tiles: 12000 objects {value}, each value a tile of the game (its number, and the flags it may have), each zone
 // and building whole on the map. Saves of versions 1 to 3 have the tiles of the original game, brought to the new ones.

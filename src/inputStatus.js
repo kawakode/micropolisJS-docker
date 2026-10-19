@@ -44,6 +44,7 @@ var toolShortcuts = {
   'Digit8': 'police',
   'Digit9': 'fire',
   'KeyB': 'bulldozer',
+  'KeyE': 'recycling',
   'KeyT': 'trees'
 };
 for (var digit = 1; digit <= 9; digit++)

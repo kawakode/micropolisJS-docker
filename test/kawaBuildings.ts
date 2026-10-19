@@ -3,11 +3,13 @@ import { BlockMapUtils } from "../src/blockMapUtils.js";
 import { Budget } from "../src/budget.js";
 import { GameMap } from "../src/gameMap.js";
 import { KawaBuildings } from "../src/kawaBuildings.js";
+import { Ordinances } from "../src/ordinances.js";
 import { Simulation } from "../src/simulation.js";
 import { Traffic } from "../src/traffic.js";
 import { ZoneUtils } from "../src/zoneUtils.js";
 import { BULLBIT } from "../src/tileFlags";
-import { DIRT, FIREPOST, HOSPITAL, HRAIL, LIBRARY, POLICEPOST, ROADS, WINDTURBINE, WINDTURBINE1 } from "../src/tileValues";
+import { DIRT, FIREPOST, HOSPITAL, HRAIL, LIBRARY, POLICEPOST, POWERPLANT, RECYCLING, RIVER, ROADS, WATERWORKS, WINDTURBINE,
+         WINDTURBINE1 } from "../src/tileValues";
 
 const makeMap = (): any => new (GameMap as any)(20, 20, DIRT);
 
@@ -172,5 +174,57 @@ describe("The compact stations and the library", () => {
         expect(budget.policeMaintenanceBudget).toBe(200);
         expect(budget.fireMaintenanceBudget).toBe(50);
         expect(budget.upkeepFund).toBe(-50);
+    });
+});
+
+
+describe("The recycling centre and the water treatment plant", () => {
+    const scanned = (centre: number | null, recycles: boolean): any => {
+        const simulation = new (Simulation as any)(new (GameMap as any)(120, 100), 0, Simulation.SPEED_MED);
+        const map = simulation._map;
+        if (recycles)
+            simulation.budget.setOrdinances(1 << (Ordinances as any).byId("recycling").bit);
+        if (centre !== null)
+            (ZoneUtils as any).putZone(map, 20, 20, centre, true);
+        simulation._clearCensus();
+        simulation._mapScanner.mapScan(0, map.width, simulation._constructSimData());
+        BlockMapUtils.crimeScan({}, simulation.blockMaps);
+        return simulation;
+    };
+
+    it("sorts the waste only when the city recycles", () => {
+        expect(scanned(RECYCLING, false).blockMaps.cleanupEffectMap.worldGet(20, 20)).toBe(0);
+        const recycling = scanned(RECYCLING, true);
+        expect(recycling._census.recyclingPop).toBe(1);
+        expect(recycling.blockMaps.cleanupEffectMap.worldGet(20, 20)).toBeGreaterThan(0);
+    });
+
+    it("cleans up the pollution of the neighbourhood, by up to half", () => {
+        const pollutionNear = (withPlant: boolean): number => {
+            const simulation = scanned(withPlant ? WATERWORKS : null, false);
+            const map = simulation._map;
+            // A tile of a coal plant just beside it
+            map.setTile(24, 18, POWERPLANT, 0);
+            BlockMapUtils.pollutionTerrainLandValueScan(map, simulation._census, simulation.blockMaps);
+            return simulation.blockMaps.pollutionDensityMap.worldGet(24, 18);
+        };
+
+        const polluted = pollutionNear(false);
+        expect(polluted).toBeGreaterThan(0);
+        expect(pollutionNear(true)).toBeLessThan(polluted);
+        expect(pollutionNear(true)).toBeGreaterThanOrEqual(Math.floor(polluted / 2) - 1);
+    });
+
+    it("makes the land by the water more valuable", () => {
+        const landValueByWater = (withPlant: boolean): number => {
+            const simulation = scanned(withPlant ? WATERWORKS : null, false);
+            const map = simulation._map;
+            map.setTile(24, 26, RIVER, 0);
+            map.setTile(22, 24, ROADS, 0);
+            BlockMapUtils.pollutionTerrainLandValueScan(map, simulation._census, simulation.blockMaps);
+            return simulation.blockMaps.landValueMap.worldGet(22, 24);
+        };
+
+        expect(landValueByWater(true)).toBeGreaterThan(landValueByWater(false));
     });
 });

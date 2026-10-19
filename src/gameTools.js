@@ -60,6 +60,8 @@ function GameTools(map) {
     statue: new BuildingTool(1000, TileValues.STATUE, map, 1, false),
     townhall: new BuildingTool(5000, TileValues.TOWNHALL, map, 3, false),
     tower: new BuildingTool(15000, TileValues.TOWER, map, 2, false),
+    recycling: new BuildingTool(1500, TileValues.RECYCLING, map, 3, false),
+    waterworks: new BuildingTool(2000, TileValues.WATERWORKS, map, 3, false),
     university: new BuildingTool(3000, TileValues.UNIVERSITY, map, 4, false),
     bigpark: new BuildingTool(400, TileValues.BIGPARK, map, 3, false),
     garden: new TerrainTool(map, TerrainTool.LAY, 25, TileValues.GARDEN, BULLBIT | BURNBIT),

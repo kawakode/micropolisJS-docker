@@ -164,6 +164,13 @@ var strings = {
   'Raises land values and lowers crime nearby. $100 a year.':
     'Fait monter les prix fonciers et baisser la criminalité alentour. 100 $ par an.',
   'Hospital': 'Hôpital',
+  'Environment': 'Écologie',
+  'Recycling centre': 'Centre de tri',
+  'Cleans up the pollution around it, once the city recycles (an ordinance). $200 a year.':
+    'Réduit la pollution alentour, dès que la ville recycle (un arrêté). 200 $ par an.',
+  'Water treatment plant': 'Épuration',
+  'Cleans up the pollution around it, and makes the waterfront sought after. $250 a year.':
+    'Réduit la pollution alentour, et rend les bords de l\'eau recherchés. 250 $ par an.',
   'Statue': 'Statue',
   'A monument to the founders: the land around it is worth more.':
     'Un monument aux fondateurs : le terrain alentour vaut plus cher.',

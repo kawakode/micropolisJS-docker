@@ -427,6 +427,27 @@ def tower():
     return shapes, [], []
 
 
+def recycling():
+    def yard(x, y):
+        return CONCRETE if (x + y) % 2 else CONCRETE_DARK
+
+    hall = walls((140, 150, 160), (110, 118, 128), (160, 168, 178), ((176, 214, 246), 3, 3))
+    shapes = [land(yard), Box(1, 1, 0, 8, 7, 4.5, hall)]
+    bins = [((52, 110, 210), (36, 80, 160)), ((58, 150, 70), (40, 110, 50)), ((236, 196, 60), (190, 150, 40))]
+    for i, (light, dark_) in enumerate(bins):
+        shapes.append(Box(9.5, 1.5 + 3.5 * i, 0, 12, 4 + 3.5 * i, 2, walls(light, dark_, mix(light, WHITE, 0.3))))
+    return shapes, [], []
+
+
+def waterworks():
+    rim = ((226, 228, 236), (186, 190, 204), (146, 150, 168))
+    shapes = [land(grass)]
+    for cx, cy in ((3.5, 3.5), (9.5, 3.5), (3.5, 9.5)):
+        shapes.append(cylinder(cx, cy, 0, 1.2, 2.8, rim, WATER))
+    shapes.append(Box(7, 7, 0, 12, 12, 3.5, walls(WHITE, (204, 204, 210), (60, 110, 200), ((110, 160, 220), 2, 2))))
+    return shapes, [], []
+
+
 def park():
     def path(x, y):
         return (214, 196, 150) if abs(x - y) <= 1 else grass(x, y)
@@ -585,6 +606,8 @@ ICONS = [
     ('statue', statue),
     ('townhall', town_hall),
     ('tower', tower),
+    ('recycling', recycling),
+    ('waterworks', waterworks),
 ]
 
 

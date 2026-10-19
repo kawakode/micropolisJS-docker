@@ -5,6 +5,7 @@
  *
  */
 
+import { Ordinances } from './ordinances.js';
 import { TileUtils } from './tileUtils.js';
 import * as TileValues from "./tileValues.ts";
 
@@ -15,7 +16,9 @@ import * as TileValues from "./tileValues.ts";
 // BlockMapUtils.crimeScan), raises land values and lowers crime around them. Like police stations, they work at
 // half strength without power or without a road. Hospitals do the same with the health map, which makes homes grow
 // better and raises land values (see Residential.evalResidential). Libraries are small schools. Monuments add their
-// prestige to the landmark map, which raises land values more than anything. Parks, gardens and plazas count as green space for land values
+// prestige to the landmark map, which raises land values more than anything. Recycling centres (when the city
+// recycles) and water treatment plants clean up the pollution around them, and the plants make the waterfront
+// sought after (see BlockMapUtils.pollutionTerrainLandValueScan). Parks, gardens and plazas count as green space for land values
 // (see BlockMapUtils.pollutionTerrainLandValueScan).
 
 var SCHOOL_STRENGTH = 800;
@@ -26,6 +29,11 @@ var LIBRARY_STRENGTH = 400;
 var STATUE_PRESTIGE = 400;
 var TOWNHALL_PRESTIGE = 1200;
 var TOWER_PRESTIGE = 2400;
+// How much the recycling centre and the water treatment plant clean up their neighbourhood's pollution, and how much
+// the plant makes the waterfront sought after
+var RECYCLING_CLEANUP = 1200;
+var WATERWORKS_CLEANUP = 500;
+var WATERWORKS_WATERFRONT = 1000;
 
 
 // Whether there is a road or rail along the edge of a building of the given size, whose centre is at (x, y)
@@ -47,20 +55,26 @@ var hasRoadAlongside = function(map, x, y, size) {
 };
 
 
-// A building that adds its strength to one of the block maps (education, health)
+// Adds a building's strength to one of the block maps (education, health...), halved without power, and halved again
+// without a road
+var addEffect = function(map, x, y, simData, strength, size, mapName) {
+  var effect = strength;
+  if (!map.getTile(x, y).isPowered())
+    effect = Math.floor(effect / 2);
+
+  if (!hasRoadAlongside(map, x, y, size))
+    effect = Math.floor(effect / 2);
+
+  var blockMap = simData.blockMaps[mapName];
+  blockMap.worldSet(x, y, blockMap.worldGet(x, y) + effect);
+};
+
+
+// A building counted by the census, that adds its strength to one of the block maps
 var makeServiceHandler = function(counter, strength, size, mapName) {
   return function(map, x, y, simData) {
     simData.census[counter] += 1;
-
-    var effect = strength;
-    if (!map.getTile(x, y).isPowered())
-      effect = Math.floor(effect / 2);
-
-    if (!hasRoadAlongside(map, x, y, size))
-      effect = Math.floor(effect / 2);
-
-    var blockMap = simData.blockMaps[mapName];
-    blockMap.worldSet(x, y, blockMap.worldGet(x, y) + effect);
+    addEffect(map, x, y, simData, strength, size, mapName);
   };
 };
 
@@ -81,6 +95,21 @@ var makePostHandler = function(counter, budgetEffect, mapName) {
     var blockMap = simData.blockMaps[mapName];
     blockMap.worldSet(x, y, blockMap.worldGet(x, y) + effect);
   };
+};
+
+
+// A recycling centre only has the waste to sort when the city recycles (see Ordinances)
+var recyclingFound = function(map, x, y, simData) {
+  simData.census.recyclingPop += 1;
+  if (Ordinances.isOn(simData.budget.ordinances, Ordinances.byId('recycling')))
+    addEffect(map, x, y, simData, RECYCLING_CLEANUP, 3, 'cleanupMap');
+};
+
+
+var waterworksFound = function(map, x, y, simData) {
+  simData.census.waterworksPop += 1;
+  addEffect(map, x, y, simData, WATERWORKS_CLEANUP, 3, 'cleanupMap');
+  addEffect(map, x, y, simData, WATERWORKS_WATERFRONT, 3, 'waterMap');
 };
 
 
@@ -113,6 +142,8 @@ var getZoneSize = function(tileValue) {
     case TileValues.SCHOOL:
     case TileValues.BIGPARK:
     case TileValues.TOWNHALL:
+    case TileValues.RECYCLING:
+    case TileValues.WATERWORKS:
       return 3;
 
     case TileValues.UNIVERSITY:
@@ -140,6 +171,8 @@ var KawaBuildings = {
     mapScanner.addAction(TileValues.STATUE, makeServiceHandler('statuePop', STATUE_PRESTIGE, 1, 'landmarkMap'));
     mapScanner.addAction(TileValues.TOWNHALL, makeServiceHandler('townHallPop', TOWNHALL_PRESTIGE, 3, 'landmarkMap'));
     mapScanner.addAction(TileValues.TOWER, makeServiceHandler('towerPop', TOWER_PRESTIGE, 2, 'landmarkMap'));
+    mapScanner.addAction(TileValues.RECYCLING, recyclingFound);
+    mapScanner.addAction(TileValues.WATERWORKS, waterworksFound);
     mapScanner.addAction(TileValues.BIGPARK, parkFound);
 
     repairManager.addAction(TileValues.SCHOOL, 15, 3);
@@ -150,6 +183,8 @@ var KawaBuildings = {
     repairManager.addAction(TileValues.FIREPOST, 7, 2);
     repairManager.addAction(TileValues.TOWNHALL, 15, 3);
     repairManager.addAction(TileValues.TOWER, 15, 2);
+    repairManager.addAction(TileValues.RECYCLING, 15, 3);
+    repairManager.addAction(TileValues.WATERWORKS, 15, 3);
     repairManager.addAction(TileValues.BIGPARK, 15, 3);
   }
 };

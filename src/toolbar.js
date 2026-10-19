@@ -94,6 +94,10 @@ var TOOLS = {
           description: 'Plant a forest on bare land.'},
   water: {name: 'Dig water', size: 1, cost: 100, colour: '#2563eb',
           description: 'Dig a lake or a canal.'},
+  recycling: {name: 'Recycling centre', size: 3, cost: 1500, colour: '#22c55e', key: 'E',
+              description: 'Cleans up the pollution around it, once the city recycles (an ordinance). $200 a year.'},
+  waterworks: {name: 'Water treatment plant', size: 3, cost: 2000, colour: '#0ea5e9',
+               description: 'Cleans up the pollution around it, and makes the waterfront sought after. $250 a year.'},
   landfill: {name: 'Landfill', size: 1, cost: 60, colour: '#a16207',
              description: 'Fill water in, to build on it.'}
 };
@@ -111,7 +115,8 @@ var CATEGORIES = [
    tools: ['police', 'policepost', 'fire', 'firepost', 'school', 'library', 'hospital', 'university']},
   {id: 'leisure', name: 'Leisure', key: '7', code: 'Digit7', 
    tools: ['park', 'garden', 'plaza', 'bigpark', 'stadium', 'statue', 'townhall', 'tower']},
-  {id: 'terrain', name: 'Terrain', key: 'T', code: 'KeyT', tools: ['trees', 'water', 'landfill']}
+  {id: 'terrain', name: 'Terrain', key: 'T', code: 'KeyT', tools: ['trees', 'water', 'landfill']},
+  {id: 'environment', name: 'Environment', key: 'E', code: 'KeyE', tools: ['recycling', 'waterworks']}
 ];
 
 

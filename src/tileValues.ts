@@ -345,7 +345,11 @@ export const TOWNHALLBASE   = 1095; // Town hall (tiles 1095--1103)
 export const TOWNHALL       = 1099;
 export const TOWERBASE      = 1104; // Tower (tiles 1104--1107)
 export const TOWER          = 1107;
-export const KAWALAST       = 1107;
+export const RECYCLINGBASE  = 1108; // Recycling centre (tiles 1108--1116)
+export const RECYCLING      = 1112;
+export const WATERWORKSBASE = 1117; // Water treatment plant (tiles 1117--1125)
+export const WATERWORKS     = 1121;
+export const KAWALAST       = 1125;
 
 export const TILE_COUNT     = 2048;
 
