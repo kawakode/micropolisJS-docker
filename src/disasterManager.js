@@ -101,10 +101,20 @@ DisasterManager.prototype.makeMeltdown = function() {
 };
 
 
+// The buildings added after the original zones: churches, and KawaCity's own (but not its gardens and plazas)
+var isNewBuilding = function(tileValue) {
+  return (tileValue >= TileValues.CHURCH1BASE && tileValue <= TileValues.CHURCH7LAST) ||
+         (tileValue >= TileValues.KAWABASE && tileValue < TileValues.GARDEN);
+};
+
+
 var vulnerable = function(tile) {
   var tileValue = tile.getValue();
 
-  if (tileValue < TileValues.RESBASE || tileValue > TileValues.LASTZONE || tile.isZone())
+  if (tile.isZone())
+    return false;
+
+  if ((tileValue < TileValues.RESBASE || tileValue > TileValues.LASTZONE) && !isNewBuilding(tileValue))
     return false;
 
   return true;
@@ -153,7 +163,7 @@ DisasterManager.prototype.setFire = function(times, zonesOnly) {
     if (!tile.isZone() && (zonesOnly || tile.isCombustible())) {
       tile = tile.getValue();
       var lowerLimit = zonesOnly ? TileValues.LHTHR : TileValues.TREEBASE;
-      if (tile > lowerLimit && tile < TileValues.LASTZONE) {
+      if ((tile > lowerLimit && tile < TileValues.LASTZONE) || isNewBuilding(tile)) {
         this._map.setTo(x, y, TileUtils.randomFire());
         this._emitEvent(Messages.FIRE_REPORTED, {showable: true, x: x, y: y});
         return;
