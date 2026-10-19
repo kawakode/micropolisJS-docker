@@ -151,6 +151,12 @@ An account is only needed to play with others, on a server that offers accounts;
 - **Download a copy**: every member can save the city as a `.kawacity` file, from its card or in the game, to play it alone or share it again.
 - **Regions**: a grid of 2×2 to 4×4 places, where members' cities lie side by side. Its owner (3 regions each) invites members by username; a member builds a new city on a free place with **Build here**. The cities beside yours become its neighbours on those sides, with their own name, mayor and population. A deal with a player's city is in force once both mayors signed it (trade with trade, twinning with twinning, buying power with selling it), and, as with other neighbours, trade needs a road or a railway, and power a line, at the edge the two cities share, on both sides; the seller must have power to spare. A city taken out of its region ends its deals there, and cannot come back to its place.
 
+## Roadmap ##
+
+- **Public regions**: regions open to every player, listed in the lobby, to play with others without an invitation.
+- **Handing cities over**: give a shared city to another of its members, and move one of your cities to a free place of a region.
+- **Scenarios together**: play the scenarios of the original game in a shared city, with their goal and their disaster.
+
 ## Credits ##
 - [micropolisJS](https://github.com/graememcc/micropolisJS): Copyright (C) Graeme McCutcheon, 2013, and [contributors](https://github.com/graememcc/micropolisJS/graphs/contributors).
 - Micropolis: the open-source release of a city simulation game once sold by Electronic Arts.
