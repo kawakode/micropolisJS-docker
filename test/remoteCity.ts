@@ -413,7 +413,7 @@ describe("The copy of a shared city", () => {
         expect(blockMaps.rateOfGrowthMap.get(14, 12)).toBe(growth[12 * 15 + 14]);
         expect(blockMaps.landValueMap.get(0, 0)).not.toBe(1);
         expect(blockMaps.tempMap1.get(1, 0)).toBe(0);
-        expect(R.MAP_NAMES).toHaveLength(9);
+        expect(R.MAP_NAMES).toHaveLength(10);
     });
 
     it("gives the sprite a message names", () => {

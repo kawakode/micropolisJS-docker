@@ -55,6 +55,7 @@ var SIZES = {
   solar: 3,
   gas: 3,
   school: 3,
+  hospital: 3,
   university: 4,
   bigpark: 3
 };

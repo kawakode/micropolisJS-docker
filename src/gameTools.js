@@ -53,6 +53,7 @@ function GameTools(map) {
     solar: new BuildingTool(2000, TileValues.SOLARPLANT, map, 3, false),
     gas: new BuildingTool(2000, TileValues.GASPLANT, map, 3, false),
     school: new BuildingTool(1000, TileValues.SCHOOL, map, 3, false),
+    hospital: new BuildingTool(1500, TileValues.HOSPITAL, map, 3, false),
     university: new BuildingTool(3000, TileValues.UNIVERSITY, map, 4, false),
     bigpark: new BuildingTool(400, TileValues.BIGPARK, map, 3, false),
     garden: new TerrainTool(map, TerrainTool.LAY, 25, TileValues.GARDEN, BULLBIT | BURNBIT),

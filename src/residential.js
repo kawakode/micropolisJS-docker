@@ -207,7 +207,10 @@ var evalResidential = function(blockMaps, x, y, traffic) {
   else
     landValue = Math.min(landValue * 32, 6000);
 
-  return landValue - 3000;
+  // KawaCity: people would rather live near a hospital
+  var health = Math.min(400, blockMaps.healthEffectMap.worldGet(x, y));
+
+  return Math.min(landValue - 3000 + health, 3000);
 };
 
 
@@ -265,11 +268,10 @@ var residentialFound = function(map, x, y, simData) {
     // 81.8% of them are above -20880, so nearly 82% of the time, we will never take this branch.
     // Thus, there's approximately a 9% chance that the value will be in the range, and we *might* grow.
     if (zoneScore > -350 && (zoneScore - 26380) > Random.getRandom16Signed()) {
-      // If this zone is empty, and residential demand is strong, we might make a hospital
-      if (population === 0 && Random.getChance(3)) {
-        makeHospital(map, x, y, simData, zonePower);
+      // If this zone is empty, and residential demand is strong, we might make a church (KawaCity: hospitals are
+      // built by the player)
+      if (population === 0 && Random.getChance(3) && makeChurch(map, x, y, simData, zonePower))
         return;
-      }
 
       // Get an index in the range 0-3 scoring the land desirability and pollution, and grow the zone to the next
       // population rank
@@ -297,30 +299,15 @@ var CHURCHES = [TileValues.CHURCH, TileValues.CHURCH1, TileValues.CHURCH2, TileV
                 TileValues.CHURCH5, TileValues.CHURCH6, TileValues.CHURCH7];
 
 
-var makeHospital = function(map, x, y, simData, zonePower) {
-  // We only build a hospital or a church if the population requires it
-  if (simData.census.needHospital > 0) {
-    ZoneUtils.putZone(map, x, y, TileValues.HOSPITAL, zonePower);
-    simData.census.needHospital = 0;
-    return;
-  }
-
+// Returns whether a church was built: only if the population requires it
+var makeChurch = function(map, x, y, simData, zonePower) {
   if (simData.census.needChurch > 0) {
     ZoneUtils.putZone(map, x, y, CHURCHES[Random.getRandom(CHURCHES.length - 1)], zonePower);
     simData.census.needChurch = 0;
-    return;
+    return true;
   }
-};
 
-
-var hospitalFound = function(map, x, y, simData) {
-  simData.census.hospitalPop += 1;
-
-  // Degrade to an empty zone if a hospital is no longer sustainable
-  if (simData.census.needHospital === -1) {
-    if (Random.getRandom(20) === 0)
-      ZoneUtils.putZone(map, x, y, TileValues.FREEZ, map.getTile(x, y).isPowered());
-  }
+  return false;
 };
 
 
@@ -338,8 +325,6 @@ var churchFound = function(map, x, y, simData) {
 var Residential = {
   registerHandlers: function(mapScanner, repairManager) {
     mapScanner.addAction(TileUtils.isResidentialZone, residentialFound);
-    mapScanner.addAction(TileValues.HOSPITAL, hospitalFound);
-    repairManager.addAction(TileValues.HOSPITAL, 15, 3);
 
     CHURCHES.forEach(function(church) {
       mapScanner.addAction(church, churchFound);

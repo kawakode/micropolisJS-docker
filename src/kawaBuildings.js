@@ -13,11 +13,13 @@ import * as TileValues from "./tileValues.ts";
 //
 // Schools and universities educate the neighbourhood: they add to the education map, which, once smoothed (see
 // BlockMapUtils.crimeScan), raises land values and lowers crime around them. Like police stations, they work at
-// half strength without power or without a road. Parks, gardens and plazas count as green space for land values
+// half strength without power or without a road. Hospitals do the same with the health map, which makes homes grow
+// better and raises land values (see Residential.evalResidential). Parks, gardens and plazas count as green space for land values
 // (see BlockMapUtils.pollutionTerrainLandValueScan).
 
 var SCHOOL_STRENGTH = 800;
 var UNIVERSITY_STRENGTH = 1600;
+var HOSPITAL_STRENGTH = 1000;
 
 
 // Whether there is a road or rail along the edge of a building of the given size, whose centre is at (x, y)
@@ -39,7 +41,8 @@ var hasRoadAlongside = function(map, x, y, size) {
 };
 
 
-var makeEducationHandler = function(counter, strength, size) {
+// A building that adds its strength to one of the block maps (education, health)
+var makeServiceHandler = function(counter, strength, size, mapName) {
   return function(map, x, y, simData) {
     simData.census[counter] += 1;
 
@@ -50,8 +53,8 @@ var makeEducationHandler = function(counter, strength, size) {
     if (!hasRoadAlongside(map, x, y, size))
       effect = Math.floor(effect / 2);
 
-    var educationMap = simData.blockMaps.educationMap;
-    educationMap.worldSet(x, y, educationMap.worldGet(x, y) + effect);
+    var blockMap = simData.blockMaps[mapName];
+    blockMap.worldSet(x, y, blockMap.worldGet(x, y) + effect);
   };
 };
 
@@ -94,12 +97,15 @@ var KawaBuildings = {
   isGreenSpace: isGreenSpace,
 
   registerHandlers: function(mapScanner, repairManager) {
-    mapScanner.addAction(TileValues.SCHOOL, makeEducationHandler('schoolPop', SCHOOL_STRENGTH, 3));
-    mapScanner.addAction(TileValues.UNIVERSITY, makeEducationHandler('universityPop', UNIVERSITY_STRENGTH, 4));
+    mapScanner.addAction(TileValues.SCHOOL, makeServiceHandler('schoolPop', SCHOOL_STRENGTH, 3, 'educationMap'));
+    mapScanner.addAction(TileValues.UNIVERSITY,
+                         makeServiceHandler('universityPop', UNIVERSITY_STRENGTH, 4, 'educationMap'));
+    mapScanner.addAction(TileValues.HOSPITAL, makeServiceHandler('hospitalPop', HOSPITAL_STRENGTH, 3, 'healthMap'));
     mapScanner.addAction(TileValues.BIGPARK, parkFound);
 
     repairManager.addAction(TileValues.SCHOOL, 15, 3);
     repairManager.addAction(TileValues.UNIVERSITY, 15, 4);
+    repairManager.addAction(TileValues.HOSPITAL, 15, 3);
     repairManager.addAction(TileValues.BIGPARK, 15, 3);
   }
 };

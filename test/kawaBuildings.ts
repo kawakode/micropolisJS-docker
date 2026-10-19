@@ -1,10 +1,13 @@
 // KawaCity's buildings on the map (their road access, and fires), and its kinds of road
+import { BlockMapUtils } from "../src/blockMapUtils.js";
+import { Budget } from "../src/budget.js";
 import { GameMap } from "../src/gameMap.js";
 import { KawaBuildings } from "../src/kawaBuildings.js";
+import { Simulation } from "../src/simulation.js";
 import { Traffic } from "../src/traffic.js";
 import { ZoneUtils } from "../src/zoneUtils.js";
 import { BULLBIT } from "../src/tileFlags";
-import { DIRT, HRAIL, ROADS, WINDTURBINE, WINDTURBINE1 } from "../src/tileValues";
+import { DIRT, HOSPITAL, HRAIL, ROADS, WINDTURBINE, WINDTURBINE1 } from "../src/tileValues";
 
 const makeMap = (): any => new (GameMap as any)(20, 20, DIRT);
 
@@ -85,5 +88,43 @@ describe("A trip on the roads", () => {
                 found++;
         }
         expect(found).toBe(40);
+    });
+});
+
+
+describe("A hospital", () => {
+    const withHospital = (road: boolean): any => {
+        const simulation = new (Simulation as any)(new (GameMap as any)(120, 100), 0, Simulation.SPEED_MED);
+        const map = simulation._map;
+        (ZoneUtils as any).putZone(map, 20, 20, HOSPITAL, false);
+        if (road)
+            map.setTile(22, 21, ROADS, 0);
+        simulation._clearCensus();
+        simulation._mapScanner.mapScan(0, map.width, simulation._constructSimData());
+        BlockMapUtils.crimeScan({}, simulation.blockMaps);
+        return simulation;
+    };
+
+    it("is counted by the census, and cares for the neighbourhood around it", () => {
+        const simulation = withHospital(true);
+        const health = simulation.blockMaps.healthEffectMap;
+        expect(simulation._census.hospitalPop).toBe(1);
+        expect(health.worldGet(20, 20)).toBeGreaterThan(0);
+        expect(health.worldGet(20, 20)).toBeGreaterThan(health.worldGet(36, 20));
+        expect(health.worldGet(100, 80)).toBe(0);
+    });
+
+    it("cares less without a road", () => {
+        const withRoad = withHospital(true).blockMaps.healthEffectMap.worldGet(20, 20);
+        const withoutRoad = withHospital(false).blockMaps.healthEffectMap.worldGet(20, 20);
+        expect(withoutRoad).toBeLessThan(withRoad);
+    });
+
+    it("costs $150 a year", () => {
+        const budget = new (Budget as any)();
+        budget.setFunds(1000);
+        budget.collectTax(0, {totalPop: 0, hospitalPop: 2, policeStationPop: 0, fireStationPop: 0,
+                              roadTotal: 0, railTotal: 0, landValueAverage: 0}, 0);
+        expect(budget.upkeepFund).toBe(-300);
     });
 });

@@ -20,7 +20,7 @@ import { MiscUtils } from './miscUtils.js';
 var policeMaintenanceCost = 100;
 
 // KawaCity: the yearly upkeep of the buildings that aren't funded by a slider (see collectTax)
-var UPKEEP = {schoolPop: 100, universityPop: 250};
+var UPKEEP = {schoolPop: 100, universityPop: 250, hospitalPop: 150};
 
 // Cost of maintaining 1 fire station
 var fireMaintenanceCost = 100;
@@ -62,7 +62,7 @@ var Budget = EventEmitter(function() {
 
   // KawaCity: what the deals with the neighbouring cities earned (or cost, if negative) this year (see Neighbours)
   this.dealsFund = 0;
-  // And what the upkeep of its schools and universities cost this year (negative)
+  // And what the upkeep of its schools, universities and hospitals cost this year (negative)
   this.upkeepFund = 0;
   // The money still owed for its loans, what is repaid each year, and what was repaid this year (negative)
   this.debt = 0;

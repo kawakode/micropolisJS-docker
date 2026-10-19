@@ -204,6 +204,10 @@ var JOKES = {
     'New school opens. The Mayor finally shows some class.',
     'Mayor visits the new school and fails a pop quiz on zoning.'
   ],
+  hospital: [
+    'New hospital opens. The Mayor promises the city is in good hands.',
+    'Mayor cuts the ribbon at the new hospital, then the finger. First patient admitted.'
+  ],
   university: [
     'University founded. The Mayor receives an honorary degree in Clicking Things.',
     'New university opens. Students protest against the Mayor at once. Tradition is respected.'

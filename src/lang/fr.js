@@ -42,7 +42,7 @@ var strings = {
   'Zoom out (-)': 'Dézoomer (-)',
   'Live': 'En direct',
   'Close': 'Fermer',
-  'Schools upkeep': 'Entretien des écoles',
+  'Schools and hospitals upkeep': 'Entretien des écoles et hôpitaux',
   'Move the map with one finger, even with a tool in hand': 'Déplacer la carte d\'un doigt, même avec un outil en main',
   'Move the map': 'Déplacer la carte',
   'Press this key again and again to go through these tools': 'Appuyez plusieurs fois sur cette touche pour passer d\'un outil à l\'autre',
@@ -163,6 +163,9 @@ var strings = {
   'School': 'École',
   'Raises land values and lowers crime nearby. $100 a year.':
     'Fait monter les prix fonciers et baisser la criminalité alentour. 100 $ par an.',
+  'Hospital': 'Hôpital',
+  'Heals the neighbourhood: homes grow better and land is worth more. $150 a year.':
+    'Soigne le quartier : les logements se développent mieux et le terrain vaut plus cher. 150 $ par an.',
   'University': 'Université',
   'Like a school, twice as strong and further reaching. $250 a year.':
     'Comme une école, deux fois plus efficace, et de plus loin. 250 $ par an.',
@@ -201,6 +204,7 @@ var strings = {
   'Police coverage': 'Couverture police',
   'Fire coverage': 'Couverture pompiers',
   'Education coverage': 'Couverture éducation',
+  'Health coverage': 'Couverture santé',
   'Rate of growth': 'Croissance',
   'legend|Empty': 'Vide',
   'legend|Dense': 'Dense',
@@ -447,6 +451,7 @@ var strings = {
   'Citizens demand a Police Department': 'Les habitants réclament un commissariat',
   'Industry requires a Sea Port': 'L\'industrie réclame un port',
   'Residents demand a Stadium': 'Les habitants réclament un stade',
+  'Residents demand a Hospital': 'Les habitants réclament un hôpital',
   'Roads deteriorating, due to lack of funds': 'Les routes se dégradent faute de crédits',
   'Police departments need funding': 'La police manque de crédits',
   'Welcome to KawaCity': 'Bienvenue dans KawaCity',
@@ -599,6 +604,8 @@ var strings = {
   'Goal met: {name}': 'Objectif atteint : {name}',
   'First school': 'Première école',
   'Build a school.': 'Construire une école.',
+  'In good health': 'En bonne santé',
+  'Build a hospital.': 'Construire un hôpital.',
   'Green spaces': 'Espaces verts',
   'Build a big park.': 'Construire un grand parc.',
   'Safe and sound': 'Sain et sauf',
@@ -1366,6 +1373,10 @@ var jokes = {
   school: [
     'Nouvelle école : le maire a enfin de la classe.',
     'Le maire visite la nouvelle école et rate une interro surprise sur le zonage.'
+  ],
+  hospital: [
+    'Nouvel hôpital : le maire assure que la ville est entre de bonnes mains.',
+    'Le maire coupe le ruban du nouvel hôpital, puis son doigt. Premier patient admis.'
   ],
   university: [
     'Université fondée : le maire reçoit un doctorat honoris causa en Clics de Souris.',

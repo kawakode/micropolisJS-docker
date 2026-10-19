@@ -43,6 +43,8 @@ COOLING_TOWER_PALETTE = {'s': (200, 204, 220), 'S': (232, 236, 255), 'r': (214, 
                          'L': (236, 238, 244), 'M': (196, 200, 212), 'D': (150, 154, 170)}
 FLAG = ['rrrr', 'rrrr', 'rrr.']
 FLAG_PALETTE = {'r': RED}
+CROSS = ['.www.', 'wwrww', 'wrrrw', 'wwrww', '.www.']
+CROSS_PALETTE = {'r': RED, 'w': WHITE}
 LIGHTS = ['rrbb']
 LIGHTS_PALETTE = {'r': (232, 70, 54), 'b': (92, 156, 255)}
 JET = ['.b.', 'bwb', '.b.']
@@ -312,6 +314,18 @@ def fire():
     return service(paint)
 
 
+def hospital():
+    def paint(face, u, v):
+        if face == 'top':
+            return GREY_LIGHT
+        if 0.8 <= v < 2.2 and int(u) % 3 == 1:
+            return (146, 192, 238) if face == 'left' else (110, 150, 196)
+        return WHITE if face == 'left' else (204, 204, 210)
+
+    # A red cross on the roof
+    return service(paint, [Sprite(7.5, 6.5, 5, CROSS, CROSS_PALETTE)])
+
+
 def school():
     building = walls(BRICK, BRICK_DARK, BRICK, (WHITE, 2, 4))
     shapes = [land(tinted((240, 150, 70), 0.15)), Box(1, 2, 0, 9, 8, 3.5, building),
@@ -487,6 +501,7 @@ ICONS = [
     ('trees', trees),
     ('water', water),
     ('landfill', landfill),
+    ('hospital', hospital),
 ]
 
 

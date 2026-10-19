@@ -125,6 +125,11 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame, op
     // KawaCity: how well educated each neighbourhood is (the education map, smoothed), range 0-1000
     educationEffectMap: new BlockMap(this._map.width, this._map.height, 8),
 
+    // KawaCity: positions and strength of hospitals, noted during the map scan, then their care smoothed over the
+    // neighbourhood
+    healthMap: new BlockMap(this._map.width, this._map.height, 8),
+    healthEffectMap: new BlockMap(this._map.width, this._map.height, 8),
+
     // Holds a value representing the rate of growth of a neighbourhood in the range -200 to +200
     rateOfGrowthMap: new BlockMap(this._map.width, this._map.height, 8),
 
@@ -301,6 +306,7 @@ Simulation.prototype._clearCensus = function() {
   this.blockMaps.fireStationMap.clear();
   this.blockMaps.policeStationMap.clear();
   this.blockMaps.educationMap.clear();
+  this.blockMaps.healthMap.clear();
 };
 
 
@@ -632,6 +638,11 @@ Simulation.prototype._sendMessages = function() {
           }
         }
       }
+      break;
+
+    case 38:
+      if (this._census.resPop > 1000 && this._census.hospitalPop === 0)
+        this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.NEED_HOSPITAL});
       break;
 
     case 35:

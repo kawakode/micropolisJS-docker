@@ -131,14 +131,7 @@ Census.prototype.take10Census = function(budget) {
 
   var resPopScaled = this.resPop >> 8;
 
-  if (this.hospitalPop < resPopScaled)
-    this.needHospital = 1;
-  else if (this.hospitalPop > resPopScaled)
-    this.needHospital = -1;
-  else
-    this.needHospital = 0;
-
-  // As many churches as hospitals
+  // A church for every 256 residents (KawaCity: hospitals are the player's to build)
   if (this.churchPop < resPopScaled)
     this.needChurch = 1;
   else if (this.churchPop > resPopScaled)

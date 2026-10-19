@@ -273,6 +273,9 @@ var pollutionTerrainLandValueScan = function(map, census, blockMaps, pollutionFa
         // ... while good schools nearby are a selling point
         landValue += Math.min(40, Math.floor(blockMaps.educationEffectMap.worldGet(worldX, worldY) / 6));
 
+        // ... and so is a hospital
+        landValue += Math.min(25, Math.floor(blockMaps.healthEffectMap.worldGet(worldX, worldY) / 8));
+
         // Clamp in range 1-250 (0 represents undeveloped land)
         landValue = MiscUtils.clamp(landValue, 1, 250);
         landValueMap.set(x, y, landValue);
@@ -354,6 +357,13 @@ var crimeScan = function(census, blockMaps, crimeFactor) {
   smoothMap(educationMap, educationEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
   smoothMap(educationEffectMap, educationMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
   smoothMap(educationMap, educationEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+
+  // And hospitals
+  var healthMap = blockMaps.healthMap;
+  var healthEffectMap = blockMaps.healthEffectMap;
+  smoothMap(healthMap, healthEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  smoothMap(healthEffectMap, healthMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  smoothMap(healthMap, healthEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
 
   var totalCrime = 0;
   var crimeZoneCount = 0;
