@@ -163,14 +163,15 @@ Traffic.prototype.tryDrive = function(startPos, destFn) {
       if (!this._isHighway(drivePos.x, drivePos.y) && this.driveDone(drivePos, destFn))
         return true;
     } else {
-      // Dead end. As in the original game, forget the last position recorded and use up 3 more steps: the trip
-      // fails unless a way on is found
-      if (this._stack.length > 0) {
-        this._stack.pop();
-        dist += 8;
-      } else {
+      // KawaCity: a dead end. The trip turns around, using up 4 more steps (in the original game, it failed there,
+      // so a dead-end street quietly stopped the zones beside it from growing). A road leading nowhere fails.
+      if (dirLast === undefined)
         return false;
-      }
+
+      dirLast = undefined;
+      dist += 8;
+      if (this._stack.length > 0)
+        this._stack.pop();
     }
   }
 
