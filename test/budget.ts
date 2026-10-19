@@ -37,6 +37,30 @@ describe("The budget", () => {
         expect([budget.roadEffect, budget.fireEffect, budget.policeEffect]).toEqual([0, 0, 0]);
     });
 
+    it("stays on automatic when short of money, spends what there is, and funds the services again later", () => {
+        const budget = new (Budget as any)();
+        const heard: string[] = [];
+        budget.addEventListener(Messages.BUDGET_NEEDED, () => heard.push("budget"));
+        budget.addEventListener(Messages.NO_MONEY, () => heard.push("broke"));
+        budget.setFunds(100);
+        budget.taxFund = 0;
+        budget.roadMaintenanceBudget = 200;
+        budget.fireMaintenanceBudget = 100;
+        budget.policeMaintenanceBudget = 100;
+
+        budget.doBudgetNow(false);
+        expect([budget.autoBudget, budget.awaitingValues, budget.totalFunds]).toEqual([true, false, 0]);
+        expect([budget.roadPercent, budget.firePercent, budget.policePercent]).toEqual([0.5, 0, 0]);
+        expect(heard).toEqual(["broke"]);
+
+        // Taxes come in again: the services are funded in full
+        budget.taxFund = 1000;
+        budget.doBudgetNow(false);
+        expect([budget.roadPercent, budget.firePercent, budget.policePercent]).toEqual([1, 1, 1]);
+        expect(budget.totalFunds).toBe(600);
+        expect(heard).toEqual(["broke"]);
+    });
+
     it("shows each rate as it is: 29% stays 29% (0.29 * 100 is 28.999...)", () => {
         for (let percent = 0; percent <= 100; percent++)
             expect([percent, (BudgetWindow as any).rateOf(percent / 100)]).toEqual([percent, percent]);
