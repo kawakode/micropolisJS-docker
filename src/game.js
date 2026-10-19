@@ -394,7 +394,7 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
   if (mode !== null) {
     this.dialogOpen = true;
     this._openWindow = 'scenarioWindow';
-    this.scenarioWindow.open(mode, Scenarios.get(scenario.id), remote);
+    this.scenarioWindow.open(mode, Scenarios.get(scenario.id), remote, remote ? scenario.scoreWait : undefined);
   }
 }
 

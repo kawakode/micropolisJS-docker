@@ -511,6 +511,9 @@ var strings = {
   'Bring the average crime below 60': 'faire passer la criminalité moyenne sous 60',
   'Raise the city score above 500': 'faire monter le score de la ville au-dessus de 500',
   'Goal: {goal} within {years} years.': 'Objectif : {goal}, en {years} ans.',
+  'Goal: {goal}, in the {time} left.': 'Objectif : {goal}, dans les {time} qui restent.',
+  '{years} years and {months} months': '{years} ans et {months} mois',
+  '{months} months': '{months} mois',
   'Goal reached: {goal}.': 'Objectif atteint : {goal}.',
   'Goal missed: {goal}.': 'Objectif manqué : {goal}.',
   'Title screen': 'Écran titre',
@@ -525,6 +528,8 @@ var strings = {
     'La population tout entière en a enfin assez de votre urbanisme inepte et de votre gestion incompétente. Une foule en colère, menée par votre propre mère, a été aperçue aux abords de l\'hôtel de ville.',
   'You should seriously consider taking an extended vacation -- NOW. (Or try again.)':
     'Vous devriez sérieusement envisager de longues vacances, et TOUT DE SUITE. (Ou de réessayer.)',
+  'You should seriously consider taking an extended vacation -- NOW.':
+    'Vous devriez sérieusement envisager de longues vacances, et TOUT DE SUITE.',
 
   // The news ticker
   'CITY': 'VILLE',

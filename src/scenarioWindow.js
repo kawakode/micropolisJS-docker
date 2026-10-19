@@ -44,9 +44,13 @@ var WON_TEXT = ['Your mayorial skill and city planning expertise have earned you
 var LOST_TEXT = ['The entire population of this city has finally had enough of your inept planning and incompetent management. An angry mob -- led by your mother -- has been spotted in the vicinity of city hall.',
                  'You should seriously consider taking an extended vacation -- NOW. (Or try again.)'];
 
+// A shared city can't be played again
+var SHARED_LOST_TEXT = [LOST_TEXT[0], 'You should seriously consider taking an extended vacation -- NOW.'];
 
-// mode: INTRO, WON or LOST; scenario: an entry of Scenarios.list; shared: true for a shared city
-ScenarioWindow.prototype.open = function(mode, scenario, shared) {
+
+// mode: INTRO, WON or LOST; scenario: an entry of Scenarios.list; shared: true for a shared city; timeLeft: the time
+// the scenario still has (in the simulation's time, as its scoreWait), for a shared city already under way
+ScenarioWindow.prototype.open = function(mode, scenario, shared, timeLeft) {
   this.mode = mode;
   this.scenario = scenario;
   this.shared = !!shared;
@@ -57,7 +61,7 @@ ScenarioWindow.prototype.open = function(mode, scenario, shared) {
     paragraphs = WON_TEXT;
   } else if (mode === ScenarioWindow.LOST) {
     title = I18n.t('Impeachment notice!');
-    paragraphs = LOST_TEXT;
+    paragraphs = shared ? SHARED_LOST_TEXT : LOST_TEXT;
   } else {
     title = scenario.name;
     paragraphs = scenario.text;
@@ -73,9 +77,19 @@ ScenarioWindow.prototype.open = function(mode, scenario, shared) {
 
   var goal = I18n.t(Scenarios.GOAL_TEXT[scenario.goal]);
   var years = Math.round(scenario.scoreWait / 48);
-  $('#scenarioGoal').text(I18n.t(mode === ScenarioWindow.INTRO ? 'Goal: {goal} within {years} years.' :
-                                 (mode === ScenarioWindow.WON ? 'Goal reached: {goal}.' : 'Goal missed: {goal}.'),
-                                 {goal: goal, years: years}));
+  var goalText;
+  if (mode !== ScenarioWindow.INTRO) {
+    goalText = I18n.t(mode === ScenarioWindow.WON ? 'Goal reached: {goal}.' : 'Goal missed: {goal}.', {goal: goal});
+  } else if (typeof(timeLeft) === 'number' && timeLeft < scenario.scoreWait) {
+    // Someone joining a shared city on the way is told the time there still is
+    var left = Math.max(0, timeLeft);
+    goalText = I18n.t('Goal: {goal}, in the {time} left.', {goal: goal, time: I18n.t(left >= 48 ?
+      '{years} years and {months} months' : '{months} months', {years: Math.floor(left / 48),
+                                                               months: Math.floor((left % 48) / 4)})});
+  } else {
+    goalText = I18n.t('Goal: {goal} within {years} years.', {goal: goal, years: years});
+  }
+  $('#scenarioGoal').text(goalText);
 
   // Which ways out there are
   $('#scenarioOK').val(I18n.t(mode === ScenarioWindow.INTRO ? 'Take office' : 'Keep playing'))
