@@ -33,6 +33,7 @@ import { InputStatus } from './inputStatus.js';
 import { IsoView } from './isoView.js';
 import { LocalController } from './localController.js';
 import * as Messages from './messages.ts';
+import { Metro } from './metro.js';
 import { MonsterTV } from './monsterTV.js';
 import { NeighboursWindow } from './neighboursWindow.js';
 import { Notification } from './notification.js';
@@ -888,8 +889,24 @@ Game.prototype._simulateTool = function(tool, placements) {
 };
 
 
-// Computes the overlay showing where the current tool will act, its validity and cost
+// The metro's tools show the tunnels under the city (see Metro)
+var METRO_TOOLS = ['metro', 'metroline'];
+
+
+// Computes the overlay showing where the current tool will act, its validity and cost, and the metro's tunnels while
+// one of its tools is chosen
 Game.prototype.computeOverlay = function() {
+  var overlay = this._computeToolOverlay();
+  if (METRO_TOOLS.indexOf(this.inputStatus.toolName) === -1 || this.inputStatus.currentTool === null)
+    return overlay;
+
+  overlay = overlay || {rects: [], label: null};
+  overlay.tunnels = Metro.tunnels(this.simulation._map);
+  return overlay;
+};
+
+
+Game.prototype._computeToolOverlay = function() {
   var pending = this.inputStatus.getPendingPlacements();
   if (pending === null)
     return null;

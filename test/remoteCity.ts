@@ -307,7 +307,7 @@ describe("The copy of a shared city", () => {
         // Nothing that is not a tile of the map
         const before = city.map._data.map((tile: any) => tile.getRawValue());
         expect(city.applyTiles({c: [-1, 1, 12000, 1, 1.5, 1, 8, -1, 9, 0x20000, 10, 1.5, 11, "3", 16, 2 ** 32, 12],
-                                r: [13, 4, 14, -1, 12000, 1, 15, 1.5]})).toBe(0);
+                                r: [13, 8, 14, -1, 12000, 1, 15, 1.5]})).toBe(0);
         expect(city.applyTiles(null)).toBe(0);
         expect(city.applyTiles({c: "1,2"})).toBe(0);
         expect(city.map._data.map((tile: any) => tile.getRawValue())).toEqual(before);

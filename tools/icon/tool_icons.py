@@ -496,6 +496,20 @@ def metro():
     return shapes, [Sprite(11, 10, 7, ['bbb', 'bwb', 'bbb'], {'b': (40, 90, 200), 'w': (255, 255, 255)})], lines
 
 
+def metro_line():
+    # The tunnel seen through the ground: a dark bore, its rails, and a train's blue head in it
+    def cut(x, y):
+        if 4 <= y < 9:
+            if y in (5, 7):
+                return GREY_LIGHT
+            if 8 <= x < 12:
+                return (40, 90, 200) if y != 6 else (150, 196, 236)
+            return (54, 50, 66)
+        return grass(x, y)
+
+    return [land(cut)], [], []
+
+
 def park():
     def path(x, y):
         return (214, 196, 150) if abs(x - y) <= 1 else grass(x, y)
@@ -659,6 +673,7 @@ ICONS = [
     ('busstop', bus_stop),
     ('busdepot', bus_depot),
     ('metro', metro),
+    ('metroline', metro_line),
     ('dam', dam),
 ]
 

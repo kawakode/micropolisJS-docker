@@ -34,6 +34,8 @@ var SPRITE_CELL = 48;
 var ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4];
 
 var BACKGROUND_COLOUR = '#16232a';
+// The metro's tunnels, shown while one of its tools is chosen
+var TUNNEL_COLOUR = '#3b82f6';
 
 // Water is animated: each tile containing water has a row of frames in the tile set's water image
 var WATER_FRAME_MS = 160;
@@ -672,17 +674,53 @@ GameCanvas.prototype._paintSprites = function(ctx, spriteList) {
 };
 
 
+// Paints the metro's tunnels: a line between the centres of tiles next to each other, outlined in dark
+GameCanvas.prototype._paintTunnels = function(ctx, tunnels) {
+  var self = this;
+  var centre = function(x, y) {
+    return [self._toDeviceX((x + 0.5) * TILE_SIZE), self._toDeviceY((y + 0.5) * TILE_SIZE)];
+  };
+  var width = Math.max(2, Math.round(4 * this._dpr));
+
+  ctx.lineCap = 'round';
+  [['#070a1f', width + Math.max(2, Math.round(2 * this._dpr))], [TUNNEL_COLOUR, width]].forEach(function(pass) {
+    ctx.strokeStyle = pass[0];
+    ctx.lineWidth = pass[1];
+    ctx.beginPath();
+    tunnels.forEach(function(t) {
+      var from = centre(t.x, t.y);
+      ctx.moveTo(from[0], from[1]);
+      ctx.lineTo(from[0], from[1]);
+      [[1, 1, 0], [2, 0, 1]].forEach(function(link) {
+        if (t.links & link[0]) {
+          var to = centre(t.x + link[1], t.y + link[2]);
+          ctx.moveTo(from[0], from[1]);
+          ctx.lineTo(to[0], to[1]);
+        }
+      });
+    });
+    ctx.stroke();
+  });
+  ctx.lineCap = 'butt';
+};
+
+
 // Paints the tool preview. The overlay is an object with:
 //   - rects: an array of {x, y, width, height, colour, valid} in tile units, outlining where the tool will act (a
 //     rect with outline set is only outlined, dashed: the reach of a brush)
 //   - label: optionally, {x, y, text, valid} with tile coordinates: a caption painted next to that tile
+//   - tunnels: optionally, the metro's tunnels, under the rest: {x, y, links} (see Metro.tunnels)
 GameCanvas.prototype._paintOverlay = function(ctx, overlay) {
   var dpr = this._dpr;
   var rects = overlay.rects || [];
 
   if (this._isometric) {
+    if (overlay.tunnels)
+      IsoView.paintTunnels(this._isoFrame, overlay.tunnels, dpr);
     IsoView.paintOverlayRects(this._isoFrame, rects, dpr);
     rects = [];
+  } else if (overlay.tunnels) {
+    this._paintTunnels(ctx, overlay.tunnels);
   }
 
   for (var i = 0, l = rects.length; i < l; i++) {

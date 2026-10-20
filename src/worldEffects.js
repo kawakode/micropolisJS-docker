@@ -17,6 +17,7 @@ function WorldEffects(map) {
   this._map = map;
   this._data = {};
   this._roadClasses = {};
+  this._tunnels = {};
 }
 
 
@@ -34,6 +35,7 @@ var fromKey = function(k) {
 WorldEffects.prototype.clear = function() {
   this._data = {};
   this._roadClasses = {};
+  this._tunnels = {};
 };
 
 
@@ -49,6 +51,21 @@ WorldEffects.prototype.getRoadClass = function(x, y) {
 
 WorldEffects.prototype.setRoadClass = function(x, y, roadClass) {
   this._roadClasses[toKey(x, y)] = roadClass;
+};
+
+
+// Whether a metro tunnel runs under (x, y) (see GameMap)
+WorldEffects.prototype.hasTunnel = function(x, y) {
+  var key = toKey(x, y);
+  if (key in this._tunnels)
+    return this._tunnels[key];
+
+  return this._map.hasTunnel(x, y);
+};
+
+
+WorldEffects.prototype.setTunnel = function(x, y, tunnel) {
+  this._tunnels[toKey(x, y)] = tunnel;
 };
 
 
@@ -99,6 +116,12 @@ WorldEffects.prototype.apply = function() {
   for (i = 0, l = keys.length; i < l; i++) {
     coords = fromKey(keys[i]);
     this._map.setRoadClass(coords.x, coords.y, this._roadClasses[keys[i]]);
+  }
+
+  keys = Object.keys(this._tunnels);
+  for (i = 0, l = keys.length; i < l; i++) {
+    coords = fromKey(keys[i]);
+    this._map.setTunnel(coords.x, coords.y, this._tunnels[keys[i]]);
   }
 };
 

@@ -20,8 +20,8 @@ import * as TileValues from "./tileValues.ts";
 // prestige to the landmark map, which raises land values more than anything. Recycling centres (when the city
 // recycles) and water treatment plants clean up the pollution around them, and the plants make the waterfront
 // sought after (see BlockMapUtils.pollutionTerrainLandValueScan). Bus stops and depots take cars off the roads around
-// them, once the city has a depot (see Traffic.addToTrafficDensityMap), and so do the metro stations linked to another
-// (see Metro). Parks, gardens and plazas count as green space for land values
+// them, once the city has a depot (see Traffic.addToTrafficDensityMap), and so do the metro stations that a line links
+// to another (see Metro). Parks, gardens and plazas count as green space for land values
 // (see BlockMapUtils.pollutionTerrainLandValueScan).
 
 var SCHOOL_STRENGTH = 800;
@@ -121,7 +121,7 @@ var waterworksFound = function(map, x, y, simData) {
 };
 
 
-// A metro station only carries people once it is linked to another
+// A metro station only carries people once a line links it to another
 var metroFound = function(map, x, y, simData) {
   simData.census.metroPop += 1;
   if (Metro.isLinked(map, x, y))

@@ -632,6 +632,39 @@ var quadPath = function(frame, quad) {
 };
 
 
+// The metro's tunnels (see GameCanvas._paintTunnels): lines between the centres of the tiles, on the ground
+var paintTunnels = function(frame, tunnels, dpr) {
+  var ctx = frame.ctx;
+  var centre = function(x, y) {
+    var u = x + 0.5;
+    var v = y + 0.5;
+    return [frame.deviceX(TILE * (u - v)), frame.deviceY(8 * (u + v))];
+  };
+  var width = Math.max(2, Math.round(4 * dpr));
+
+  ctx.lineCap = 'round';
+  [['#070a1f', width + Math.max(2, Math.round(2 * dpr))], ['#3b82f6', width]].forEach(function(pass) {
+    ctx.strokeStyle = pass[0];
+    ctx.lineWidth = pass[1];
+    ctx.beginPath();
+    tunnels.forEach(function(t) {
+      var from = centre(t.x, t.y);
+      ctx.moveTo(from[0], from[1]);
+      ctx.lineTo(from[0], from[1]);
+      [[1, 1, 0], [2, 0, 1]].forEach(function(link) {
+        if (t.links & link[0]) {
+          var to = centre(t.x + link[1], t.y + link[2]);
+          ctx.moveTo(from[0], from[1]);
+          ctx.lineTo(to[0], to[1]);
+        }
+      });
+    });
+    ctx.stroke();
+  });
+  ctx.lineCap = 'butt';
+};
+
+
 // The tool's preview: rectangles of tiles become diamonds
 var paintOverlayRects = function(frame, rects, dpr) {
   var ctx = frame.ctx;
@@ -707,6 +740,7 @@ var IsoView = {
   paintLights: paintLights,
   paintMap: paintMap,
   paintOverlayRects: paintOverlayRects,
+  paintTunnels: paintTunnels,
   particlePosition: particlePosition,
   setPreferred: setPreferred,
   toMap: toMap

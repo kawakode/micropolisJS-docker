@@ -175,8 +175,11 @@ var strings = {
   'Runs the city\'s buses: the bus stops take cars off the roads. $200 a year.':
     'Fait rouler les bus de la ville : les arrêts retirent des voitures des routes. 200 $ par an.',
   'Metro station': 'Station de métro',
-  'Linked underground to the nearest station within 24 tiles, for $100 a tile of tunnel: fewer cars around the linked stations. $40 a year.':
-    'Reliée sous terre à la station la plus proche à moins de 24 cases, pour 100 $ par case de tunnel : moins de voitures autour des stations reliées. 40 $ par an.',
+  'Fewer cars around it, once a metro line links it to another station. $40 a year.':
+    'Moins de voitures alentour, dès qu\'une ligne de métro la relie à une autre station. 40 $ par an.',
+  'Metro line': 'Ligne de métro',
+  'A tunnel, under anything: run it under or beside the stations it links. The bulldozer fills it in where nothing is built.':
+    'Un tunnel, sous n\'importe quoi : faites-le passer sous les stations à relier ou à côté. Le bulldozer le rebouche là où rien n\'est construit.',
   'Recycling centre': 'Centre de tri',
   'Cleans up the pollution around it, once the city recycles (an ordinance). $200 a year.':
     'Réduit la pollution alentour, dès que la ville recycle (un arrêté). 200 $ par an.',

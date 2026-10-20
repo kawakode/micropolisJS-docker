@@ -275,6 +275,7 @@ describe('Shared cities', () => {
     expect((await carol.post('/api/invitations/decline-all', {from: 5})).status).toBe(400);
   });
 
+  // 21 cities are made, each with its map: longer than Jest's 5 seconds on a busy machine
   test('Invitation limits: 20 an hour per inviter, 20 waiting per invitee (beyond: silently not made)', async () => {
     const alice = addPlayer(t, 'Alice');
     const city = await createCity(alice);
@@ -298,7 +299,7 @@ describe('Shared cities', () => {
     const limited = await alice.post(`/api/cities/${city.id}/invitations`, {username: addPlayer(t).username,
                                                                              role: 'viewer'});
     expect([limited.status, limited.json.error.code]).toEqual([429, 'rate_limited']);
-  });
+  }, 30000);
 
   test('Members: roles changed, members removed, leaving; 16 at most; the owner cannot leave', async () => {
     const alice = addPlayer(t, 'Alice');

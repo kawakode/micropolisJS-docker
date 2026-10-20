@@ -26,6 +26,7 @@ var CATEGORIES = {
   highway: LINE,
   rail: LINE,
   wire: LINE,
+  metroline: LINE,
   bulldozer: AREA,
   bulldozer3: AREA,
   bulldozer5: AREA,
