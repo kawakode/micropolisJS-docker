@@ -36,6 +36,7 @@ import * as Messages from './messages.ts';
 import { MonsterTV } from './monsterTV.js';
 import { NeighboursWindow } from './neighboursWindow.js';
 import { Notification } from './notification.js';
+import { Placements } from './placements.js';
 import { QueryWindow } from './queryWindow.js';
 import { RCI } from './rci.js';
 import { SaveWindow } from './saveWindow.js';
@@ -914,7 +915,7 @@ Game.prototype.computeOverlay = function() {
   var rects = [];
   var anySucceeded = false;
   var needsBulldoze = false;
-  var offset = size > 2 ? 1 : 0;
+  var offset = Placements.centreOffset(size);
 
   for (var i = 0, l = placements.length; i < l; i++) {
     var ok = preview.results[i] === tool.TOOLRESULT_OK;

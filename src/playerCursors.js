@@ -103,7 +103,7 @@ var footprint = function(tool) {
     return {size: brush, offset: Math.floor((brush - 1) / 2)};
 
   var size = Placements.sizeOf(tool);
-  return {size: size, offset: size > 2 ? 1 : 0};
+  return {size: size, offset: Placements.centreOffset(size)};
 };
 
 

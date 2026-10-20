@@ -215,7 +215,7 @@ RemoteController.prototype._boundsOf = function(data) {
     return null;
 
   var size = Placements.sizeOf(data.toolName);
-  var offset = size > 2 ? 1 : 0;
+  var offset = Placements.centreOffset(size);
   var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   placements.forEach(function(p) {
     minX = Math.min(minX, p.x);
