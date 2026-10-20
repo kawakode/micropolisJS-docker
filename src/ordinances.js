@@ -71,9 +71,20 @@ var effects = function(mask) {
 };
 
 
+var byId = function(id) {
+  for (var i = 0; i < ORDINANCES.length; i++) {
+    if (ORDINANCES[i].id === id)
+      return ORDINANCES[i];
+  }
+
+  return null;
+};
+
+
 var Ordinances = {
   ALL: ALL,
   LIST: ORDINANCES,
+  byId: byId,
   clean: clean,
   cost: cost,
   costOf: costOf,

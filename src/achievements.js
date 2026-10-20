@@ -1,7 +1,7 @@
 /* KawaCity: the city's goals, outside the scenarios: built one after another, they give the game a thread to follow.
  *
  * Each goal has a bit of its own in the city's save (Simulation.achievements, a mask): the bits never change, so a
- * goal may be added at the end but never taken out or moved. The list is in the order a city usually meets them: the
+ * goal may be added, with a new bit, but never taken out. The list is in the order a city usually meets them: the
  * next goal shown is the first one not yet met.
  *
  * A goal is checked on the city's facts (see Simulation._achievementFacts): {census, population, funds, tax, score,
@@ -14,7 +14,11 @@ var ACHIEVEMENTS = [
   {id: 'park', bit: 1, name: 'Green spaces', goal: 'Build a big park.',
    met: function(f) { return f.census.parkPop > 0; }},
   {id: 'safety', bit: 2, name: 'Safe and sound', goal: 'Have a police station and a fire station.',
-   met: function(f) { return f.census.policeStationPop > 0 && f.census.fireStationPop > 0; }},
+   met: function(f) {
+     return f.census.policeStationPop + f.census.policePostPop > 0 && f.census.fireStationPop + f.census.firePostPop > 0;
+   }},
+  {id: 'hospital', bit: 15, name: 'In good health', goal: 'Build a hospital.',
+   met: function(f) { return f.census.hospitalPop > 0; }},
   {id: 'stadium', bit: 3, name: 'Home team', goal: 'Build a stadium.',
    met: function(f) { return f.census.stadiumPop > 0; }},
   {id: 'deal', bit: 4, name: 'Good neighbours', goal: 'Make a deal with a neighbouring city.',
@@ -25,10 +29,10 @@ var ACHIEVEMENTS = [
    met: function(f) { return f.census.seaportPop > 0; }},
   {id: 'airport', bit: 7, name: 'Taking off', goal: 'Build an airport.',
    met: function(f) { return f.census.airportPop > 0; }},
-  {id: 'cleanPower', bit: 8, name: 'Clean energy', goal: 'Power a city of 2,000 people with the sun and the wind only.',
+  {id: 'cleanPower', bit: 8, name: 'Clean energy', goal: 'Power a city of 2,000 people with clean energy only.',
    met: function(f) {
      var census = f.census;
-     return f.population >= 2000 && census.solarPowerPop + census.windPowerPop > 0 &&
+     return f.population >= 2000 && census.solarPowerPop + census.windPowerPop + (census.hydroPowerPop || 0) > 0 &&
             census.coalPowerPop + census.gasPowerPop + census.nuclearPowerPop === 0;
    }},
   {id: 'quietStreets', bit: 9, name: 'Quiet streets', goal: 'Reach 10,000 people with little crime.',

@@ -125,6 +125,29 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame, op
     // KawaCity: how well educated each neighbourhood is (the education map, smoothed), range 0-1000
     educationEffectMap: new BlockMap(this._map.width, this._map.height, 8),
 
+    // KawaCity: positions and strength of hospitals, noted during the map scan, then their care smoothed over the
+    // neighbourhood
+    healthMap: new BlockMap(this._map.width, this._map.height, 8),
+    healthEffectMap: new BlockMap(this._map.width, this._map.height, 8),
+
+    // KawaCity: the prestige of the monuments, then spread over the neighbourhood
+    landmarkMap: new BlockMap(this._map.width, this._map.height, 8),
+    landmarkEffectMap: new BlockMap(this._map.width, this._map.height, 8),
+
+    // KawaCity: how much the recycling centres and water treatment plants clean up, and how much the plants make the
+    // waterfront sought after, then spread over the neighbourhood
+    cleanupMap: new BlockMap(this._map.width, this._map.height, 8),
+    cleanupEffectMap: new BlockMap(this._map.width, this._map.height, 8),
+    waterMap: new BlockMap(this._map.width, this._map.height, 8),
+    waterEffectMap: new BlockMap(this._map.width, this._map.height, 8),
+
+    // KawaCity: how many people the buses carry around their stops and depots, then spread over the neighbourhood
+    transitMap: new BlockMap(this._map.width, this._map.height, 8),
+    transitEffectMap: new BlockMap(this._map.width, this._map.height, 8),
+    // KawaCity: how many people the metro carries around its linked stations (added to the transit map, see
+    // BlockMapUtils.crimeScan)
+    metroMap: new BlockMap(this._map.width, this._map.height, 8),
+
     // Holds a value representing the rate of growth of a neighbourhood in the range -200 to +200
     rateOfGrowthMap: new BlockMap(this._map.width, this._map.height, 8),
 
@@ -301,6 +324,12 @@ Simulation.prototype._clearCensus = function() {
   this.blockMaps.fireStationMap.clear();
   this.blockMaps.policeStationMap.clear();
   this.blockMaps.educationMap.clear();
+  this.blockMaps.healthMap.clear();
+  this.blockMaps.landmarkMap.clear();
+  this.blockMaps.cleanupMap.clear();
+  this.blockMaps.waterMap.clear();
+  this.blockMaps.transitMap.clear();
+  this.blockMaps.metroMap.clear();
 };
 
 
@@ -548,6 +577,7 @@ Simulation.prototype._sendMessages = function() {
   var totalZonePop = this._census.resZonePop + this._census.comZonePop +
                      this._census.indZonePop;
   var powerPop = this._census.nuclearPowerPop + this._census.coalPowerPop + this._census.gasPowerPop +
+                 this._census.hydroPowerPop +
                  this._census.solarPowerPop + this._census.windPowerPop;
 
   // KawaCity: a cap on demand lifts as soon as the stadium, seaport or airport it asks for is there, instead of at
@@ -634,6 +664,11 @@ Simulation.prototype._sendMessages = function() {
       }
       break;
 
+    case 38:
+      if (this._census.resPop > 1000 && this._census.hospitalPop === 0)
+        this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.NEED_HOSPITAL});
+      break;
+
     case 35:
       if (this._census.pollutionAverage > 60)
         this._emitEvent(Messages.FRONT_END_MESSAGE,
@@ -646,12 +681,13 @@ Simulation.prototype._sendMessages = function() {
       break;
 
     case 45:
-      if (this._census.totalPop > 60 && this._census.fireStationPop === 0)
+      if (this._census.totalPop > 60 && this._census.fireStationPop + this._census.firePostPop === 0)
         this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.NEED_FIRE_STATION});
       break;
 
     case 48:
-      if (this._census.totalPop > 60 && this._census.policeStationPop === 0)
+      if (this._census.totalPop > 60 &&
+          this._census.policeStationPop + this._census.policePostPop === 0)
         this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.NEED_POLICE_STATION});
       break;
 

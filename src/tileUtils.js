@@ -108,6 +108,13 @@ var randomRubble = function() {
 };
 
 
+// Whether the centre of a zone or building needs power: parks, statues and bus stops don't (they neither count among
+// the zones with or without power, nor blink without it)
+var needsPower = function(tileValue) {
+  return tileValue !== TileValues.BIGPARK && tileValue !== TileValues.STATUE && tileValue !== TileValues.BUSSTOP;
+};
+
+
 var TileUtils = {
   canBulldoze: canBulldoze,
   isCommercial: isCommercial,
@@ -122,6 +129,7 @@ var TileUtils = {
   isResidential: isResidential,
   isResidentialZone: isResidentialZone,
   isRoad: isRoad,
+  needsPower: needsPower,
   normalizeRoad: normalizeRoad,
   randomFire: randomFire,
   randomRubble: randomRubble

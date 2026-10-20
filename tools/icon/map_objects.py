@@ -12,7 +12,7 @@
 import math
 
 from iso import (Box, Line, Solid, Sprite, cylinder, gable, lit, mix, render, shade, sphere, transparent, GREY, GREY_DARK,
-                 GREY_LIGHT, RED, RED_DARK, WATER, WATER_LIGHT, WHITE, YELLOW)
+                 GREY_LIGHT, RED, RED_DARK, WATER, WATER_FOAM, WATER_LIGHT, WHITE, YELLOW)
 
 U = 16
 
@@ -407,6 +407,205 @@ def university():
     return shapes, [tree(52, 40), tree(36, 52), tree(56, 56, True)], [], []
 
 
+def library():
+    def stone(face, u, v):
+        if STATE['lights']:
+            return LIT[1] if face == 'left' and 2 <= v < 7 and int(u) % 4 == 2 and hashed(u, v, 7) % 2 else None
+        if face == 'top':
+            return (210, 200, 176)
+        if v >= 8:
+            return (240, 232, 210) if face == 'left' else (200, 190, 166)
+        if int(u) % 4 == 0:
+            return (250, 246, 230) if face == 'left' else (214, 206, 186)
+        return (176, 164, 138) if face == 'left' else (146, 134, 112)
+
+    shapes = [box(4, 4, 26, 22, 10, stone),
+              roof(4, 4, 26, 22, 10, 5, ((120, 122, 138), (90, 92, 108)), (214, 206, 186)),
+              box(3, 22, 27, 25, 1, plain((226, 220, 204), (190, 184, 170), (226, 220, 204))),
+              flat(2, 26, 30, 30, lambda u, v: (214, 196, 150) if int(u) % 6 else (110, 178, 84))]
+    return shapes, [tree(28, 8, True), tree(28, 18, True)], [], []
+
+
+def police_post():
+    walls_ = facade((60, 84, 168), (42, 60, 126), (170, 176, 196), (176, 214, 246), 3, 4, 2, trim=(WHITE, 9), seed=94)
+    car = ['.kb.', 'wwww', 'kwwk']
+    car_palette = {'k': (30, 26, 40), 'b': (92, 156, 255), 'w': WHITE}
+    return [box(4, 4, 24, 22, 11, walls_)], [Sprite(28, 18, 0, car, car_palette)], [], []
+
+
+def fire_post():
+    walls_ = facade((214, 66, 52), (168, 48, 40), (150, 150, 160), (146, 192, 238), 4, 5, 2, trim=(WHITE, 8.5),
+                    seed=95)
+
+    def doors(face, u, v):
+        if not STATE['lights'] and face == 'left' and v < 7 and int(u) % 10 in range(2, 8):
+            return (60, 56, 70) if v < 6 else WHITE
+        return walls_(face, u, v)
+
+    tower = facade((214, 66, 52), (168, 48, 40), (150, 150, 160), (146, 192, 238), 4, 5, 2, trim=(WHITE, 16), seed=96)
+    return [box(4, 6, 24, 26, 10, doors), box(24, 18, 30, 26, 18, tower)], [], [], []
+
+
+BRONZE = ((214, 178, 92), (170, 134, 62), (120, 92, 44))
+
+
+def statue():
+    def paving(u, v):
+        return (226, 214, 186) if (int(u) // 2 + int(v) // 2) % 2 else (196, 184, 158)
+
+    stone = plain((236, 230, 214), (206, 198, 180), (236, 230, 214))
+    figure = ['.b.', '.B.', 'bBb', 'bBb', '.B.', '.B.', 'B.B']
+    return [flat(0, 0, 16, 16, paving), box(5, 5, 11, 11, 3, stone)], \
+        [Sprite(8, 8, 3, big(figure), {'b': BRONZE[0], 'B': BRONZE[1]})], [], []
+
+
+def town_hall():
+    walls_ = facade((246, 240, 226), (206, 198, 182), (220, 214, 200), (110, 160, 220), 3, 5, 2, trim=(RED, 13),
+                    door=((110, 74, 44), 40, 20), seed=97)
+    clock = facade((246, 240, 226), (206, 198, 182), (220, 214, 200), None, 3, 5, 2, trim=(RED, 34), seed=97)
+
+    def square(u, v):
+        if (u - 24) ** 2 + (v - 40) ** 2 <= 20:
+            return WATER_LIGHT if int(u + v) % 4 == 0 else (90, 170, 230)
+        return (226, 214, 186) if (int(u) // 3 + int(v) // 3) % 2 else (196, 184, 158)
+
+    shapes = [flat(0, 30, 48, 48, square), box(4, 4, 44, 26, 15, walls_),
+              roof(4, 4, 44, 26, 15, 5, ((200, 80, 60), (160, 60, 44)), (206, 198, 182)),
+              box(19, 10, 29, 20, 36, clock), roof(19, 10, 29, 20, 36, 7, ((200, 80, 60), (160, 60, 44)), (206, 198, 182))]
+    lines = [Line((2, 30, 0), (2, 30, 22), GREY_LIGHT)]
+    return shapes, [Sprite(4, 30, 22, ['bbbb', 'bbbb', 'bbb.'], {'b': (60, 110, 220)}), tree(10, 42), tree(42, 42)], \
+        lines, []
+
+
+def tower():
+    steel = ((236, 238, 246), (196, 200, 214), (150, 154, 172))
+
+    def paving(u, v):
+        return (226, 214, 186) if (int(u) // 2 + int(v) // 2) % 2 else (196, 184, 158)
+
+    def shaft(z):
+        return 4.5 - 2.5 * min(z, 60) / 60
+
+    shapes = [flat(0, 0, 32, 32, paving), tank(16, 16, shaft, 70, steel, (210, 212, 222)),
+              tank(16, 16, 7, 5, steel, (220, 222, 232), 58), dome(16, 16, 63, 7, steel, 0.4),
+              tank(16, 16, 1, 16, steel, WHITE, 64)]
+    return shapes, [Sprite(16, 16, 80, ['r'], {'r': RED})], [], []
+
+
+def recycling():
+    hall = facade((140, 150, 160), (110, 118, 128), (160, 168, 178), (176, 214, 246), 4, 5, 3, seed=101)
+
+    def yard(u, v):
+        return (150, 150, 156) if (int(u) // 4 + int(v) // 4) % 2 else (162, 162, 168)
+
+    bins = [((52, 110, 210), (36, 80, 160)), ((58, 150, 70), (40, 110, 50)), ((236, 196, 60), (190, 150, 40))]
+    shapes = [flat(0, 0, 48, 48, yard), box(4, 4, 28, 24, 12, hall),
+              box(28, 12, 44, 15, 6, plain((70, 66, 84), (54, 50, 66), (90, 86, 100)))]
+    for i, (light, dark_) in enumerate(bins):
+        shapes.append(box(31 + 5 * i, 3, 35 + 5 * i, 9, 4, plain(light, dark_, mix(light, WHITE, 0.3))))
+    for i, (x, y) in enumerate(((5, 28), (12, 28), (19, 28), (5, 35), (12, 35))):
+        light, dark_ = bins[i % 3]
+        shapes.append(box(x, y, x + 5, y + 5, 4, plain(light, dark_, mix(light, WHITE, 0.3))))
+    return shapes, [], [], []
+
+
+def waterworks():
+    house_ = facade(WHITE, (204, 204, 210), (60, 110, 200), (110, 160, 220), 3, 4, 2, seed=102)
+    rim = ((226, 228, 236), (186, 190, 204), (146, 150, 168))
+
+    def basin(cx, cy):
+        def water(x, y):
+            d = math.hypot(x - cx, y - cy)
+            if d < 1.5 or (d < 8 and abs((x - cx) * 0.4 - (y - cy)) < 0.7 and x > cx):
+                return (210, 212, 222)
+            return WATER_LIGHT if int(x * 2 + y) % 7 == 0 else (90, 170, 230)
+
+        def paint(x, y, z):
+            if z > 2.7 and math.hypot(x - cx, y - cy) < 8.6:
+                return water(x, y)
+            return lit(rim[0], rim[1], rim[2], 0.5 + 0.4 * ((y - cy) - (x - cx)) / 10)
+
+        return [night(Solid(cx - 10, cy - 10, 0, cx + 10, cy + 10, 3, lambda x, y, z: math.hypot(x - cx, y - cy) <= 10,
+                            paint))]
+
+    shapes = [box(28, 28, 46, 44, 11, house_)]
+    for cx, cy in ((12, 12), (36, 12), (12, 36)):
+        shapes += basin(cx, cy)
+    return shapes, [], [], []
+
+
+BUS_YELLOW = ((250, 204, 60), (206, 160, 40), (236, 236, 230))
+
+
+def bus_paint(face, u, v):
+    if STATE['lights']:
+        return None
+    if face == 'top':
+        return BUS_YELLOW[2]
+    if 2 <= v < 3.6 and int(u) % 3 != 0:
+        return (120, 170, 220) if face == 'left' else (90, 130, 180)
+    return BUS_YELLOW[0] if face == 'left' else BUS_YELLOW[1]
+
+
+def bus_stop():
+    def pavement(u, v):
+        return (196, 196, 204) if v >= 9 else (110, 178, 84)
+
+    glass = plain((150, 196, 236), (110, 150, 196), (70, 66, 84))
+    shapes = [flat(0, 0, 16, 16, pavement), box(3, 7, 12, 9, 6, glass), box(2, 6, 13, 10, 0.8, plain(
+        (70, 66, 84), (54, 50, 66), (90, 86, 100)), 6)]
+    lines = [Line((14, 12, 0), (14, 12, 9), GREY_LIGHT)]
+    return shapes, [Sprite(14, 12, 9, ['yy', 'yy'], {'y': (250, 204, 60)})], lines, []
+
+
+def metro():
+    def paving(u, v):
+        if 5 <= u < 10 and 6 <= v < 13:
+            return (70, 66, 84) if int(v) % 2 else (130, 128, 140)
+        return (214, 206, 186) if (int(u) // 4 + int(v) // 4) % 2 else (196, 188, 168)
+
+    railing = plain((40, 90, 200), (30, 70, 160), (60, 110, 220))
+    shapes = [flat(0, 0, 16, 16, paving), box(4, 5, 5, 13, 1.5, railing), box(10, 5, 11, 13, 1.5, railing),
+              box(5, 5, 10, 6, 1.5, railing)]
+    lines = [Line((13, 13, 0), (13, 13, 12), GREY_LIGHT)]
+    sign = ['bbbb', 'bwwb', 'bwwb', 'bbbb']
+    return shapes, [Sprite(13, 13, 12, big(sign), {'b': (40, 90, 200), 'w': (255, 255, 255)})], lines, []
+
+
+def bus_depot():
+    hall = facade((150, 150, 160), (118, 118, 130), (170, 170, 184), (176, 214, 246), 4, 6, 3, seed=103)
+
+    def doors(face, u, v):
+        if not STATE['lights'] and face == 'left' and v < 7 and int(u) % 8 in range(1, 7):
+            return (60, 56, 70) if v < 6.5 else (250, 204, 60)
+        return hall(face, u, v)
+
+    def yard(u, v):
+        return (150, 150, 156) if (int(u) // 4 + int(v) // 4) % 2 else (162, 162, 168)
+
+    shapes = [flat(0, 0, 48, 48, yard), box(2, 2, 46, 20, 11, doors)]
+    for x in range(5, 44, 9):
+        shapes.append(box(x, 25, x + 6, 42, 5, bus_paint))
+    return shapes, [], [], []
+
+
+def dam():
+    concrete = plain((214, 212, 204), (176, 174, 166), (226, 224, 216))
+
+    def spillway(face, u, v):
+        if STATE['lights']:
+            return None
+        if face == 'top':
+            return (226, 224, 216)
+        return WATER_FOAM if int(v * 2 + u) % 3 else WATER_LIGHT
+
+    house_ = facade((214, 212, 204), (176, 174, 166), (120, 122, 138), (250, 210, 72), 3, 4, 3, seed=104)
+    # The water on either side is the ground's (see IsoTiles): the wall stands across it
+    shapes = [box(0, 20, 48, 28, 8, concrete), box(18, 28, 30, 36, 6, spillway),
+              box(4, 29, 14, 39, 6, house_), box(34, 29, 44, 39, 6, house_)]
+    return shapes, [], [], []
+
+
 def stadium(full):
     cx, cy, rx, ry = 32, 32, 28, 24
 
@@ -687,7 +886,10 @@ def objects():
     for kind in range(8):
         out.append(('worship%d' % kind, 3, lambda k=kind: worship(k)))
     out += [('fire_station', 3, fire_station), ('police', 3, police), ('school', 3, school),
-            ('university', 4, university), ('stadium', 4, lambda: stadium(False)), ('stadium_full', 4, lambda: stadium(True)),
+            ('university', 4, university), ('library', 2, library), ('police_post', 2, police_post),
+            ('fire_post', 2, fire_post), ('statue', 1, statue), ('town_hall', 3, town_hall), ('tower', 2, tower),
+            ('recycling', 3, recycling), ('waterworks', 3, waterworks), ('bus_stop', 1, bus_stop),
+            ('bus_depot', 3, bus_depot), ('dam', 3, dam), ('metro', 1, metro), ('stadium', 4, lambda: stadium(False)), ('stadium_full', 4, lambda: stadium(True)),
             ('port', 4, port), ('airport', 6, airport), ('coal', 4, coal), ('nuclear', 4, nuclear), ('gas', 3, gas),
             ('solar', 3, solar), ('bigpark', 3, bigpark), ('garden', 1, garden), ('plaza', 1, lambda: fountain(True)),
             ('fountain', 1, lambda: fountain(False))]

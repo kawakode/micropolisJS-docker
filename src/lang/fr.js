@@ -42,7 +42,7 @@ var strings = {
   'Zoom out (-)': 'Dézoomer (-)',
   'Live': 'En direct',
   'Close': 'Fermer',
-  'Schools upkeep': 'Entretien des écoles',
+  'Schools and hospitals upkeep': 'Entretien des écoles et hôpitaux',
   'Move the map with one finger, even with a tool in hand': 'Déplacer la carte d\'un doigt, même avec un outil en main',
   'Move the map': 'Déplacer la carte',
   'Press this key again and again to go through these tools': 'Appuyez plusieurs fois sur cette touche pour passer d\'un outil à l\'autre',
@@ -163,6 +163,49 @@ var strings = {
   'School': 'École',
   'Raises land values and lowers crime nearby. $100 a year.':
     'Fait monter les prix fonciers et baisser la criminalité alentour. 100 $ par an.',
+  'Hospital': 'Hôpital',
+  'Environment': 'Écologie',
+  'Hydroelectric dam': 'Barrage',
+  'Built across a river or a lake: 600 MW, clean, whatever the weather.':
+    'Construit en travers d\'une rivière ou d\'un lac : 600 MW, propre, quel que soit le temps.',
+  'Bus stop': 'Arrêt de bus',
+  'Beside a road: fewer cars around it, once the city has a bus depot. $5 a year.':
+    'Au bord d\'une route : moins de voitures alentour, dès que la ville a un dépôt de bus. 5 $ par an.',
+  'Bus depot': 'Dépôt de bus',
+  'Runs the city\'s buses: the bus stops take cars off the roads. $200 a year.':
+    'Fait rouler les bus de la ville : les arrêts retirent des voitures des routes. 200 $ par an.',
+  'Metro station': 'Station de métro',
+  'Linked underground to the nearest station within 24 tiles, for $100 a tile of tunnel: fewer cars around the linked stations. $40 a year.':
+    'Reliée sous terre à la station la plus proche à moins de 24 cases, pour 100 $ par case de tunnel : moins de voitures autour des stations reliées. 40 $ par an.',
+  'Recycling centre': 'Centre de tri',
+  'Cleans up the pollution around it, once the city recycles (an ordinance). $200 a year.':
+    'Réduit la pollution alentour, dès que la ville recycle (un arrêté). 200 $ par an.',
+  'Water treatment plant': 'Épuration',
+  'Cleans up the pollution around it, and makes the waterfront sought after. $250 a year.':
+    'Réduit la pollution alentour, et rend les bords de l\'eau recherchés. 250 $ par an.',
+  'Statue': 'Statue',
+  'A monument to the founders: the land around it is worth more.':
+    'Un monument aux fondateurs : le terrain alentour vaut plus cher.',
+  'Town hall': 'Mairie',
+  'The pride of a city: the land around it is worth much more. $200 a year.':
+    'La fierté d\'une ville : le terrain alentour vaut bien plus cher. 200 $ par an.',
+  'Tower': 'Tour',
+  'Seen from everywhere: the land around it is worth far more. $400 a year.':
+    'Visible de partout : le terrain alentour vaut beaucoup plus cher. 400 $ par an.',
+  'From {n} inhabitants': 'Dès {n} habitants',
+  'Your city needs {n} inhabitants to build this': 'Votre ville doit compter {n} habitants pour construire ceci',
+  'Your city is too small to build this': 'Votre ville est trop petite pour construire ceci',
+  'Police post': 'Poste de police',
+  'A small police station for dense neighbourhoods: half as strong. $50 a year.':
+    'Un petit commissariat pour les quartiers denses : deux fois moins efficace. 50 $ par an.',
+  'Fire post': 'Poste de pompiers',
+  'A small fire station for dense neighbourhoods: half as strong. $50 a year.':
+    'Une petite caserne pour les quartiers denses : deux fois moins efficace. 50 $ par an.',
+  'Library': 'Bibliothèque',
+  'A small school: raises land values and lowers crime nearby. $50 a year.':
+    'Une petite école : fait monter les prix fonciers et baisser la criminalité alentour. 50 $ par an.',
+  'Heals the neighbourhood: homes grow better and land is worth more. $150 a year.':
+    'Soigne le quartier : les logements se développent mieux et le terrain vaut plus cher. 150 $ par an.',
   'University': 'Université',
   'Like a school, twice as strong and further reaching. $250 a year.':
     'Comme une école, deux fois plus efficace, et de plus loin. 250 $ par an.',
@@ -201,6 +244,7 @@ var strings = {
   'Police coverage': 'Couverture police',
   'Fire coverage': 'Couverture pompiers',
   'Education coverage': 'Couverture éducation',
+  'Health coverage': 'Couverture santé',
   'Rate of growth': 'Croissance',
   'legend|Empty': 'Vide',
   'legend|Dense': 'Dense',
@@ -447,6 +491,7 @@ var strings = {
   'Citizens demand a Police Department': 'Les habitants réclament un commissariat',
   'Industry requires a Sea Port': 'L\'industrie réclame un port',
   'Residents demand a Stadium': 'Les habitants réclament un stade',
+  'Residents demand a Hospital': 'Les habitants réclament un hôpital',
   'Roads deteriorating, due to lack of funds': 'Les routes se dégradent faute de crédits',
   'Police departments need funding': 'La police manque de crédits',
   'Welcome to KawaCity': 'Bienvenue dans KawaCity',
@@ -599,6 +644,8 @@ var strings = {
   'Goal met: {name}': 'Objectif atteint : {name}',
   'First school': 'Première école',
   'Build a school.': 'Construire une école.',
+  'In good health': 'En bonne santé',
+  'Build a hospital.': 'Construire un hôpital.',
   'Green spaces': 'Espaces verts',
   'Build a big park.': 'Construire un grand parc.',
   'Safe and sound': 'Sain et sauf',
@@ -614,8 +661,8 @@ var strings = {
   'Taking off': 'Décollage',
   'Build an airport.': 'Construire un aéroport.',
   'Clean energy': 'Énergie propre',
-  'Power a city of 2,000 people with the sun and the wind only.':
-    'Alimenter une ville de 2 000 habitants avec le soleil et le vent seulement.',
+  'Power a city of 2,000 people with clean energy only.':
+    'Alimenter une ville de 2 000 habitants avec de l\'énergie propre seulement.',
   'Quiet streets': 'Rues tranquilles',
   'Reach 10,000 people with little crime.': 'Atteindre 10 000 habitants avec peu de criminalité.',
   'Green city': 'Ville verte',
@@ -1366,6 +1413,14 @@ var jokes = {
   school: [
     'Nouvelle école : le maire a enfin de la classe.',
     'Le maire visite la nouvelle école et rate une interro surprise sur le zonage.'
+  ],
+  library: [
+    'Nouvelle bibliothèque : le maire emprunte un livre sur les finances, et le renouvelle pour la troisième fois.',
+    'Bibliothèque inaugurée : le maire demande le silence, pour une fois.'
+  ],
+  hospital: [
+    'Nouvel hôpital : le maire assure que la ville est entre de bonnes mains.',
+    'Le maire coupe le ruban du nouvel hôpital, puis son doigt. Premier patient admis.'
   ],
   university: [
     'Université fondée : le maire reçoit un doctorat honoris causa en Clics de Souris.',

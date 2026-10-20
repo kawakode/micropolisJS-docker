@@ -18,6 +18,7 @@ import { GameMap } from './gameMap.js';
 import { TerrainTool } from './terrainTool.js';
 import { BULLBIT, BURNBIT } from "./tileFlags.ts";
 import { QUERY_WINDOW_NEEDED } from './messages.ts';
+import { Metro } from './metro.js';
 import { MiscUtils } from './miscUtils.js';
 import { ParkTool } from './parkTool.js';
 import { RailTool } from './railTool.js';
@@ -53,6 +54,19 @@ function GameTools(map) {
     solar: new BuildingTool(2000, TileValues.SOLARPLANT, map, 3, false),
     gas: new BuildingTool(2000, TileValues.GASPLANT, map, 3, false),
     school: new BuildingTool(1000, TileValues.SCHOOL, map, 3, false),
+    hospital: new BuildingTool(1500, TileValues.HOSPITAL, map, 3, false),
+    library: new BuildingTool(800, TileValues.LIBRARY, map, 2, false),
+    policepost: new BuildingTool(300, TileValues.POLICEPOST, map, 2, false),
+    firepost: new BuildingTool(300, TileValues.FIREPOST, map, 2, false),
+    statue: new BuildingTool(1000, TileValues.STATUE, map, 1, false),
+    townhall: new BuildingTool(5000, TileValues.TOWNHALL, map, 3, false),
+    tower: new BuildingTool(15000, TileValues.TOWER, map, 2, false),
+    recycling: new BuildingTool(1500, TileValues.RECYCLING, map, 3, false),
+    waterworks: new BuildingTool(2000, TileValues.WATERWORKS, map, 3, false),
+    busstop: new BuildingTool(50, TileValues.BUSSTOP, map, 1, false),
+    busdepot: new BuildingTool(1000, TileValues.BUSDEPOT, map, 3, false),
+    metro: Metro.makeTool(map),
+    dam: new BuildingTool(4000, TileValues.DAM, map, 3, false, true),
     university: new BuildingTool(3000, TileValues.UNIVERSITY, map, 4, false),
     bigpark: new BuildingTool(400, TileValues.BIGPARK, map, 3, false),
     garden: new TerrainTool(map, TerrainTool.LAY, 25, TileValues.GARDEN, BULLBIT | BURNBIT),

@@ -52,6 +52,7 @@ export const NEED_MORE_INDUSTRIAL = "More industrial zones needed";
 export const NEED_MORE_RAILS = "More railways needed";
 export const NEED_MORE_RESIDENTIAL = "More residential needed";
 export const NEED_MORE_ROADS = "More roads needed";
+export const NEED_HOSPITAL = "Hospital needed";
 export const NEED_POLICE_STATION = "Police station needed";
 export const NEED_SEAPORT = "Seaport needed";
 export const NEED_STADIUM = "Stadium needed";

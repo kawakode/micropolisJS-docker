@@ -1,10 +1,15 @@
 // KawaCity's buildings on the map (their road access, and fires), and its kinds of road
+import { BlockMapUtils } from "../src/blockMapUtils.js";
+import { Budget } from "../src/budget.js";
 import { GameMap } from "../src/gameMap.js";
 import { KawaBuildings } from "../src/kawaBuildings.js";
+import { Ordinances } from "../src/ordinances.js";
+import { Simulation } from "../src/simulation.js";
 import { Traffic } from "../src/traffic.js";
 import { ZoneUtils } from "../src/zoneUtils.js";
-import { BULLBIT } from "../src/tileFlags";
-import { DIRT, HRAIL, ROADS, WINDTURBINE, WINDTURBINE1 } from "../src/tileValues";
+import { BULLBIT, ZONEBIT } from "../src/tileFlags";
+import { BUSDEPOT, BUSSTOP, DIRT, METRO, FIREPOST, HOSPITAL, HRAIL, LIBRARY, POLICEPOST, POWERPLANT, RECYCLING, RIVER, ROADS, WATERWORKS, WINDTURBINE,
+         WINDTURBINE1 } from "../src/tileValues";
 
 const makeMap = (): any => new (GameMap as any)(20, 20, DIRT);
 
@@ -85,5 +90,217 @@ describe("A trip on the roads", () => {
                 found++;
         }
         expect(found).toBe(40);
+    });
+});
+
+
+describe("A hospital", () => {
+    const withHospital = (road: boolean): any => {
+        const simulation = new (Simulation as any)(new (GameMap as any)(120, 100), 0, Simulation.SPEED_MED);
+        const map = simulation._map;
+        (ZoneUtils as any).putZone(map, 20, 20, HOSPITAL, false);
+        if (road)
+            map.setTile(22, 21, ROADS, 0);
+        simulation._clearCensus();
+        simulation._mapScanner.mapScan(0, map.width, simulation._constructSimData());
+        BlockMapUtils.crimeScan({}, simulation.blockMaps);
+        return simulation;
+    };
+
+    it("is counted by the census, and cares for the neighbourhood around it", () => {
+        const simulation = withHospital(true);
+        const health = simulation.blockMaps.healthEffectMap;
+        expect(simulation._census.hospitalPop).toBe(1);
+        expect(health.worldGet(20, 20)).toBeGreaterThan(0);
+        expect(health.worldGet(20, 20)).toBeGreaterThan(health.worldGet(36, 20));
+        expect(health.worldGet(100, 80)).toBe(0);
+    });
+
+    it("cares less without a road", () => {
+        const withRoad = withHospital(true).blockMaps.healthEffectMap.worldGet(20, 20);
+        const withoutRoad = withHospital(false).blockMaps.healthEffectMap.worldGet(20, 20);
+        expect(withoutRoad).toBeLessThan(withRoad);
+    });
+
+    it("costs $150 a year", () => {
+        const budget = new (Budget as any)();
+        budget.setFunds(1000);
+        budget.collectTax(0, {totalPop: 0, hospitalPop: 2, policeStationPop: 0, fireStationPop: 0,
+                              roadTotal: 0, railTotal: 0, landValueAverage: 0}, 0);
+        expect(budget.upkeepFund).toBe(-300);
+    });
+});
+
+
+describe("The compact stations and the library", () => {
+    const scanned = (centre: number): any => {
+        const simulation = new (Simulation as any)(new (GameMap as any)(120, 100), 0, Simulation.SPEED_MED);
+        const map = simulation._map;
+        (ZoneUtils as any).putZone(map, 20, 20, centre, true);
+        // The building covers 19..20: a road along its right edge
+        map.setTile(21, 20, ROADS, 0);
+        simulation._clearCensus();
+        simulation._mapScanner.mapScan(0, map.width, simulation._constructSimData());
+        return simulation;
+    };
+
+    it("are 2x2 buildings, demolished whole", () => {
+        [LIBRARY, POLICEPOST, FIREPOST].forEach((centre) => expect((ZoneUtils as any).getZoneSize(centre)).toBe(2));
+    });
+
+    it("cover their neighbourhood half as well as a big station, for the same budget", () => {
+        const post = scanned(POLICEPOST);
+        expect(post._census.policePostPop).toBe(1);
+        // Half as strong, and half again without power (there is no power plant)
+        expect(post.blockMaps.policeStationMap.worldGet(20, 20)).toBe(Math.floor(post.budget.policeEffect / 4));
+
+        const fire = scanned(FIREPOST);
+        expect(fire._census.firePostPop).toBe(1);
+        expect(fire.blockMaps.fireStationMap.worldGet(20, 20)).toBeGreaterThan(0);
+    });
+
+    it("educate a little, like a small school", () => {
+        const library = scanned(LIBRARY);
+        expect(library._census.libraryPop).toBe(1);
+        // Half as strong without power
+        expect(library.blockMaps.educationMap.worldGet(20, 20)).toBe(200);
+    });
+
+    it("cost half the upkeep of a big station", () => {
+        const budget = new (Budget as any)();
+        budget.setFunds(1000);
+        budget.collectTax(0, {totalPop: 0, policeStationPop: 1, policePostPop: 2, fireStationPop: 0, firePostPop: 1,
+                              libraryPop: 1, roadTotal: 0, railTotal: 0, landValueAverage: 0}, 0);
+        expect(budget.policeMaintenanceBudget).toBe(200);
+        expect(budget.fireMaintenanceBudget).toBe(50);
+        expect(budget.upkeepFund).toBe(-50);
+    });
+});
+
+
+describe("The recycling centre and the water treatment plant", () => {
+    const scanned = (centre: number | null, recycles: boolean): any => {
+        const simulation = new (Simulation as any)(new (GameMap as any)(120, 100), 0, Simulation.SPEED_MED);
+        const map = simulation._map;
+        if (recycles)
+            simulation.budget.setOrdinances(1 << (Ordinances as any).byId("recycling").bit);
+        if (centre !== null)
+            (ZoneUtils as any).putZone(map, 20, 20, centre, true);
+        simulation._clearCensus();
+        simulation._mapScanner.mapScan(0, map.width, simulation._constructSimData());
+        BlockMapUtils.crimeScan({}, simulation.blockMaps);
+        return simulation;
+    };
+
+    it("sorts the waste only when the city recycles", () => {
+        expect(scanned(RECYCLING, false).blockMaps.cleanupEffectMap.worldGet(20, 20)).toBe(0);
+        const recycling = scanned(RECYCLING, true);
+        expect(recycling._census.recyclingPop).toBe(1);
+        expect(recycling.blockMaps.cleanupEffectMap.worldGet(20, 20)).toBeGreaterThan(0);
+    });
+
+    it("cleans up the pollution of the neighbourhood, by up to half", () => {
+        const pollutionNear = (withPlant: boolean): number => {
+            const simulation = scanned(withPlant ? WATERWORKS : null, false);
+            const map = simulation._map;
+            // A tile of a coal plant just beside it
+            map.setTile(24, 18, POWERPLANT, 0);
+            BlockMapUtils.pollutionTerrainLandValueScan(map, simulation._census, simulation.blockMaps);
+            return simulation.blockMaps.pollutionDensityMap.worldGet(24, 18);
+        };
+
+        const polluted = pollutionNear(false);
+        expect(polluted).toBeGreaterThan(0);
+        expect(pollutionNear(true)).toBeLessThan(polluted);
+        expect(pollutionNear(true)).toBeGreaterThanOrEqual(Math.floor(polluted / 2) - 1);
+    });
+
+    it("makes the land by the water more valuable", () => {
+        const landValueByWater = (withPlant: boolean): number => {
+            const simulation = scanned(withPlant ? WATERWORKS : null, false);
+            const map = simulation._map;
+            map.setTile(24, 26, RIVER, 0);
+            map.setTile(22, 24, ROADS, 0);
+            BlockMapUtils.pollutionTerrainLandValueScan(map, simulation._census, simulation.blockMaps);
+            return simulation.blockMaps.landValueMap.worldGet(22, 24);
+        };
+
+        expect(landValueByWater(true)).toBeGreaterThan(landValueByWater(false));
+    });
+});
+
+
+describe("The buses", () => {
+    const transitAt = (withDepot: boolean): any => {
+        const simulation = new (Simulation as any)(new (GameMap as any)(120, 100), 0, Simulation.SPEED_MED);
+        const map = simulation._map;
+        map.setTile(20, 20, BUSSTOP, ZONEBIT);
+        map.setTile(21, 20, ROADS, 0);
+        if (withDepot)
+            (ZoneUtils as any).putZone(map, 60, 60, BUSDEPOT, true);
+        simulation._clearCensus();
+        simulation._mapScanner.mapScan(0, map.width, simulation._constructSimData());
+        BlockMapUtils.crimeScan(simulation._census, simulation.blockMaps);
+        return simulation;
+    };
+
+    it("only run once the city has a depot", () => {
+        const noDepot = transitAt(false);
+        expect(noDepot._census.busStopPop).toBe(1);
+        expect(noDepot.blockMaps.transitEffectMap.worldGet(20, 20)).toBe(0);
+        expect(transitAt(true).blockMaps.transitEffectMap.worldGet(20, 20)).toBeGreaterThan(0);
+    });
+
+    it("take cars off the roads around the stops", () => {
+        const trafficAfterTrip = (withDepot: boolean): number => {
+            const simulation = transitAt(withDepot);
+            const traffic = new (Traffic as any)(simulation._map, simulation.spriteManager);
+            traffic._stack = [{x: 21, y: 20}];
+            traffic.addToTrafficDensityMap(simulation.blockMaps);
+            return simulation.blockMaps.trafficDensityMap.worldGet(21, 20);
+        };
+
+        expect(trafficAfterTrip(true)).toBeLessThan(trafficAfterTrip(false));
+        expect(trafficAfterTrip(true)).toBeGreaterThanOrEqual(Math.floor(trafficAfterTrip(false) / 2));
+    });
+});
+
+
+describe("The metro", () => {
+    const transitAt = (stations: number[][]): any => {
+        const simulation = new (Simulation as any)(new (GameMap as any)(120, 100), 0, Simulation.SPEED_MED);
+        const map = simulation._map;
+        for (const [x, y] of stations) {
+            map.setTile(x, y, METRO, ZONEBIT);
+            map.setTile(x + 1, y, ROADS, 0);
+        }
+        simulation._clearCensus();
+        simulation._mapScanner.mapScan(0, map.width, simulation._constructSimData());
+        BlockMapUtils.crimeScan(simulation._census, simulation.blockMaps);
+        return simulation;
+    };
+
+    it("only runs between stations linked to each other", () => {
+        const alone = transitAt([[20, 20], [60, 60]]);
+        expect(alone._census.metroPop).toBe(2);
+        expect(alone.blockMaps.transitEffectMap.worldGet(20, 20)).toBe(0);
+
+        const linked = transitAt([[20, 20], [30, 30]]);
+        expect(linked.blockMaps.transitEffectMap.worldGet(20, 20)).toBeGreaterThan(0);
+        expect(linked.blockMaps.transitEffectMap.worldGet(30, 30)).toBeGreaterThan(0);
+    });
+
+    it("runs without a bus depot, and takes more cars off the roads than a bus stop", () => {
+        const buses = new (Simulation as any)(new (GameMap as any)(120, 100), 0, Simulation.SPEED_MED);
+        buses._map.setTile(20, 20, BUSSTOP, ZONEBIT);
+        buses._map.setTile(21, 20, ROADS, 0);
+        (ZoneUtils as any).putZone(buses._map, 60, 60, BUSDEPOT, true);
+        buses._clearCensus();
+        buses._mapScanner.mapScan(0, buses._map.width, buses._constructSimData());
+        BlockMapUtils.crimeScan(buses._census, buses.blockMaps);
+
+        const metro = transitAt([[20, 20], [30, 30]]);
+        expect(metro.blockMaps.transitEffectMap.worldGet(20, 20))
+            .toBeGreaterThan(buses.blockMaps.transitEffectMap.worldGet(20, 20));
     });
 });

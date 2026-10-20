@@ -3663,6 +3663,29 @@ kbd {
   display: block;
 }
 
+/* A monument the city is too small for: dimmed, with the population it waits for */
+.toolLock {
+  display: none;
+}
+
+.toolButton.locked .toolIcon {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+.toolButton.locked .toolName,
+.toolButton.locked .toolCost {
+  opacity: 0.6;
+}
+
+.toolPalette .toolButton.locked .toolLock {
+  display: block;
+  grid-column: 2 / span 2;
+  font-family: var(--text-font);
+  font-size: 12px;
+  color: var(--gold);
+}
+
 @media (max-width: 600px) {
   .categoryButton {
     width: 76px;

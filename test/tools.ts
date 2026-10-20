@@ -2,7 +2,7 @@ import { BaseTool } from "../src/baseTool.js";
 import { GameTools } from "../src/gameTools.js";
 import { GameMap } from "../src/gameMap.js";
 import { BLBNBIT, BULLBIT } from "../src/tileFlags";
-import { DIRT, RIVER, RUBBLE, SCHOOL, TINYEXP, LASTTINYEXP, WOODS } from "../src/tileValues";
+import { DAM, DIRT, METRO, RIVER, RUBBLE, SCHOOL, TINYEXP, LASTTINYEXP, WOODS } from "../src/tileValues";
 
 // Placing tools on a small, bare map, as the game does (see Game.handleTool)
 const makeMap = (): any => new (GameMap as any)(20, 20, DIRT);
@@ -215,5 +215,51 @@ describe("Digging water", () => {
 
         // West of the dug tile is the bridge: water on that side only
         expect(apply(map, tools.water, 6, 5).value).not.toBe(13);
+    });
+});
+
+
+describe("The dam", () => {
+    it("is built across water only", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+        expect(apply(map, tools.dam, 5, 5)).toEqual({result: FAILED, cost: 0, value: DIRT});
+
+        for (let x = 4; x <= 6; x++)
+            for (let y = 4; y <= 6; y++)
+                map.setTile(x, y, RIVER, 0);
+        map.setTile(6, 6, DIRT, 0);
+        expect(apply(map, tools.dam, 5, 5).result).toBe(FAILED);
+
+        map.setTile(6, 6, RIVER, 0);
+        expect(apply(map, tools.dam, 5, 5)).toEqual({result: OK, cost: 4000, value: DAM});
+    });
+
+    it("gives the water back when it is demolished", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+        for (let x = 4; x <= 6; x++)
+            for (let y = 4; y <= 6; y++)
+                map.setTile(x, y, RIVER, 0);
+        apply(map, tools.dam, 5, 5);
+
+        expect(apply(map, tools.bulldozer, 4, 6).result).toBe(OK);
+        for (let x = 4; x <= 6; x++)
+            for (let y = 4; y <= 6; y++)
+                expect(map.getTileValue(x, y)).toBe(RIVER);
+    });
+});
+
+
+describe("The metro", () => {
+    it("pays for the tunnel to the nearest station within reach", () => {
+        const map = new (GameMap as any)(60, 60, DIRT);
+        const tools = makeTools(map);
+        expect(apply(map, tools.metro, 5, 5)).toEqual({result: OK, cost: 500, value: METRO});
+        expect(apply(map, tools.metro, 11, 13)).toEqual({result: OK, cost: 500 + 10 * 100, value: METRO});
+        // The nearest station, not the first one
+        expect(apply(map, tools.metro, 11, 20).cost).toBe(500 + 7 * 100);
+        // Too far from any station: a station of its own, without a tunnel
+        expect(apply(map, tools.metro, 55, 55).cost).toBe(500);
     });
 });

@@ -29,7 +29,10 @@ var zoneTypes = ['Clear', 'Water', 'Trees', 'Rubble', 'Flood', 'Radioactive Wast
                  'Police Department', 'Stadium', 'Nuclear Power', 'Draw Bridge',
                  'Radar Dish', 'Fountain', 'Industrial', 'Steelers 38  Bears 3',
                  'Draw Bridge', 'Ur 238', 'Church', 'Clear', 'Wind Power', 'Gas Power', 'Solar Power',
-                 'School', 'University', 'Park', 'Garden', 'Plaza', 'Clear'];
+                 'School', 'University', 'Park', 'Garden', 'Plaza', 'Library',
+                 'Police Department', 'Fire Department', 'Statue', 'Town hall', 'Tower',
+                 'Recycling centre', 'Water treatment plant', 'Bus stop',
+                 'Bus depot', 'Hydroelectric dam', 'Metro station', 'Clear'];
 
 // Evaluation window
 var gameLevel = {};
@@ -68,7 +71,8 @@ var deals = {trade: 'Trade agreement', buyPower: 'Buy electricity', sellPower: '
 var toolMessages = {
   noMoney: 'Insufficient funds to build that',
   needsDoze: 'Area must be bulldozed first',
-  needsDozeManual: 'Bulldoze first (automatic bulldozing is off)'
+  needsDozeManual: 'Bulldoze first (automatic bulldozing is off)',
+  locked: 'Your city needs {n} inhabitants to build this'
 };
 
 // Message strings
@@ -85,6 +89,7 @@ neutralMessages[Messages.NEED_MORE_ROADS] = true;
 neutralMessages[Messages.NEED_POLICE_STATION] = true;
 neutralMessages[Messages.NEED_SEAPORT] = true;
 neutralMessages[Messages.NEED_STADIUM] = true;
+neutralMessages[Messages.NEED_HOSPITAL] = true;
 neutralMessages[Messages.ROAD_NEEDS_FUNDING] = true;
 neutralMessages[Messages.POLICE_NEEDS_FUNDING] = true;
 neutralMessages[Messages.WELCOME] = true;
@@ -132,6 +137,7 @@ messageText[Messages.NEED_MORE_ROADS] = 'More roads required';
 messageText[Messages.NEED_POLICE_STATION] = 'Citizens demand a Police Department';
 messageText[Messages.NEED_SEAPORT] = 'Industry requires a Sea Port';
 messageText[Messages.NEED_STADIUM] = 'Residents demand a Stadium';
+messageText[Messages.NEED_HOSPITAL] = 'Residents demand a Hospital';
 messageText[Messages.SNOW_FELL] = 'Snow has fallen: solar farms give less, and clearing the roads costs more';
 messageText[Messages.ROAD_NEEDS_FUNDING] = 'Roads deteriorating, due to lack of funds';
 messageText[Messages.POLICE_NEEDS_FUNDING] = 'Police departments need funding';

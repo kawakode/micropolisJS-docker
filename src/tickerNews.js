@@ -204,6 +204,14 @@ var JOKES = {
     'New school opens. The Mayor finally shows some class.',
     'Mayor visits the new school and fails a pop quiz on zoning.'
   ],
+  library: [
+    'New library opens. The Mayor borrows a book on budgets, then renews it for the third time.',
+    'Library inaugurated: the Mayor asks for silence, for once.'
+  ],
+  hospital: [
+    'New hospital opens. The Mayor promises the city is in good hands.',
+    'Mayor cuts the ribbon at the new hospital, then the finger. First patient admitted.'
+  ],
   university: [
     'University founded. The Mayor receives an honorary degree in Clicking Things.',
     'New university opens. Students protest against the Mayor at once. Tradition is respected.'
@@ -562,7 +570,8 @@ TickerNews.prototype.cityReport = function(status) {
 
   // Power
   var zones = census.poweredZoneCount + census.unpoweredZoneCount;
-  var plants = census.coalPowerPop + census.nuclearPowerPop + census.gasPowerPop + census.solarPowerPop + census.windPowerPop;
+  var plants = census.coalPowerPop + census.nuclearPowerPop + census.gasPowerPop + census.solarPowerPop + census.windPowerPop +
+               (census.hydroPowerPop || 0);
   var homesAndJobs = census.resZonePop + census.comZonePop + census.indZonePop;
 
   if (homesAndJobs === 0)
@@ -595,10 +604,10 @@ TickerNews.prototype.cityReport = function(status) {
     add(ADVICE, 'dealOnHold', news[0], news[1], deal);
   }
 
-  if (census.totalPop > 60 && census.policeStationPop === 0)
+  if (census.totalPop > 60 && census.policeStationPop + (census.policePostPop || 0) === 0)
     add(WARNING, 'noPolice', 'Citizens demand a police station: crime grows unchecked without one.');
 
-  if (census.totalPop > 60 && census.fireStationPop === 0)
+  if (census.totalPop > 60 && census.fireStationPop + (census.firePostPop || 0) === 0)
     add(WARNING, 'noFire', 'Citizens demand a fire station: nothing would stop a fire today.');
 
   // The budget

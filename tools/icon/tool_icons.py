@@ -43,6 +43,8 @@ COOLING_TOWER_PALETTE = {'s': (200, 204, 220), 'S': (232, 236, 255), 'r': (214, 
                          'L': (236, 238, 244), 'M': (196, 200, 212), 'D': (150, 154, 170)}
 FLAG = ['rrrr', 'rrrr', 'rrr.']
 FLAG_PALETTE = {'r': RED}
+CROSS = ['.www.', 'wwrww', 'wrrrw', 'wwrww', '.www.']
+CROSS_PALETTE = {'r': RED, 'w': WHITE}
 LIGHTS = ['rrbb']
 LIGHTS_PALETTE = {'r': (232, 70, 54), 'b': (92, 156, 255)}
 JET = ['.b.', 'bwb', '.b.']
@@ -312,6 +314,18 @@ def fire():
     return service(paint)
 
 
+def hospital():
+    def paint(face, u, v):
+        if face == 'top':
+            return GREY_LIGHT
+        if 0.8 <= v < 2.2 and int(u) % 3 == 1:
+            return (146, 192, 238) if face == 'left' else (110, 150, 196)
+        return WHITE if face == 'left' else (204, 204, 210)
+
+    # A red cross on the roof
+    return service(paint, [Sprite(7.5, 6.5, 5, CROSS, CROSS_PALETTE)])
+
+
 def school():
     building = walls(BRICK, BRICK_DARK, BRICK, (WHITE, 2, 4))
     shapes = [land(tinted((240, 150, 70), 0.15)), Box(1, 2, 0, 9, 8, 3.5, building),
@@ -334,6 +348,152 @@ def university():
               cylinder(6.5, 6, 5, 6.2, 2.4, ((236, 226, 196), (210, 200, 176), (180, 170, 146)), (210, 200, 176)),
               sphere(6.5, 6, 6.2, 2.2, ((120, 210, 180), (80, 170, 150), (50, 130, 120)))]
     return shapes, [], []
+
+
+def library():
+    def stone(face, u, v):
+        if face == 'top':
+            return (210, 200, 176)
+        if v >= 3.6:
+            return (240, 232, 210) if face == 'left' else (200, 190, 166)
+        if int(u * 2) % 3 == 0:
+            return (250, 246, 230) if face == 'left' else (214, 206, 186)
+        return (176, 164, 138) if face == 'left' else (146, 134, 112)
+
+    shapes = [land(grass), Box(2, 3, 0, 11, 10, 4.4, stone),
+              gable(2, 3, 11, 10, 4.4, 2.4, ((120, 122, 138), (90, 92, 108)), (214, 206, 186), 'x')]
+    return shapes, [], []
+
+
+def compact(walls_paint, sprite=None):
+    """A smaller building than service's, on a smaller lot: the compact stations"""
+    def ground(x, y):
+        if y >= 9 or x >= 9:
+            return CONCRETE
+        return grass(x, y)
+
+    return [land(ground), Box(3, 3, 0, 9, 8, 4, walls_paint)], sprite or [], []
+
+
+def police_post():
+    def paint(face, u, v):
+        if face == 'top':
+            return GREY_LIGHT
+        if 2.2 <= v < 2.9:
+            return WHITE
+        if face == 'left' and 0.8 <= v < 1.8 and int(u) % 3 == 1:
+            return (146, 192, 238)
+        return NAVY if face == 'left' else NAVY_DARK
+
+    return compact(paint, [Sprite(5.5, 4.5, 4, LIGHTS, LIGHTS_PALETTE), Sprite(10.5, 10, 0, CAR, CAR_PALETTE)])
+
+
+def fire_post():
+    def paint(face, u, v):
+        if face == 'top':
+            return GREY_LIGHT
+        if face == 'left' and v < 2.8 and 0.6 <= u % 3 < 2.4:
+            return (60, 56, 70) if v < 2.4 else WHITE
+        if 3.2 <= v < 3.7:
+            return WHITE
+        return RED if face == 'left' else RED_DARK
+
+    return compact(paint)
+
+
+def statue():
+    def paving(x, y):
+        return (226, 214, 186) if (x + y) % 2 else (196, 184, 158)
+
+    figure = ['.b.', '.B.', 'bBb', 'bBb', '.B.', '.B.', 'B.B']
+    plinth = Box(4.5, 4.5, 0, 8.5, 8.5, 2.5, walls((236, 230, 214), (206, 198, 182), (236, 230, 214)))
+    return [land(paving, edge=None), plinth], [Sprite(6.5, 6.5, 2.5, figure, {'b': (214, 178, 92), 'B': (170, 134, 62)})], []
+
+
+def town_hall():
+    hall = walls((246, 240, 226), (206, 198, 182), (220, 214, 200), ((110, 160, 220), 2, 3))
+    red = ((200, 80, 60), (160, 60, 44))
+    shapes = [land(grass), Box(1, 2, 0, 12, 8, 5, hall), gable(1, 2, 12, 8, 5, 2, red, (206, 198, 182), 'x'),
+              Box(5, 3, 0, 8, 6, 9, walls((246, 240, 226), (206, 198, 182), (220, 214, 200))),
+              gable(5, 3, 8, 6, 9, 2.5, red, (206, 198, 182), 'x')]
+    return shapes, [], []
+
+
+def tower():
+    steel = ((236, 238, 246), (196, 200, 214), (150, 154, 172))
+    shapes = [land(grass), cylinder(6.5, 6.5, 0, 16, 1.2, steel, (210, 212, 222)),
+              cylinder(6.5, 6.5, 13, 15, 2.6, steel, (220, 222, 232)), sphere(6.5, 6.5, 15, 2.6, steel),
+              cylinder(6.5, 6.5, 16, 20, 0.4, steel, WHITE)]
+    return shapes, [], []
+
+
+def recycling():
+    def yard(x, y):
+        return CONCRETE if (x + y) % 2 else CONCRETE_DARK
+
+    hall = walls((140, 150, 160), (110, 118, 128), (160, 168, 178), ((176, 214, 246), 3, 3))
+    shapes = [land(yard), Box(1, 1, 0, 8, 7, 4.5, hall)]
+    bins = [((52, 110, 210), (36, 80, 160)), ((58, 150, 70), (40, 110, 50)), ((236, 196, 60), (190, 150, 40))]
+    for i, (light, dark_) in enumerate(bins):
+        shapes.append(Box(9.5, 1.5 + 3.5 * i, 0, 12, 4 + 3.5 * i, 2, walls(light, dark_, mix(light, WHITE, 0.3))))
+    return shapes, [], []
+
+
+def waterworks():
+    rim = ((226, 228, 236), (186, 190, 204), (146, 150, 168))
+    shapes = [land(grass)]
+    for cx, cy in ((3.5, 3.5), (9.5, 3.5), (3.5, 9.5)):
+        shapes.append(cylinder(cx, cy, 0, 1.2, 2.8, rim, WATER))
+    shapes.append(Box(7, 7, 0, 12, 12, 3.5, walls(WHITE, (204, 204, 210), (60, 110, 200), ((110, 160, 220), 2, 2))))
+    return shapes, [], []
+
+
+BUS = walls((250, 204, 60), (206, 160, 40), (236, 236, 230), ((120, 170, 220), 2, 2))
+
+
+def bus_stop():
+    def ground(x, y):
+        return CONCRETE if y >= 7 else grass(x, y)
+
+    shapes = [land(ground), Box(2, 5, 0, 9, 6.5, 4, walls((150, 196, 236), (110, 150, 196), (70, 66, 84))),
+              Box(1.5, 4.5, 4, 9.5, 7, 0.6, walls((70, 66, 84), (54, 50, 66), (90, 86, 100))),
+              Box(3, 9, 0, 11, 12, 2.5, BUS)]
+    lines = [Line((11.5, 7.5, 0), (11.5, 7.5, 6), GREY_LIGHT)]
+    return shapes, [Sprite(11.5, 7.5, 6, ['yy', 'yy'], {'y': (250, 204, 60)})], lines
+
+
+def bus_depot():
+    def yard(x, y):
+        return CONCRETE if (x + y) % 2 else CONCRETE_DARK
+
+    shapes = [land(yard), Box(1, 1, 0, 12, 6, 4, walls((150, 150, 160), (118, 118, 130), (170, 170, 184)))]
+    for x in (1.5, 5, 8.5):
+        shapes.append(Box(x, 7.5, 0, x + 2.5, 12, 2.2, BUS))
+    return shapes, [], []
+
+
+def dam():
+    def river(x, y):
+        return WATER_LIGHT if (x * 3 + y) % 7 == 0 else WATER
+
+    concrete = walls((214, 212, 204), (176, 174, 166), (226, 224, 216))
+    shapes = [land(river, edge=None), Box(0, 5, 0, 13, 8, 3.5, concrete),
+              Box(5, 8, 0, 8, 10, 2.5, walls(WATER_FOAM, WATER_LIGHT, (226, 224, 216))),
+              Box(1, 8.5, 0, 4, 11, 2.5, concrete), Box(9, 8.5, 0, 12, 11, 2.5, concrete)]
+    return shapes, [], []
+
+
+def metro():
+    def ground(x, y):
+        if 3 <= x < 8 and 4 <= y < 11:
+            return (70, 66, 84) if y % 2 else (130, 128, 140)
+        return CONCRETE
+
+    railing = walls((70, 66, 84), (54, 50, 66), (90, 86, 100))
+    shapes = [land(ground), Box(2, 3, 0, 3, 11, 1.5, railing), Box(8, 3, 0, 9, 11, 1.5, railing),
+              Box(3, 3, 0, 8, 4, 1.5, railing)]
+    lines = [Line((11, 10, 0), (11, 10, 7), GREY_LIGHT)]
+    return shapes, [Sprite(11, 10, 7, ['bbb', 'bwb', 'bbb'], {'b': (40, 90, 200), 'w': (255, 255, 255)})], lines
 
 
 def park():
@@ -487,6 +647,19 @@ ICONS = [
     ('trees', trees),
     ('water', water),
     ('landfill', landfill),
+    ('hospital', hospital),
+    ('library', library),
+    ('policepost', police_post),
+    ('firepost', fire_post),
+    ('statue', statue),
+    ('townhall', town_hall),
+    ('tower', tower),
+    ('recycling', recycling),
+    ('waterworks', waterworks),
+    ('busstop', bus_stop),
+    ('busdepot', bus_depot),
+    ('metro', metro),
+    ('dam', dam),
 ]
 
 

@@ -86,8 +86,20 @@ Census.prototype.clearCensus = function() {
   this.gasPowerPop = 0;
   this.solarPowerPop = 0;
   this.windPowerPop = 0;
+  this.hydroPowerPop = 0;
   this.schoolPop = 0;
   this.universityPop = 0;
+  this.libraryPop = 0;
+  this.policePostPop = 0;
+  this.firePostPop = 0;
+  this.statuePop = 0;
+  this.townHallPop = 0;
+  this.towerPop = 0;
+  this.recyclingPop = 0;
+  this.waterworksPop = 0;
+  this.busStopPop = 0;
+  this.busDepotPop = 0;
+  this.metroPop = 0;
   this.parkPop = 0;
   this.seaportPop = 0;
   this.airportPop = 0;
@@ -131,14 +143,7 @@ Census.prototype.take10Census = function(budget) {
 
   var resPopScaled = this.resPop >> 8;
 
-  if (this.hospitalPop < resPopScaled)
-    this.needHospital = 1;
-  else if (this.hospitalPop > resPopScaled)
-    this.needHospital = -1;
-  else
-    this.needHospital = 0;
-
-  // As many churches as hospitals
+  // A church for every 256 residents (KawaCity: hospitals are the player's to build)
   if (this.churchPop < resPopScaled)
     this.needChurch = 1;
   else if (this.churchPop > resPopScaled)

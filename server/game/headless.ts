@@ -11,6 +11,7 @@ import type { BlockMap } from '../../src/blockMap';
 import { GameMap } from '../../src/gameMap.js';
 import { GameTools } from '../../src/gameTools.js';
 import * as Messages from '../../src/messages';
+import { Monuments } from '../../src/monuments.js';
 import { Neighbours } from '../../src/neighbours.js';
 import { Ordinances } from '../../src/ordinances.js';
 import { Placements } from '../../src/placements.js';
@@ -562,6 +563,10 @@ export class HeadlessCity {
     const placements = this.placementsFor(toolName, from, to);
     if (placements === null || !Object.hasOwn(this.tools, toolName as string))
       return null;
+
+    // A monument the city is too small for: nothing is built
+    if (Monuments.isLocked(toolName, this.population))
+      return {applied: 0, failed: placements.length, reason: 'locked', cost: 0, placements};
 
     const tool = this.tools[toolName as string];
     const budget = this.simulation.budget;

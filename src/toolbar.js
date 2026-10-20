@@ -8,6 +8,7 @@
 import $ from "jquery";
 
 import { I18n } from './i18n.js';
+import { Monuments } from './monuments.js';
 import { ToolIcons } from './toolIcons.js';
 
 // The tool bar: the zones and the query tool are always at hand; everything else is grouped in categories (the
@@ -61,6 +62,14 @@ var TOOLS = {
          description: 'Puts fires out faster around it. $100 a year.'},
   school: {name: 'School', size: 3, cost: 1000, colour: '#f97316',
            description: 'Raises land values and lowers crime nearby. $100 a year.'},
+  policepost: {name: 'Police post', size: 2, cost: 300, colour: '#3b82f6',
+               description: 'A small police station for dense neighbourhoods: half as strong. $50 a year.'},
+  firepost: {name: 'Fire post', size: 2, cost: 300, colour: '#ef4444',
+             description: 'A small fire station for dense neighbourhoods: half as strong. $50 a year.'},
+  library: {name: 'Library', size: 2, cost: 800, colour: '#eab308',
+            description: 'A small school: raises land values and lowers crime nearby. $50 a year.'},
+  hospital: {name: 'Hospital', size: 3, cost: 1500, colour: '#f43f5e',
+             description: 'Heals the neighbourhood: homes grow better and land is worth more. $150 a year.'},
   university: {name: 'University', size: 4, cost: 3000, colour: '#38bdf8',
                description: 'Like a school, twice as strong and further reaching. $250 a year.'},
 
@@ -72,6 +81,12 @@ var TOOLS = {
           description: 'A paved square with a fountain, for city centres.'},
   bigpark: {name: 'Big park', size: 3, cost: 400, colour: '#22c55e',
             description: 'Lawns, trees and a pond: a boost to land values around it.'},
+  statue: {name: 'Statue', size: 1, cost: 1000, colour: '#ca8a04',
+           description: 'A monument to the founders: the land around it is worth more.'},
+  townhall: {name: 'Town hall', size: 3, cost: 5000, colour: '#b91c1c',
+             description: 'The pride of a city: the land around it is worth much more. $200 a year.'},
+  tower: {name: 'Tower', size: 2, cost: 15000, colour: '#e2e8f0',
+          description: 'Seen from everywhere: the land around it is worth far more. $400 a year.'},
   stadium: {name: 'Stadium', size: 4, cost: 5000, colour: '#a78bfa',
             description: 'Residents need one as the city grows.'},
 
@@ -79,6 +94,18 @@ var TOOLS = {
           description: 'Plant a forest on bare land.'},
   water: {name: 'Dig water', size: 1, cost: 100, colour: '#2563eb',
           description: 'Dig a lake or a canal.'},
+  dam: {name: 'Hydroelectric dam', size: 3, cost: 4000, colour: '#0284c7',
+        description: 'Built across a river or a lake: 600 MW, clean, whatever the weather.'},
+  busstop: {name: 'Bus stop', size: 1, cost: 50, colour: '#facc15',
+            description: 'Beside a road: fewer cars around it, once the city has a bus depot. $5 a year.'},
+  busdepot: {name: 'Bus depot', size: 3, cost: 1000, colour: '#ca8a04',
+             description: 'Runs the city\'s buses: the bus stops take cars off the roads. $200 a year.'},
+  metro: {name: 'Metro station', size: 1, cost: 500, colour: '#2563eb',
+          description: 'Linked underground to the nearest station within 24 tiles, for $100 a tile of tunnel: fewer cars around the linked stations. $40 a year.'},
+  recycling: {name: 'Recycling centre', size: 3, cost: 1500, colour: '#22c55e', key: 'E',
+              description: 'Cleans up the pollution around it, once the city recycles (an ordinance). $200 a year.'},
+  waterworks: {name: 'Water treatment plant', size: 3, cost: 2000, colour: '#0ea5e9',
+               description: 'Cleans up the pollution around it, and makes the waterfront sought after. $250 a year.'},
   landfill: {name: 'Landfill', size: 1, cost: 60, colour: '#a16207',
              description: 'Fill water in, to build on it.'}
 };
@@ -90,11 +117,15 @@ var CATEGORIES = [
   {id: 'bulldozer', name: 'Bulldozer', holder: '#basicButtons', key: 'B', code: 'KeyB',
    tools: ['bulldozer', 'bulldozer3', 'bulldozer5', 'bulldozer7']},
   {id: 'transport', name: 'Transport', key: '4', code: 'Digit4',
-   tools: ['road', 'dirtroad', 'avenue', 'highway', 'rail', 'port', 'airport']},
-  {id: 'power', name: 'Power', key: '6', code: 'Digit6', tools: ['wire', 'wind', 'solar', 'gas', 'coal', 'nuclear']},
-  {id: 'services', name: 'Services', key: '8', code: 'Digit8', tools: ['police', 'fire', 'school', 'university']},
-  {id: 'leisure', name: 'Leisure', key: '7', code: 'Digit7', tools: ['park', 'garden', 'plaza', 'bigpark', 'stadium']},
-  {id: 'terrain', name: 'Terrain', key: 'T', code: 'KeyT', tools: ['trees', 'water', 'landfill']}
+   tools: ['road', 'dirtroad', 'avenue', 'highway', 'rail', 'busstop', 'busdepot', 'metro', 'port', 'airport']},
+  {id: 'power', name: 'Power', key: '6', code: 'Digit6', 
+   tools: ['wire', 'wind', 'solar', 'dam', 'gas', 'coal', 'nuclear']},
+  {id: 'services', name: 'Services', key: '8', code: 'Digit8',
+   tools: ['police', 'policepost', 'fire', 'firepost', 'school', 'library', 'hospital', 'university']},
+  {id: 'leisure', name: 'Leisure', key: '7', code: 'Digit7', 
+   tools: ['park', 'garden', 'plaza', 'bigpark', 'stadium', 'statue', 'townhall', 'tower']},
+  {id: 'terrain', name: 'Terrain', key: 'T', code: 'KeyT', tools: ['trees', 'water', 'landfill']},
+  {id: 'environment', name: 'Environment', key: 'E', code: 'KeyE', tools: ['recycling', 'waterworks']}
 ];
 
 
@@ -118,6 +149,8 @@ var makeToolButton = function(toolName) {
     button.attr('data-key', tool.key);
   if (tool.brush)
     button.attr('data-brush', tool.brush);
+  if (Monuments.requiredPopulation(toolName) > 0)
+    button.attr('data-unlock', Monuments.requiredPopulation(toolName));
   return button;
 };
 
@@ -171,6 +204,15 @@ var refresh = function(currentTool) {
 
     button.toggleClass('selected', !!inCategory).toggleClass('unselected', !inCategory);
     button.attr('title', button.find('.toolName').text() + ': ' + I18n.t(TOOLS[shown].name));
+  });
+};
+
+
+// Shows the monuments the city is too small for as locked
+var setPopulation = function(population) {
+  $('.toolButton[data-unlock]').each(function() {
+    var button = $(this);
+    button.toggleClass('locked', Monuments.isLocked(button.attr('data-tool'), population));
   });
 };
 
@@ -238,6 +280,7 @@ var Toolbar = {
   build: build,
   bind: bind,
   refresh: refresh,
+  setPopulation: setPopulation,
   closeFlyout: closeFlyout,
   cycles: cycles,
   TOOLS: TOOLS,

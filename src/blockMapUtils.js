@@ -189,6 +189,23 @@ var getCityCentreDistance = function(map, x, y) {
 //   * Proximity to undeveloped terrain (who doesn't love a good view?)
 //
 // Pollution is completely determined by the tile types in the block
+// Whether there is water within two tiles of a block of the land value map (2x2 tiles from the given corner)
+var isNearWater = function(map, worldX, worldY) {
+  for (var x = worldX - 2; x <= worldX + 3; x++) {
+    for (var y = worldY - 2; y <= worldY + 3; y++) {
+      if (!map.testBounds(x, y))
+        continue;
+
+      var tileValue = map.getTileValue(x, y);
+      if (tileValue >= TileValues.WATER_LOW && tileValue <= TileValues.WATER_HIGH)
+        return true;
+    }
+  }
+
+  return false;
+};
+
+
 // KawaCity: pollutionFactor (1 by default) multiplies the pollution, as the ordinances say (see Ordinances)
 var pollutionTerrainLandValueScan = function(map, census, blockMaps, pollutionFactor) {
   // We record raw pollution readings for each tile into tempMap1, and then use tempMap2 and tempMap1 to smooth
@@ -252,6 +269,11 @@ var pollutionTerrainLandValueScan = function(map, census, blockMaps, pollutionFa
       if (pollutionFactor !== undefined)
         pollutionLevel = Math.floor(pollutionLevel * pollutionFactor);
       pollutionLevel = Math.min(pollutionLevel, 255);
+
+      // KawaCity: recycling centres and water treatment plants nearby clean up to half of it
+      var cleanup = blockMaps.cleanupEffectMap.worldGet(worldX, worldY);
+      if (cleanup > 0)
+        pollutionLevel -= Math.floor(pollutionLevel * Math.min(0.5, cleanup / 200));
       tempMap1.set(x, y, pollutionLevel);
 
       if (developed) {
@@ -272,6 +294,17 @@ var pollutionTerrainLandValueScan = function(map, census, blockMaps, pollutionFa
 
         // ... while good schools nearby are a selling point
         landValue += Math.min(40, Math.floor(blockMaps.educationEffectMap.worldGet(worldX, worldY) / 6));
+
+        // ... and so is a hospital
+        landValue += Math.min(25, Math.floor(blockMaps.healthEffectMap.worldGet(worldX, worldY) / 8));
+
+        // ... and nothing beats a view of a monument
+        landValue += Math.min(60, Math.floor(blockMaps.landmarkEffectMap.worldGet(worldX, worldY) / 4));
+
+        // ... or of clean water, near a water treatment plant
+        var water = blockMaps.waterEffectMap.worldGet(worldX, worldY);
+        if (water > 0 && isNearWater(map, worldX, worldY))
+          landValue += Math.min(40, Math.floor(water / 4));
 
         // Clamp in range 1-250 (0 represents undeveloped land)
         landValue = MiscUtils.clamp(landValue, 1, 250);
@@ -354,6 +387,45 @@ var crimeScan = function(census, blockMaps, crimeFactor) {
   smoothMap(educationMap, educationEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
   smoothMap(educationEffectMap, educationMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
   smoothMap(educationMap, educationEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+
+  // And hospitals
+  var healthMap = blockMaps.healthMap;
+  var healthEffectMap = blockMaps.healthEffectMap;
+  smoothMap(healthMap, healthEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  smoothMap(healthEffectMap, healthMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  smoothMap(healthMap, healthEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+
+  // And monuments
+  var landmarkMap = blockMaps.landmarkMap;
+  var landmarkEffectMap = blockMaps.landmarkEffectMap;
+  smoothMap(landmarkMap, landmarkEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  smoothMap(landmarkEffectMap, landmarkMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  smoothMap(landmarkMap, landmarkEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+
+  // And recycling centres and water treatment plants
+  ['cleanup', 'water'].forEach(function(name) {
+    var raw = blockMaps[name + 'Map'];
+    var effect = blockMaps[name + 'EffectMap'];
+    smoothMap(raw, effect, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+    smoothMap(effect, raw, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+    smoothMap(raw, effect, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  });
+
+  // And the buses, which only run once there is a depot, and the metro
+  var transitMap = blockMaps.transitMap;
+  var transitEffectMap = blockMaps.transitEffectMap;
+  var metroMap = blockMaps.metroMap;
+  if (!(census.busDepotPop > 0))
+    transitMap.clear();
+  if (metroMap) {
+    for (var mx = 0; mx < metroMap.width; mx++) {
+      for (var my = 0; my < metroMap.height; my++)
+        transitMap.set(mx, my, transitMap.get(mx, my) + metroMap.get(mx, my));
+    }
+  }
+  smoothMap(transitMap, transitEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  smoothMap(transitEffectMap, transitMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  smoothMap(transitMap, transitEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
 
   var totalCrime = 0;
   var crimeZoneCount = 0;

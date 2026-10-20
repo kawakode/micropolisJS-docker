@@ -33,7 +33,8 @@ var HEIGHT = 100;
 
 // The overlays of the minimap the server sends (the power overlay is read from the tiles' POWERBIT)
 var MAP_NAMES = ['populationDensityMap', 'trafficDensityMap', 'pollutionDensityMap', 'crimeRateMap', 'landValueMap',
-                 'policeStationEffectMap', 'fireStationEffectMap', 'rateOfGrowthMap', 'educationEffectMap'];
+                 'policeStationEffectMap', 'fireStationEffectMap', 'rateOfGrowthMap', 'educationEffectMap',
+                 'healthEffectMap'];
 
 // What the stats hold of the evaluation (with problemVotes and problemOrder), of the budget (the funds and the
 // automatic budget come with the state) and of the census (the averages, then the histories when they changed)

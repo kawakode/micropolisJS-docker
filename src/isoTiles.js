@@ -260,15 +260,42 @@ var addLot = function(first, last, lot) {
   addBuilding('school', 3, TileValues.SCHOOLBASE);
   addBuilding('university', 4, TileValues.UNIVERSITYBASE);
   addBuilding('bigpark', 3, TileValues.BIGPARKBASE);
+  addBuilding('library', 2, TileValues.LIBRARYBASE);
+  addBuilding('police_post', 2, TileValues.POLICEPOSTBASE);
+  addBuilding('fire_post', 2, TileValues.FIREPOSTBASE);
+  addBuilding('town_hall', 3, TileValues.TOWNHALLBASE);
+  addBuilding('tower', 2, TileValues.TOWERBASE);
+  addBuilding('recycling', 3, TileValues.RECYCLINGBASE);
+  addBuilding('waterworks', 3, TileValues.WATERWORKSBASE);
+  addBuilding('bus_depot', 3, TileValues.BUSDEPOTBASE);
+  addBuilding('dam', 3, TileValues.DAMBASE);
+  // The dam stands across the water
+  range(TileValues.DAMBASE, TileValues.DAMBASE + 8, function(tile) {
+    ground[tile] = WATER;
+    overWater[tile] = 1;
+  });
   addLot(TileValues.GASBASE, TileValues.GASBASE + 8, 'concrete');
   addLot(TileValues.SOLARBASE, TileValues.SOLARBASE + 8, 'lawn');
   addLot(TileValues.SCHOOLBASE, TileValues.SCHOOLBASE + 8, 'lawn');
   addLot(TileValues.UNIVERSITYBASE, TileValues.UNIVERSITYBASE + 15, 'lawn');
   addLot(TileValues.BIGPARKBASE, TileValues.BIGPARKBASE + 8, 'lawn');
+  addLot(TileValues.LIBRARYBASE, TileValues.LIBRARYBASE + 3, 'lawn');
+  addLot(TileValues.POLICEPOSTBASE, TileValues.FIREPOSTBASE + 3, 'pavement');
+  addLot(TileValues.TOWNHALLBASE, TileValues.TOWNHALLBASE + 8, 'pavement');
+  addLot(TileValues.TOWERBASE, TileValues.TOWERBASE + 3, 'pavement');
+  addLot(TileValues.RECYCLINGBASE, TileValues.RECYCLINGBASE + 8, 'concrete');
+  addLot(TileValues.WATERWORKSBASE, TileValues.WATERWORKSBASE + 8, 'lawn');
+  addLot(TileValues.BUSDEPOTBASE, TileValues.BUSDEPOTBASE + 8, 'concrete');
 
   ground[TileValues.GARDEN] = cell.lot_lawn;
   object[TileValues.GARDEN] = named('garden');
   ground[TileValues.PLAZA] = cell.lot_pavement;
+  ground[TileValues.STATUE] = cell.lot_pavement;
+  object[TileValues.STATUE] = named('statue');
+  ground[TileValues.BUSSTOP] = cell.lot_lawn;
+  object[TileValues.BUSSTOP] = named('bus_stop');
+  ground[TileValues.METRO] = cell.lot_pavement;
+  object[TileValues.METRO] = named('metro');
   object[TileValues.PLAZA] = named('plaza');
   range(TileValues.FOUNTAIN, TileValues.FOUNTAIN + 3, function(tile) {
     ground[tile] = cell.lot_lawn;

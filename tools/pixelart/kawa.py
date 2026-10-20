@@ -201,7 +201,171 @@ def plaza():
     return a
 
 
-# Tile numbers: keep in sync with src/tileValues.ts. Each entry: (first tile, size, drawing)
+def library():
+    a = Art(2)
+    # A stone hall with a row of columns and steps, under a grey roof
+    a.rect(3, 3, 26, 18, 'white').rect(3, 3, 26, 5, 'lgrey').rect(3, 3, 26, 1, 'grey')
+    for x in range(5, 28, 4):
+        a.rect(x, 10, 2, 9, 'lgrey')
+    a.rect(13, 14, 6, 7, 'brown')
+    a.rect(2, 21, 28, 2, 'lgrey').rect(4, 23, 24, 2, 'grey')
+    # A lawn, a reading bench and a tree
+    a.rect(4, 27, 6, 2, 'brown')
+    a.tree(26, 27, 3).tree(18, 28, 2)
+    return a
+
+
+def police_post():
+    a = Art(2, 'lgrey')
+    # A small blue station with a white band, and a car outside
+    a.rect(2, 2, 22, 18, 'blue').rect(2, 2, 22, 3, 'dgrey').rect(2, 12, 22, 2, 'white')
+    for x in range(5, 22, 5):
+        a.rect(x, 7, 3, 3, 'water')
+    a.rect(11, 15, 4, 5, 'dgrey')
+    a.pixel(20, 4, 'red').pixel(21, 4, 'blue')
+    a.rect(4, 24, 9, 5, 'white').rect(4, 24, 9, 1, 'dgrey').rect(6, 25, 5, 3, 'dgrey').rect(7, 24, 2, 1, 'blue')
+    a.rect(26, 2, 4, 28, 'ground')
+    a.tree(28, 8, 2).tree(28, 22, 2)
+    return a
+
+
+def fire_post():
+    a = Art(2, 'lgrey')
+    # A red fire house with two garage doors, and its tower for drying the hoses
+    a.rect(2, 4, 20, 18, 'red').rect(2, 4, 20, 3, 'dgrey')
+    a.rect(4, 12, 7, 10, 'dgrey').rect(13, 12, 7, 10, 'dgrey')
+    for y in range(13, 22, 3):
+        a.rect(4, y, 7, 1, 'grey').rect(13, y, 7, 1, 'grey')
+    a.rect(23, 2, 7, 20, 'red').rect(23, 2, 7, 3, 'dgrey').rect(25, 8, 3, 3, 'water')
+    a.rect(2, 22, 20, 2, 'white')
+    a.rect(24, 26, 6, 4, 'dgrey').disc(27, 28, 1.5, 'red')
+    return a
+
+
+def statue():
+    a = Art(1, 'lgrey')
+    # A statue on its plinth, in the middle of a small paved square with flower beds in the corners
+    a.frame(0, 0, 16, 16, 'grey')
+    for x, y in ((1, 1), (12, 1), (1, 12), (12, 12)):
+        a.rect(x, y, 3, 3, 'dgreen').pixel(x + 1, y + 1, 'red')
+    a.rect(5, 9, 6, 4, 'grey').rect(5, 9, 6, 1, 'white')
+    a.rect(7, 3, 2, 7, 'olive').disc(8, 3, 1.5, 'olive').rect(6, 5, 4, 1, 'olive')
+    return a
+
+
+def town_hall():
+    a = Art(3, 'lgrey')
+    # A grand hall with two wings, a clock tower and a flag, over a paved square
+    a.rect(3, 4, 42, 22, 'white').rect(3, 4, 42, 4, 'red')
+    for x in range(6, 43, 4):
+        a.rect(x, 12, 2, 4, 'water').rect(x, 19, 2, 4, 'water')
+    a.rect(18, 2, 12, 26, 'white').rect(18, 2, 12, 3, 'red')
+    a.disc(24, 10, 4, 'lgrey').disc(24, 10, 3, 'white').line(24, 10, 24, 8, 'dgrey').line(24, 10, 26, 10, 'dgrey')
+    a.rect(21, 20, 6, 8, 'brown')
+    a.rect(16, 28, 16, 3, 'grey')
+    # The square: paving, a fountain and lawns
+    for x in range(0, 48, 6):
+        a.rect(x, 33, 1, 15, 'grey')
+    a.disc(24, 40, 5, 'grey').disc(24, 40, 4, 'water').disc(24, 40, 1.5, 'white')
+    a.rect(3, 34, 12, 12, 'dgreen').rect(33, 34, 12, 12, 'dgreen')
+    a.tree(9, 40, 3).tree(39, 40, 3)
+    a.rect(44, 0, 1, 10, 'dgrey').rect(45, 0, 3, 3, 'blue')
+    return a
+
+
+def tower():
+    a = Art(2, 'lgrey')
+    # A tall tower seen from above: its round observation deck and antenna, its long shadow on the plaza
+    a.frame(0, 0, 32, 32, 'grey')
+    a.rect(16, 17, 14, 4, 'dgrey').rect(20, 21, 10, 3, 'dgrey')
+    a.disc(15, 15, 10, 'white').disc(15, 15, 8, 'lgrey').disc(15, 15, 6, 'water').disc(15, 15, 3, 'white')
+    a.rect(14, 14, 3, 3, 'red')
+    for x, y in ((3, 28), (28, 3)):
+        a.tree(x, y, 2)
+    return a
+
+
+def recycling():
+    a = Art(3, 'lgrey')
+    # The sorting hall, with a conveyor coming out of it
+    a.rect(2, 2, 26, 20, 'grey').rect(2, 2, 26, 4, 'dgrey')
+    for x in range(5, 27, 6):
+        a.rect(x, 9, 3, 3, 'water')
+    a.rect(10, 16, 8, 6, 'dgrey')
+    a.rect(28, 10, 16, 3, 'dgrey').rect(28, 11, 16, 1, 'black')
+    # Containers: paper, glass, plastic
+    for i, name in enumerate(('blue', 'dgreen', 'yellow')):
+        a.rect(31 + 5 * (i % 3), 2, 4, 6, name).rect(31 + 5 * (i % 3), 2, 4, 1, 'white')
+    # Bales and heaps waiting to be sorted
+    for x, y, name in ((4, 27, 'blue'), (10, 27, 'yellow'), (16, 27, 'blue'), (4, 33, 'yellow'), (10, 33, 'white')):
+        a.rect(x, y, 5, 5, name).frame(x, y, 5, 5, 'dgrey')
+    a.disc(34, 32, 8, 'brown').disc(33, 31, 5, 'olive').disc(31, 29, 2, 'yellow')
+    a.frame(0, 0, 48, 48, 'grey')
+    return a
+
+
+def waterworks():
+    a = Art(3)
+    # Round settling tanks, and the pumping house
+    for cx, cy in ((12, 12), (36, 12), (12, 36)):
+        a.disc(cx, cy, 10, 'lgrey').disc(cx, cy, 8, 'water').disc(cx, cy, 2, 'lgrey').line(cx, cy, cx + 7, cy - 3, 'lgrey')
+    a.rect(27, 28, 18, 16, 'white').rect(27, 28, 18, 3, 'blue')
+    for x in range(30, 44, 4):
+        a.rect(x, 34, 2, 3, 'water')
+    a.rect(34, 40, 4, 4, 'brown')
+    a.rect(22, 12, 4, 2, 'grey').rect(12, 22, 2, 4, 'grey').rect(22, 34, 5, 2, 'grey')
+    return a
+
+
+def bus_stop():
+    a = Art(1)
+    # A shelter on a strip of pavement, with its sign
+    a.rect(0, 9, 16, 7, 'lgrey').rect(0, 15, 16, 1, 'grey')
+    a.rect(3, 6, 9, 6, 'dgrey').rect(3, 6, 9, 1, 'water').rect(4, 7, 7, 4, 'water')
+    a.rect(4, 11, 7, 1, 'brown')
+    a.rect(13, 3, 1, 10, 'grey').rect(12, 2, 3, 3, 'yellow').pixel(13, 3, 'dgrey')
+    return a
+
+
+def bus_depot():
+    a = Art(3, 'lgrey')
+    # The garage, with its bays, and buses waiting in the yard
+    a.rect(2, 2, 44, 18, 'grey').rect(2, 2, 44, 4, 'dgrey')
+    for x in range(4, 44, 8):
+        a.rect(x, 9, 6, 11, 'dgrey').rect(x, 9, 6, 1, 'yellow')
+    for x in range(5, 44, 9):
+        a.rect(x, 25, 6, 17, 'yellow').rect(x, 25, 6, 2, 'white').rect(x + 1, 28, 4, 1, 'water').rect(x + 1, 38, 4, 1, 'water')
+    a.rect(0, 44, 48, 4, 'grey')
+    return a
+
+
+def metro():
+    a = Art(1, 'lgrey')
+    # A metro entrance on a paved square: the stairs going down between their railings, and the sign on its pole
+    a.frame(0, 0, 16, 16, 'grey')
+    a.rect(3, 4, 8, 10, 'dgrey')
+    for y in range(5, 14, 2):
+        a.rect(4, y, 6, 1, 'grey')
+    a.rect(2, 3, 10, 1, 'black').rect(2, 3, 1, 11, 'black').rect(11, 3, 1, 11, 'black')
+    a.rect(13, 5, 1, 9, 'grey').rect(12, 1, 3, 4, 'blue').rect(13, 2, 1, 2, 'white')
+    return a
+
+
+def dam():
+    a = Art(3, 'water')
+    # The reservoir above, the river below, and between them the concrete wall, its spillway and its power house
+    a.rect(0, 20, 48, 9, 'lgrey').rect(0, 20, 48, 1, 'white').rect(0, 28, 48, 1, 'grey')
+    for x in range(4, 46, 6):
+        a.rect(x, 22, 1, 5, 'grey')
+    a.rect(18, 29, 12, 8, 'white')
+    for y in range(30, 37, 2):
+        a.rect(18 + (y % 4), y, 8, 1, 'water')
+    a.rect(4, 31, 10, 8, 'lgrey').rect(4, 31, 10, 2, 'dgrey').rect(6, 35, 2, 2, 'yellow')
+    a.rect(34, 31, 10, 8, 'lgrey').rect(34, 31, 10, 2, 'dgrey').rect(40, 35, 2, 2, 'yellow')
+    return a
+
+
+# Tile numbers: keep in sync with src/tileValues.ts. Each entry: (first tile, size, drawing[, kind for remastering])
 WIND = 1024
 WIND_FRAMES = [1025, 1026, 1027]
 GASBASE = 1028
@@ -211,6 +375,18 @@ UNIVERSITYBASE = 1055
 BIGPARKBASE = 1071
 GARDEN = 1080
 PLAZA = 1081
+LIBRARYBASE = 1082
+POLICEPOSTBASE = 1086
+FIREPOSTBASE = 1090
+STATUE = 1094
+TOWNHALLBASE = 1095
+TOWERBASE = 1104
+RECYCLINGBASE = 1108
+WATERWORKSBASE = 1117
+BUSSTOP = 1126
+BUSDEPOTBASE = 1127
+DAMBASE = 1136
+METRO = 1145
 
 BUILDINGS = [
     (WIND, 1, lambda: wind_turbine(0)),
@@ -224,6 +400,18 @@ BUILDINGS = [
     (BIGPARKBASE, 3, big_park),
     (GARDEN, 1, garden),
     (PLAZA, 1, plaza),
+    (LIBRARYBASE, 2, library),
+    (POLICEPOSTBASE, 2, police_post),
+    (FIREPOSTBASE, 2, fire_post),
+    (STATUE, 1, statue),
+    (TOWNHALLBASE, 3, town_hall),
+    (TOWERBASE, 2, tower),
+    (RECYCLINGBASE, 3, recycling),
+    (WATERWORKSBASE, 3, waterworks),
+    (BUSSTOP, 1, bus_stop),
+    (BUSDEPOTBASE, 3, bus_depot),
+    (DAMBASE, 3, dam, 'port'),
+    (METRO, 1, metro),
 ]
 
 
@@ -239,9 +427,11 @@ def extend(tiles, season):
     for index in range(1024, 2048):
         g.put_tile(out, index, tex['grass'])
 
-    for base, size, draw in BUILDINGS:
+    for entry in BUILDINGS:
+        base, size, draw = entry[:3]
         art = draw()
-        block = g.remaster(art.rgb(), art.names, season, tex, (0, 0), 'building')
+        # Water is a building's colour, but for a building on water (the dam), whose water stays water
+        block = g.remaster(art.rgb(), art.names, season, tex, (0, 0), entry[3] if len(entry) > 3 else 'building')
         for i in range(size * size):
             g.put_tile(out, base + i, block[(i // size) * TS:(i // size + 1) * TS, (i % size) * TS:(i % size + 1) * TS])
 
@@ -257,7 +447,7 @@ def extend_lights(lights):
     out[:original.shape[0]] = original
     lit = []
 
-    for base, size, draw in BUILDINGS:
+    for base, size, draw in (entry[:3] for entry in BUILDINGS):
         if base in (BIGPARKBASE, GARDEN, SOLARBASE) or base in WIND_FRAMES or base == WIND:
             continue
         names = draw().names
