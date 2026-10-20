@@ -42,6 +42,10 @@ var strings = {
   'Zoom out (-)': 'Dézoomer (-)',
   'Live': 'En direct',
   'Close': 'Fermer',
+  'Move the map with one finger, even with a tool in hand': 'Déplacer la carte d\'un doigt, même avec un outil en main',
+  'Move the map': 'Déplacer la carte',
+  'Press this key again and again to go through these tools': 'Appuyez plusieurs fois sur cette touche pour passer d\'un outil à l\'autre',
+  'Game saved. Click here to keep a copy as a file.': 'Partie sauvegardée. Cliquez ici pour en garder une copie dans un fichier.',
   'City news': 'Actualités de la ville',
   'Show on the map': 'Voir sur la carte',
 

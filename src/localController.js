@@ -289,6 +289,21 @@ LocalController.prototype.save = function() {
   var fileName = (game.name || 'city').replace(/[^A-Za-z0-9_-]+/g, '_') + '.kawacity';
   var file = new Blob([Storage.exportGame(saveData)], {type: 'application/json'});
 
+  // Saved: a notification says so, without stopping the city, and offers the file. If not, the window explains.
+  if (succeeded) {
+    game.notifyAction(I18n.t('Game saved. Click here to keep a copy as a file.'), 'good', function() {
+      var url = URL.createObjectURL(file);
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
+    });
+    return;
+  }
+
   game.dialogOpen = true;
   game._openWindow = 'saveWindow';
   game.saveWindow.open(succeeded, URL.createObjectURL(file), fileName);

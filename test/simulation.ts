@@ -217,3 +217,44 @@ describe("The sprites", () => {
         expect(messages[1].data.sprite.id).toBe(monster.id + 1);
     });
 });
+
+describe("The city's messages", () => {
+    const make = (): any => new (Simulation as any)(new (GameMap as any)(120, 100, DIRT), 0, Simulation.SPEED_MED);
+    const heard = (simulation: any): string[] => {
+        const subjects: string[] = [];
+        simulation.addEventListener(Messages.FRONT_END_MESSAGE, (m: any) => subjects.push(m.subject));
+        return subjects;
+    };
+
+    it("lift a cap on demand as soon as the building it asks for is there", () => {
+        const simulation = make();
+        Object.assign(simulation._valves, {resCap: true, indCap: true, comCap: true});
+        Object.assign(simulation._census, {stadiumPop: 1, seaportPop: 0, airportPop: 1});
+        simulation._cityTime = 3;
+        simulation._sendMessages();
+        expect([simulation._valves.resCap, simulation._valves.indCap, simulation._valves.comCap]).toEqual([false, true, false]);
+    });
+
+    it("ask for rails only once the roads get busy", () => {
+        const simulation = make();
+        const subjects = heard(simulation);
+        Object.assign(simulation._census, {resZonePop: 40, comZonePop: 20, indZonePop: 20, railTotal: 0, trafficAverage: 10});
+        simulation._cityTime = 18;
+        simulation._sendMessages();
+        expect(subjects).not.toContain(Messages.NEED_MORE_RAILS);
+
+        simulation._census.trafficAverage = 50;
+        simulation._sendMessages();
+        expect(subjects).toContain(Messages.NEED_MORE_RAILS);
+    });
+
+    it("report blackouts in a city that buys all its power", () => {
+        const simulation = make();
+        const subjects = heard(simulation);
+        Object.assign(simulation._census, {poweredZoneCount: 1, unpoweredZoneCount: 9});
+        simulation.neighbours.powerSupply = () => ({capacity: 400, sources: []});
+        simulation._cityTime = 32;
+        simulation._sendMessages();
+        expect(subjects).toContain(Messages.BLACKOUTS_REPORTED);
+    });
+});

@@ -66,3 +66,24 @@ describe("The kind of road the traffic drives on", () => {
         expect(traffic._isHighway(5, 5)).toBe(false);
     });
 });
+
+
+describe("A trip on the roads", () => {
+    it("turns around at a dead end instead of failing", () => {
+        const map = makeMap();
+        for (let x = 2; x <= 12; x++)
+            map.setTile(x, 5, ROADS, 0);
+        const traffic = new (Traffic as any)(map, null);
+        // The destination is beyond the west end of the road; the east end is a dead end
+        const destination = (value: number) => value === WINDTURBINE;
+        map.setTile(1, 5, WINDTURBINE, 0);
+
+        let found = 0;
+        for (let i = 0; i < 40; i++) {
+            traffic._stack = [];
+            if (traffic.tryDrive({x: 7, y: 5}, destination))
+                found++;
+        }
+        expect(found).toBe(40);
+    });
+});

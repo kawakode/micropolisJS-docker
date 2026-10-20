@@ -43,7 +43,8 @@ var toolShortcuts = {
   'Digit7': 'park',
   'Digit8': 'police',
   'Digit9': 'fire',
-  'KeyB': 'bulldozer'
+  'KeyB': 'bulldozer',
+  'KeyT': 'trees'
 };
 for (var digit = 1; digit <= 9; digit++)
   toolShortcuts['Numpad' + digit] = toolShortcuts['Digit' + digit];
@@ -55,7 +56,7 @@ var letterShortcuts = {
   'i': 'query'
 };
 
-// Pressing the bulldozer's key again goes through its sizes
+// Pressing a category's key again goes through its tools (see setToolCycles): the bulldozer's goes through its sizes
 var BULLDOZER_SIZES = ['bulldozer', 'bulldozer3', 'bulldozer5', 'bulldozer7'];
 
 // Keyboard panning speed, in CSS pixels per second
@@ -88,6 +89,10 @@ var InputStatus = EventEmitter(function(map, gameCanvas) {
 
   // Keyboard movement
   this._keysHeld = {up: false, down: false, left: false, right: false};
+  this._toolCycles = {KeyB: BULLDOZER_SIZES};
+  // A finger (or pen) moves the map, whatever the tool (see the button #panLockRequest)
+  this.panLock = false;
+  this._lastShortcut = null;
 
   // The last known position of the mouse over the canvas, in CSS pixels relative to the canvas (or null)
   this._hover = null;
@@ -158,6 +163,12 @@ var InputStatus = EventEmitter(function(map, gameCanvas) {
   $('#debugRequest').click(debugHandler.bind(this));
   $('#zoomInRequest').click(function(e) { e.preventDefault(); self._gameCanvas.zoomIn(); });
   $('#zoomOutRequest').click(function(e) { e.preventDefault(); self._gameCanvas.zoomOut(); });
+  // On a touch screen, one finger builds with the tool in hand: this button makes it move the map instead
+  $('#panLockRequest').click(function(e) {
+    e.preventDefault();
+    self.panLock = !self.panLock;
+    $(this).toggleClass('pressed', self.panLock).attr('aria-pressed', String(self.panLock));
+  });
 });
 
 
@@ -249,11 +260,16 @@ var keyDownHandler = function(e) {
     tool = letterShortcuts[e.key.toLowerCase()];
   if (tool !== undefined) {
     if (!e.repeat) {
-      var size = BULLDOZER_SIZES.indexOf(this.toolName);
-      if (tool === 'bulldozer' && size >= 0)
-        this.selectTool(BULLDOZER_SIZES[(size + 1) % BULLDOZER_SIZES.length]);
+      // A category's key again, one of its tools in hand: the category's next tool. Another key's tool in hand goes
+      // back again (it toggles off)
+      var cycle = this._toolCycles[e.code];
+      var again = this._lastShortcut === e.code || this.toolName === tool;
+      var index = cycle && again ? cycle.indexOf(this.toolName) : -1;
+      if (index >= 0)
+        this.selectTool(cycle[(index + 1) % cycle.length], true);
       else
-        this.selectTool(tool);
+        this.selectTool(tool, !!cycle);
+      this._lastShortcut = e.code;
     }
     e.preventDefault();
     return;
@@ -345,7 +361,8 @@ var pointerDownHandler = function(e) {
     return;
 
   var panButton = e.button === 1 || e.button === 2;
-  if (panButton || this.currentTool === null) {
+  var panLocked = this.panLock && e.pointerType !== 'mouse';
+  if (panButton || panLocked || this.currentTool === null) {
     this._gesture = {type: 'pan', pointerId: e.pointerId, button: e.button, start: coords, last: coords, moved: false};
   } else if (e.button === 0) {
     var tile = this._dragTileAt(coords);
@@ -672,6 +689,12 @@ InputStatus.prototype._updateCursor = function() {
 
 
 // Selecting the current tool again deselects it, unless keep is true
+// The tools a key goes through when pressed again, by the key's code: {Digit4: ['road', 'dirtroad', ...], ...}
+InputStatus.prototype.setToolCycles = function(cycles) {
+  this._toolCycles = Object.assign({KeyB: BULLDOZER_SIZES}, cycles);
+};
+
+
 InputStatus.prototype.selectTool = function(toolName, keep) {
   if (toolName === this.toolName) {
     if (!keep)

@@ -68,6 +68,8 @@ var Budget = EventEmitter(function() {
 
   this.awaitingValues = false;
   this.autoBudget = true;
+  // The rates autobudget had to cut, short of money (see doBudgetNow)
+  this._wanted = null;
 });
 
 
@@ -177,6 +179,15 @@ Budget.prototype.doBudgetWindow = function() {
 
 
 Budget.prototype.doBudgetNow = function(fromWindow) {
+  // KawaCity: after a year autobudget couldn't fund in full, it aims again for the rates it had to cut
+  if (this.autoBudget && !fromWindow && this._wanted) {
+    this.roadPercent = this._wanted.road;
+    this.firePercent = this._wanted.fire;
+    this.policePercent = this._wanted.police;
+  }
+  this._wanted = null;
+  var wanted = {road: this.roadPercent, fire: this.firePercent, police: this.policePercent};
+
   var costs = this._calculateBestPercentages();
 
   if (!this.autoBudget && !fromWindow) {
@@ -200,12 +211,11 @@ Budget.prototype.doBudgetNow = function(fromWindow) {
     return;
   }
 
-  // Uh-oh. Not enough money. Make this the user's problem.
-  // They don't know it yet, but they're about to get a budget window.
-  this.setAutoBudget(false);
-  this.awaitingValues = true;
-  this._emitEvent(Messages.BUDGET_NEEDED);
-  this._emitEvent(Messages.NO_MONEY);
+  // KawaCity: not enough money. Instead of turning itself off and asking for the budget every year, autobudget
+  // spends what there is (the city, out of money, says so) and stays on, to fund the services again when it can
+  this._wanted = wanted;
+  this.awaitingValues = false;
+  this.doBudgetSpend(roadCost, fireCost, policeCost);
 };
 
 

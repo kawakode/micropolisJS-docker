@@ -14,28 +14,30 @@
 import $ from "jquery";
 
 import { Config } from './config.js';
+import { EventEmitter } from './eventEmitter.js';
 import { QUERY_WINDOW_CLOSED } from './messages.ts';
-import { ModalWindow } from './modalWindow.js';
-import { MiscUtils } from './miscUtils.js';
 
-var QueryWindow = ModalWindow(function() {
+// What the query tool found, in a panel beside the map: it doesn't stop the city, and the next click on the map
+// shows the next tile. It closes with its button, or Escape.
+var QueryWindow = EventEmitter(function() {
   this._debugToggled = false;
-  $(queryFormID).on('submit', submit.bind(this));
+  $('#queryClose').on('click', function(e) {
+    e.preventDefault();
+    this.close();
+  }.bind(this));
 });
 
 
-var queryFormID = '#queryForm';
-var queryOKID = '#queryOK';
-
-
-var submit = function(e) {
-  e.preventDefault();
-  this.close();
+QueryWindow.prototype.isOpen = function() {
+  return !$('#queryWindow').hasClass('hidden');
 };
 
 
 QueryWindow.prototype.close = function() {
-  this._toggleDisplay();
+  if (!this.isOpen())
+    return;
+
+  $('#queryWindow').addClass('hidden');
   this._emitEvent(QUERY_WINDOW_CLOSED);
 };
 
@@ -46,8 +48,7 @@ QueryWindow.prototype.open = function() {
     $('.queryDebug').removeClass('hidden');
   }
 
-  this._toggleDisplay();
-  $(queryOKID).focus();
+  $('#queryWindow').removeClass('hidden');
 };
 
 

@@ -528,6 +528,15 @@ Simulation.prototype._sendMessages = function() {
   var powerPop = this._census.nuclearPowerPop + this._census.coalPowerPop + this._census.gasPowerPop +
                  this._census.solarPowerPop + this._census.windPowerPop;
 
+  // KawaCity: a cap on demand lifts as soon as the stadium, seaport or airport it asks for is there, instead of at
+  // its next check (more than a year later)
+  if (this._valves.resCap && this._census.stadiumPop > 0)
+    this._valves.resCap = false;
+  if (this._valves.indCap && this._census.seaportPop > 0)
+    this._valves.indCap = false;
+  if (this._valves.comCap && this._census.airportPop > 0)
+    this._valves.comCap = false;
+
   switch (this._cityTime & 63) {
     case 1:
       if (Math.floor(totalZonePop / 4) >= this._census.resZonePop)
@@ -550,7 +559,8 @@ Simulation.prototype._sendMessages = function() {
       break;
 
     case 18:
-      if (totalZonePop > 50 && totalZonePop > this._census.railTotal)
+      // KawaCity: only when the roads are getting busy, as rails are there to take traffic off them
+      if (totalZonePop > 50 && totalZonePop > this._census.railTotal && this._census.trafficAverage > 40)
         this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.NEED_MORE_RAILS});
       break;
 
@@ -589,7 +599,9 @@ Simulation.prototype._sendMessages = function() {
     case 32:
       var zoneCount = this._census.unpoweredZoneCount + this._census.poweredZoneCount;
       if (zoneCount > 0) {
-        if (this._census.poweredZoneCount / zoneCount < 0.7 && powerPop > 0) {
+        // There is power, the city's own or bought from a neighbour, but not enough of it
+        var hasPower = powerPop > 0 || this.neighbours.powerSupply().capacity > 0;
+        if (this._census.poweredZoneCount / zoneCount < 0.7 && hasPower) {
           var d = new Date();
           // Not more than once a minute
           if (!this._lastBlackoutMessage || d - this._lastBlackoutMessage > 1000 * 60) {

@@ -81,3 +81,49 @@ describe("The keyboard", () => {
         expect(input.selectTool.mock.calls.map((call: any[]) => call[0])).toEqual(["query", "query"]);
     });
 });
+
+describe("A category's key", () => {
+    it("goes through the category's tools when pressed again", () => {
+        const input = new InputStatus({width: 120, height: 100}, {zoomOut: jest.fn(), zoomIn: jest.fn()});
+        const chosen: string[] = [];
+        input.selectTool = (toolName: string) => { chosen.push(toolName); input.toolName = toolName; };
+        input.setToolCycles({Digit4: ["road", "dirtroad", "avenue"], Digit8: ["police", "fire", "school"]});
+        const press = (code: string) => handlers.keydown({code: code, key: "", target: page.body, preventDefault: () => undefined});
+
+        ["Digit4", "Digit4", "Digit4", "Digit4"].forEach(press);
+        expect(chosen).toEqual(["road", "dirtroad", "avenue", "road"]);
+
+        // The fire station, from its own key: the services' key takes the police station
+        chosen.length = 0;
+        press("Digit9");
+        press("Digit8");
+        press("Digit8");
+        expect(chosen).toEqual(["fire", "police", "fire"]);
+
+        // The bulldozer, chosen with the mouse: B goes on to the next size
+        chosen.length = 0;
+        input.toolName = "bulldozer";
+        press("KeyB");
+        expect(chosen).toEqual(["bulldozer3"]);
+    });
+});
+
+describe("Moving the map with a finger", () => {
+    it("pans instead of building once the hand button is pressed, but a mouse still builds", () => {
+        const input = new InputStatus({width: 120, height: 100}, {canvasCoordinateToTileCoordinate: () => ({x: 5, y: 5})});
+        input.currentTool = {};
+        input.toolName = "road";
+        const down = (id: number, type: string) => handlers.pointerdown({isPrimary: true, pointerId: id, pointerType: type,
+                                                                        button: 0, clientX: 200, clientY: 300,
+                                                                        preventDefault: () => undefined});
+
+        down(1, "touch");
+        expect(input._gesture.type).toBe("tool");
+
+        input.panLock = true;
+        down(2, "touch");
+        expect(input._gesture.type).toBe("pan");
+        down(3, "mouse");
+        expect(input._gesture.type).toBe("tool");
+    });
+});
