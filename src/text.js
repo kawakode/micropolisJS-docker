@@ -32,7 +32,7 @@ var zoneTypes = ['Clear', 'Water', 'Trees', 'Rubble', 'Flood', 'Radioactive Wast
                  'School', 'University', 'Park', 'Garden', 'Plaza', 'Library',
                  'Police Department', 'Fire Department', 'Statue', 'Town hall', 'Tower',
                  'Recycling centre', 'Water treatment plant', 'Bus stop',
-                 'Bus depot', 'Hydroelectric dam', 'Clear'];
+                 'Bus depot', 'Hydroelectric dam', 'Metro station', 'Clear'];
 
 // Evaluation window
 var gameLevel = {};

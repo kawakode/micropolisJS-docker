@@ -5,6 +5,7 @@
  *
  */
 
+import { Metro } from './metro.js';
 import { Ordinances } from './ordinances.js';
 import { TileUtils } from './tileUtils.js';
 import * as TileValues from "./tileValues.ts";
@@ -19,7 +20,8 @@ import * as TileValues from "./tileValues.ts";
 // prestige to the landmark map, which raises land values more than anything. Recycling centres (when the city
 // recycles) and water treatment plants clean up the pollution around them, and the plants make the waterfront
 // sought after (see BlockMapUtils.pollutionTerrainLandValueScan). Bus stops and depots take cars off the roads around
-// them, once the city has a depot (see Traffic.addToTrafficDensityMap). Parks, gardens and plazas count as green space for land values
+// them, once the city has a depot (see Traffic.addToTrafficDensityMap), and so do the metro stations linked to another
+// (see Metro). Parks, gardens and plazas count as green space for land values
 // (see BlockMapUtils.pollutionTerrainLandValueScan).
 
 var SCHOOL_STRENGTH = 800;
@@ -39,6 +41,7 @@ var WATERWORKS_WATERFRONT = 1000;
 // BlockMapUtils.crimeScan)
 var BUSSTOP_TRANSIT = 300;
 var BUSDEPOT_TRANSIT = 600;
+var METRO_TRANSIT = 900;
 
 
 // Whether there is a road or rail along the edge of a building of the given size, whose centre is at (x, y)
@@ -118,6 +121,14 @@ var waterworksFound = function(map, x, y, simData) {
 };
 
 
+// A metro station only carries people once it is linked to another
+var metroFound = function(map, x, y, simData) {
+  simData.census.metroPop += 1;
+  if (Metro.isLinked(map, x, y))
+    addEffect(map, x, y, simData, METRO_TRANSIT, 1, 'metroMap');
+};
+
+
 var parkFound = function(map, x, y, simData) {
   simData.census.parkPop += 1;
 };
@@ -135,6 +146,7 @@ var getZoneSize = function(tileValue) {
     case TileValues.WINDTURBINE:
     case TileValues.STATUE:
     case TileValues.BUSSTOP:
+    case TileValues.METRO:
       return 1;
 
     case TileValues.LIBRARY:
@@ -183,6 +195,7 @@ var KawaBuildings = {
     mapScanner.addAction(TileValues.WATERWORKS, waterworksFound);
     mapScanner.addAction(TileValues.BUSSTOP, makeServiceHandler('busStopPop', BUSSTOP_TRANSIT, 1, 'transitMap'));
     mapScanner.addAction(TileValues.BUSDEPOT, makeServiceHandler('busDepotPop', BUSDEPOT_TRANSIT, 3, 'transitMap'));
+    mapScanner.addAction(TileValues.METRO, metroFound);
     mapScanner.addAction(TileValues.BIGPARK, parkFound);
 
     repairManager.addAction(TileValues.SCHOOL, 15, 3);

@@ -174,6 +174,9 @@ var strings = {
   'Bus depot': 'Dépôt de bus',
   'Runs the city\'s buses: the bus stops take cars off the roads. $200 a year.':
     'Fait rouler les bus de la ville : les arrêts retirent des voitures des routes. 200 $ par an.',
+  'Metro station': 'Station de métro',
+  'Linked underground to the nearest station within 24 tiles, for $100 a tile of tunnel: fewer cars around the linked stations. $40 a year.':
+    'Reliée sous terre à la station la plus proche à moins de 24 cases, pour 100 $ par case de tunnel : moins de voitures autour des stations reliées. 40 $ par an.',
   'Recycling centre': 'Centre de tri',
   'Cleans up the pollution around it, once the city recycles (an ordinance). $200 a year.':
     'Réduit la pollution alentour, dès que la ville recycle (un arrêté). 200 $ par an.',

@@ -411,16 +411,21 @@ var crimeScan = function(census, blockMaps, crimeFactor) {
     smoothMap(raw, effect, SMOOTH_NEIGHBOURS_THEN_BLOCK);
   });
 
-  // And the buses, which only run once there is a depot
+  // And the buses, which only run once there is a depot, and the metro
   var transitMap = blockMaps.transitMap;
   var transitEffectMap = blockMaps.transitEffectMap;
-  if (census.busDepotPop > 0) {
-    smoothMap(transitMap, transitEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
-    smoothMap(transitEffectMap, transitMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
-    smoothMap(transitMap, transitEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
-  } else {
-    transitEffectMap.clear();
+  var metroMap = blockMaps.metroMap;
+  if (!(census.busDepotPop > 0))
+    transitMap.clear();
+  if (metroMap) {
+    for (var mx = 0; mx < metroMap.width; mx++) {
+      for (var my = 0; my < metroMap.height; my++)
+        transitMap.set(mx, my, transitMap.get(mx, my) + metroMap.get(mx, my));
+    }
   }
+  smoothMap(transitMap, transitEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  smoothMap(transitEffectMap, transitMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
+  smoothMap(transitMap, transitEffectMap, SMOOTH_NEIGHBOURS_THEN_BLOCK);
 
   var totalCrime = 0;
   var crimeZoneCount = 0;

@@ -144,6 +144,9 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame, op
     // KawaCity: how many people the buses carry around their stops and depots, then spread over the neighbourhood
     transitMap: new BlockMap(this._map.width, this._map.height, 8),
     transitEffectMap: new BlockMap(this._map.width, this._map.height, 8),
+    // KawaCity: how many people the metro carries around its linked stations (added to the transit map, see
+    // BlockMapUtils.crimeScan)
+    metroMap: new BlockMap(this._map.width, this._map.height, 8),
 
     // Holds a value representing the rate of growth of a neighbourhood in the range -200 to +200
     rateOfGrowthMap: new BlockMap(this._map.width, this._map.height, 8),
@@ -326,6 +329,7 @@ Simulation.prototype._clearCensus = function() {
   this.blockMaps.cleanupMap.clear();
   this.blockMaps.waterMap.clear();
   this.blockMaps.transitMap.clear();
+  this.blockMaps.metroMap.clear();
 };
 
 

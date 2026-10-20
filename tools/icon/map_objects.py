@@ -558,6 +558,20 @@ def bus_stop():
     return shapes, [Sprite(14, 12, 9, ['yy', 'yy'], {'y': (250, 204, 60)})], lines, []
 
 
+def metro():
+    def paving(u, v):
+        if 5 <= u < 10 and 6 <= v < 13:
+            return (70, 66, 84) if int(v) % 2 else (130, 128, 140)
+        return (214, 206, 186) if (int(u) // 4 + int(v) // 4) % 2 else (196, 188, 168)
+
+    railing = plain((40, 90, 200), (30, 70, 160), (60, 110, 220))
+    shapes = [flat(0, 0, 16, 16, paving), box(4, 5, 5, 13, 1.5, railing), box(10, 5, 11, 13, 1.5, railing),
+              box(5, 5, 10, 6, 1.5, railing)]
+    lines = [Line((13, 13, 0), (13, 13, 12), GREY_LIGHT)]
+    sign = ['bbbb', 'bwwb', 'bwwb', 'bbbb']
+    return shapes, [Sprite(13, 13, 12, big(sign), {'b': (40, 90, 200), 'w': (255, 255, 255)})], lines, []
+
+
 def bus_depot():
     hall = facade((150, 150, 160), (118, 118, 130), (170, 170, 184), (176, 214, 246), 4, 6, 3, seed=103)
 
@@ -875,7 +889,7 @@ def objects():
             ('university', 4, university), ('library', 2, library), ('police_post', 2, police_post),
             ('fire_post', 2, fire_post), ('statue', 1, statue), ('town_hall', 3, town_hall), ('tower', 2, tower),
             ('recycling', 3, recycling), ('waterworks', 3, waterworks), ('bus_stop', 1, bus_stop),
-            ('bus_depot', 3, bus_depot), ('dam', 3, dam), ('stadium', 4, lambda: stadium(False)), ('stadium_full', 4, lambda: stadium(True)),
+            ('bus_depot', 3, bus_depot), ('dam', 3, dam), ('metro', 1, metro), ('stadium', 4, lambda: stadium(False)), ('stadium_full', 4, lambda: stadium(True)),
             ('port', 4, port), ('airport', 6, airport), ('coal', 4, coal), ('nuclear', 4, nuclear), ('gas', 3, gas),
             ('solar', 3, solar), ('bigpark', 3, bigpark), ('garden', 1, garden), ('plaza', 1, lambda: fountain(True)),
             ('fountain', 1, lambda: fountain(False))]

@@ -2,7 +2,7 @@ import { BaseTool } from "../src/baseTool.js";
 import { GameTools } from "../src/gameTools.js";
 import { GameMap } from "../src/gameMap.js";
 import { BLBNBIT, BULLBIT } from "../src/tileFlags";
-import { DAM, DIRT, RIVER, RUBBLE, SCHOOL, TINYEXP, LASTTINYEXP, WOODS } from "../src/tileValues";
+import { DAM, DIRT, METRO, RIVER, RUBBLE, SCHOOL, TINYEXP, LASTTINYEXP, WOODS } from "../src/tileValues";
 
 // Placing tools on a small, bare map, as the game does (see Game.handleTool)
 const makeMap = (): any => new (GameMap as any)(20, 20, DIRT);
@@ -247,5 +247,19 @@ describe("The dam", () => {
         for (let x = 4; x <= 6; x++)
             for (let y = 4; y <= 6; y++)
                 expect(map.getTileValue(x, y)).toBe(RIVER);
+    });
+});
+
+
+describe("The metro", () => {
+    it("pays for the tunnel to the nearest station within reach", () => {
+        const map = new (GameMap as any)(60, 60, DIRT);
+        const tools = makeTools(map);
+        expect(apply(map, tools.metro, 5, 5)).toEqual({result: OK, cost: 500, value: METRO});
+        expect(apply(map, tools.metro, 11, 13)).toEqual({result: OK, cost: 500 + 10 * 100, value: METRO});
+        // The nearest station, not the first one
+        expect(apply(map, tools.metro, 11, 20).cost).toBe(500 + 7 * 100);
+        // Too far from any station: a station of its own, without a tunnel
+        expect(apply(map, tools.metro, 55, 55).cost).toBe(500);
     });
 });

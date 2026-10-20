@@ -339,6 +339,18 @@ def bus_depot():
     return a
 
 
+def metro():
+    a = Art(1, 'lgrey')
+    # A metro entrance on a paved square: the stairs going down between their railings, and the sign on its pole
+    a.frame(0, 0, 16, 16, 'grey')
+    a.rect(3, 4, 8, 10, 'dgrey')
+    for y in range(5, 14, 2):
+        a.rect(4, y, 6, 1, 'grey')
+    a.rect(2, 3, 10, 1, 'black').rect(2, 3, 1, 11, 'black').rect(11, 3, 1, 11, 'black')
+    a.rect(13, 5, 1, 9, 'grey').rect(12, 1, 3, 4, 'blue').rect(13, 2, 1, 2, 'white')
+    return a
+
+
 def dam():
     a = Art(3, 'water')
     # The reservoir above, the river below, and between them the concrete wall, its spillway and its power house
@@ -374,6 +386,7 @@ WATERWORKSBASE = 1117
 BUSSTOP = 1126
 BUSDEPOTBASE = 1127
 DAMBASE = 1136
+METRO = 1145
 
 BUILDINGS = [
     (WIND, 1, lambda: wind_turbine(0)),
@@ -398,6 +411,7 @@ BUILDINGS = [
     (BUSSTOP, 1, bus_stop),
     (BUSDEPOTBASE, 3, bus_depot),
     (DAMBASE, 3, dam, 'port'),
+    (METRO, 1, metro),
 ]
 
 

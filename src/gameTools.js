@@ -18,6 +18,7 @@ import { GameMap } from './gameMap.js';
 import { TerrainTool } from './terrainTool.js';
 import { BULLBIT, BURNBIT } from "./tileFlags.ts";
 import { QUERY_WINDOW_NEEDED } from './messages.ts';
+import { Metro } from './metro.js';
 import { MiscUtils } from './miscUtils.js';
 import { ParkTool } from './parkTool.js';
 import { RailTool } from './railTool.js';
@@ -64,6 +65,7 @@ function GameTools(map) {
     waterworks: new BuildingTool(2000, TileValues.WATERWORKS, map, 3, false),
     busstop: new BuildingTool(50, TileValues.BUSSTOP, map, 1, false),
     busdepot: new BuildingTool(1000, TileValues.BUSDEPOT, map, 3, false),
+    metro: Metro.makeTool(map),
     dam: new BuildingTool(4000, TileValues.DAM, map, 3, false, true),
     university: new BuildingTool(3000, TileValues.UNIVERSITY, map, 4, false),
     bigpark: new BuildingTool(400, TileValues.BIGPARK, map, 3, false),

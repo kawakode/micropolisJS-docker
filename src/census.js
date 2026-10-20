@@ -99,6 +99,7 @@ Census.prototype.clearCensus = function() {
   this.waterworksPop = 0;
   this.busStopPop = 0;
   this.busDepotPop = 0;
+  this.metroPop = 0;
   this.parkPop = 0;
   this.seaportPop = 0;
   this.airportPop = 0;

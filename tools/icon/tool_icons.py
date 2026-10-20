@@ -483,6 +483,19 @@ def dam():
     return shapes, [], []
 
 
+def metro():
+    def ground(x, y):
+        if 3 <= x < 8 and 4 <= y < 11:
+            return (70, 66, 84) if y % 2 else (130, 128, 140)
+        return CONCRETE
+
+    railing = walls((70, 66, 84), (54, 50, 66), (90, 86, 100))
+    shapes = [land(ground), Box(2, 3, 0, 3, 11, 1.5, railing), Box(8, 3, 0, 9, 11, 1.5, railing),
+              Box(3, 3, 0, 8, 4, 1.5, railing)]
+    lines = [Line((11, 10, 0), (11, 10, 7), GREY_LIGHT)]
+    return shapes, [Sprite(11, 10, 7, ['bbb', 'bwb', 'bbb'], {'b': (40, 90, 200), 'w': (255, 255, 255)})], lines
+
+
 def park():
     def path(x, y):
         return (214, 196, 150) if abs(x - y) <= 1 else grass(x, y)
@@ -645,6 +658,7 @@ ICONS = [
     ('waterworks', waterworks),
     ('busstop', bus_stop),
     ('busdepot', bus_depot),
+    ('metro', metro),
     ('dam', dam),
 ]
 

@@ -294,6 +294,8 @@ var addLot = function(first, last, lot) {
   object[TileValues.STATUE] = named('statue');
   ground[TileValues.BUSSTOP] = cell.lot_lawn;
   object[TileValues.BUSSTOP] = named('bus_stop');
+  ground[TileValues.METRO] = cell.lot_pavement;
+  object[TileValues.METRO] = named('metro');
   object[TileValues.PLAZA] = named('plaza');
   range(TileValues.FOUNTAIN, TileValues.FOUNTAIN + 3, function(tile) {
     ground[tile] = cell.lot_lawn;
