@@ -190,6 +190,12 @@ BulldozerTool.prototype.doTool = function(x, y, blockMaps) {
         this.putRubble(centerX, centerY, 1);
         break;
 
+      // KawaCity's 2x2 buildings (library, compact stations, tower)
+      case 2:
+        this._emitEvent(SOUND_EXPLOSIONHIGH);
+        this.putRubble(centerX - 1, centerY - 1, 2);
+        break;
+
       case 3:
         this._emitEvent(SOUND_EXPLOSIONHIGH);
         this.putRubble(centerX - 1, centerY - 1, 3);

@@ -297,4 +297,13 @@ describe("A 2x2 building", () => {
         expect(map.getTileValue(5, 5)).toBe(POLICEPOSTBASE + 3);
         expect(map.getTileValue(6, 6)).toBe(DIRT);
     });
+
+    it("is demolished whole by the bulldozer, from any of its tiles", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+        apply(map, tools.policepost, 5, 5);
+        expect(apply(map, tools.bulldozer, 4, 5).result).toBe(OK);
+        for (const [x, y] of [[4, 4], [5, 4], [4, 5], [5, 5]])
+            expect(map.getTileValue(x, y)).toBeGreaterThanOrEqual(TINYEXP);
+    });
 });
