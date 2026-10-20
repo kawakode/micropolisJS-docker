@@ -86,6 +86,8 @@ describe("The other players' pointers", () => {
         expect(C.footprint("residential")).toEqual({size: 3, offset: 1});
         expect(C.footprint("airport")).toEqual({size: 6, offset: 1});
         expect(C.footprint("coal")).toEqual({size: 4, offset: 1});
+        // A 2x2 building is placed by the tile one in from its top left, like the bigger ones
+        expect(C.footprint("policepost")).toEqual({size: 2, offset: 1});
         expect(C.footprint("bulldozer5")).toEqual({size: 5, offset: 2});
         Placements.TOOL_NAMES.forEach((tool: string) => {
             const size = Math.max(Placements.sizeOf(tool), Placements.brushOf(tool));

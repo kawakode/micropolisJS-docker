@@ -2,7 +2,7 @@ import { BaseTool } from "../src/baseTool.js";
 import { GameTools } from "../src/gameTools.js";
 import { GameMap } from "../src/gameMap.js";
 import { BLBNBIT, BULLBIT } from "../src/tileFlags";
-import { DAM, DIRT, METRO, RIVER, RUBBLE, SCHOOL, TINYEXP, LASTTINYEXP, WOODS } from "../src/tileValues";
+import { DAM, DIRT, METRO, POLICEPOSTBASE, RIVER, RUBBLE, SCHOOL, TINYEXP, LASTTINYEXP, WOODS } from "../src/tileValues";
 
 // Placing tools on a small, bare map, as the game does (see Game.handleTool)
 const makeMap = (): any => new (GameMap as any)(20, 20, DIRT);
@@ -261,5 +261,17 @@ describe("The metro", () => {
         expect(apply(map, tools.metro, 11, 20).cost).toBe(500 + 7 * 100);
         // Too far from any station: a station of its own, without a tunnel
         expect(apply(map, tools.metro, 55, 55).cost).toBe(500);
+    });
+});
+
+
+describe("A 2x2 building", () => {
+    it("covers its centre tile and the tiles above and to the left of it, as the cursor shows", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+        expect(apply(map, tools.policepost, 5, 5).result).toBe(OK);
+        expect(map.getTileValue(4, 4)).toBe(POLICEPOSTBASE);
+        expect(map.getTileValue(5, 5)).toBe(POLICEPOSTBASE + 3);
+        expect(map.getTileValue(6, 6)).toBe(DIRT);
     });
 });

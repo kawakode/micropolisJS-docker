@@ -149,6 +149,17 @@ var sizeOf = function(toolName) {
 };
 
 
+/**
+ * How far the top left of a building of the given size is from its "centre" tile, where it is placed: one tile in from
+ * the top left, for every building wider than a tile (see BuildingTool.buildBuilding)
+ * @param {number} size
+ * @returns {number}
+ */
+var centreOffset = function(size) {
+  return size > 1 ? 1 : 0;
+};
+
+
 var isTile = function(p) {
   return p !== null && typeof(p) === 'object' && Number.isInteger(p.x) && Number.isInteger(p.y);
 };
@@ -301,6 +312,7 @@ var Placements = {
   MAX_BUILDINGS: MAX_BUILDINGS,
   TOOL_NAMES: TOOL_NAMES,
   brushOf: brushOf,
+  centreOffset: centreOffset,
   computePlacements: computePlacements,
   getToolCategory: getToolCategory,
   isApplicable: isApplicable,
