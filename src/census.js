@@ -66,6 +66,8 @@ Census.prototype.clearCensus = function() {
   this.poweredZoneCount = 0;
   this.unpoweredZoneCount = 0;
   this.firePop = 0;
+  // KawaCity: the burning tiles out of reach of the firefighters, which will not go out
+  this.uncoveredFirePop = 0;
   this.roadTotal = 0;
   // KawaCity: the upkeep of roads beyond that of streets, in street tiles (negative for dirt roads)
   this.roadUpkeep = 0;

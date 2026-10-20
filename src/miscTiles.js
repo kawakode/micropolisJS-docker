@@ -11,6 +11,7 @@
  *
  */
 
+import { FireCover } from './fireCover.js';
 import { Random } from './random.ts';
 import { TileUtils } from './tileUtils.js';
 import { DIRT, GASPLANT, IZB, KAWABASE, RADTILE } from "./tileValues.ts";
@@ -21,6 +22,9 @@ var yDelta = [ 0, -1,  0,  1 ];
 
 var fireFound = function(map, x, y, simData) {
   simData.census.firePop += 1;
+  var uncovered = FireCover.coverPercent(simData.blockMaps, x, y) === 0;
+  if (uncovered)
+    simData.census.uncoveredFirePop += 1;
 
   // As in the original game, a fire only does anything one scan in four: spread, then maybe burn out
   if ((Random.getRandom16() & 3) !== 0)
@@ -54,19 +58,8 @@ var fireFound = function(map, x, y, simData) {
     map.setTo(xTem, yTem, TileUtils.randomFire());
   }
 
-  // Compute likelyhood of fire running out of fuel
-  var rate = 10; // Likelyhood of extinguishing (bigger means less chance)
-  var fireCover = simData.blockMaps.fireStationEffectMap.worldGet(x, y);
-
-  if (fireCover > 100)
-    rate = 1;
-  else if (fireCover > 20)
-    rate = 2;
-  else if (fireCover > 0)
-    rate = 3;
-
-  // Decide whether to put out the fire.
-  if (Random.getRandom(rate) === 0)
+  // KawaCity: only firefighters put fires out, faster with better cover; out of their reach, a fire burns on
+  if (!uncovered && FireCover.putOut(simData.blockMaps, x, y))
     map.setTo(x, y, TileUtils.randomRubble());
 };
 

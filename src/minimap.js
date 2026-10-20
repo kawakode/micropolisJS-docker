@@ -11,6 +11,7 @@
 
 import $ from "jquery";
 
+import { FireCover } from './fireCover.js';
 import { I18n } from './i18n.js';
 import { MiscUtils } from './miscUtils.js';
 import { BIT_MASK, CONDBIT } from "./tileFlags.ts";
@@ -41,7 +42,7 @@ var overlays = {
   crime: {map: 'crimeRateMap', max: 200, ramp: RAMP_BAD, low: 'Safe', high: 'Dangerous'},
   landValue: {map: 'landValueMap', max: 200, ramp: RAMP_GOOD, low: 'Low', high: 'High'},
   police: {map: 'policeStationEffectMap', max: 300, ramp: RAMP_COVER, low: 'None', high: 'Full'},
-  fire: {map: 'fireStationEffectMap', max: 300, ramp: RAMP_COVER, low: 'None', high: 'Full'},
+  fire: {map: 'fireStationEffectMap', max: FireCover.FULL_COVER, ramp: RAMP_COVER, low: 'None', high: 'Full'},
   education: {map: 'educationEffectMap', max: 300, ramp: RAMP_COVER, low: 'None', high: 'Full'},
   health: {map: 'healthEffectMap', max: 300, ramp: RAMP_COVER, low: 'None', high: 'Full'},
   // The rate of growth ranges from -max to max
