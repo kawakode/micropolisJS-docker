@@ -172,4 +172,9 @@ export const MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX region_removals_user ON region_removals(user_id);
   `,
+
+  // 4: the score of each city (0 to 1000, see Evaluation), kept beside its population for the region's scoreboard
+  `
+  ALTER TABLE cities ADD COLUMN score INTEGER NOT NULL DEFAULT 0;
+  `,
 ];

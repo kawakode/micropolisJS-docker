@@ -615,6 +615,34 @@ export class Room {
         this.ok(client, message.seq);
         return;
 
+      case 'loan':
+        if (!builds) {
+          this.error(client, 'forbidden', message.seq);
+          return;
+        }
+        if (!this.city.applyLoan(message.borrow, message.repay)) {
+          this.error(client, 'invalid_input', message.seq);
+          return;
+        }
+        this.dirty = true;
+        this.statsDirty = true;
+        this.ok(client, message.seq);
+        return;
+
+      case 'ordinances':
+        if (!builds) {
+          this.error(client, 'forbidden', message.seq);
+          return;
+        }
+        if (!this.city.applyOrdinances(message.mask)) {
+          this.error(client, 'invalid_input', message.seq);
+          return;
+        }
+        this.dirty = true;
+        this.statsDirty = true;
+        this.ok(client, message.seq);
+        return;
+
       case 'settings': {
         if (!builds || (message.disasters !== undefined && role !== 'owner')) {
           this.error(client, 'forbidden', message.seq);
@@ -684,6 +712,7 @@ export class Room {
     const saved = this.deps.cities.saveState(this.id, {
       state: encodeState(this.city.saveText()),
       population: this.city.population,
+      score: this.city.score,
       cityTime: this.city.cityTime,
       paused: this.city.paused,
       edgeState: this.edge,

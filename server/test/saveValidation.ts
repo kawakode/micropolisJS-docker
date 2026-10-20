@@ -294,6 +294,11 @@ describe('Crafted saves are refused', () => {
     expect(variant(save => { save.neighbours[0].deals.steal = true; })).toBe('neighbours.north.deals');
     expect(variant(save => { save.neighbours[0].months = JSON.parse('{"__proto__": 3}'); }))
       .toBe('neighbours.north.months');
+    expect(variant(save => { save.neighbours[0].event = {kind: 'boom', months: 12}; })).toBeNull();
+    expect(variant(save => { save.neighbours[0].event = null; })).toBeNull();
+    for (const event of [{kind: 'plague', months: 3}, {kind: 'boom', months: 0}, {kind: 'boom', months: 13},
+                         {kind: 'boom', months: 3, extra: 1}, 'boom'])
+      expect(variant(save => { save.neighbours[0].event = event; })).toBe('neighbours.north.event');
   });
 
   test('A scenario the game does not have, or not as the game plays it', () => {

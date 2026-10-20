@@ -26,6 +26,8 @@ import { Text } from './text.js';
 // - {t: 'tool', seq, tool, from: {x, y}, to: {x, y}}: a drag of a tool, from where it started to where it ended (the
 //   server works the placements out as the game does, see Placements). The query tool only reads the copy.
 // - {t: 'budget', seq, roadPercent, firePercent, policePercent, taxPercent}
+// - {t: 'loan', seq, borrow, repay}
+// - {t: 'ordinances', seq, mask}
 // - {t: 'settings', seq, autoBudget?, autoBulldoze?, disasters?, level?}: only those that changed
 // - {t: 'disaster', seq, kind}, {t: 'deal', seq, side, kind, signed}, {t: 'speed', seq, speed}, {t: 'pause', seq,
 //   paused}
@@ -274,6 +276,20 @@ var BUDGET_KEYS = ['roadPercent', 'firePercent', 'policePercent', 'taxPercent'];
 RemoteController.prototype.applyBudget = function(data, shown) {
   if (data.cancelled || !this.can('budget'))
     return;
+
+  // The loans, as chosen: they don't depend on what the window showed
+  var borrow = integer(data.borrow, 0, 5);
+  if ((borrow !== null && borrow > 0) || data.repay === true)
+    this._command({t: 'loan', borrow: borrow || 0, repay: data.repay === true});
+
+  // The ordinances, if the player changed them (another player may have changed others meanwhile: only the ones the
+  // player ticked or unticked change)
+  var openedMask = isObject(shown) && Number.isInteger(shown.ordinances) ? shown.ordinances : null;
+  if (Number.isInteger(data.ordinances) && openedMask !== null && data.ordinances !== openedMask) {
+    var current = this.city.simulation.budget.ordinances;
+    var mask = (current & ~(openedMask ^ data.ordinances)) | (data.ordinances & (openedMask ^ data.ordinances));
+    this._command({t: 'ordinances', mask: mask});
+  }
 
   var values = {
     roadPercent: integer(data.roadPercent, 0, 100),

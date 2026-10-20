@@ -11,6 +11,7 @@
  *
  */
 
+export const ACHIEVEMENT_MET = "Achievement met";
 export const AUTOBUDGET_CHANGED = "Autobudget changed";
 export const BUDGET_NEEDED = "User needs to budget";
 export const BUDGET_REQUESTED = "Budget window requested";
@@ -55,6 +56,7 @@ export const NEED_POLICE_STATION = "Police station needed";
 export const NEED_SEAPORT = "Seaport needed";
 export const NEED_STADIUM = "Stadium needed";
 export const NO_MONEY = "No money";
+export const NEIGHBOUR_NEWS = "Neighbour news";
 export const NOT_ENOUGH_POWER = "Not enough power";
 export const NEIGHBOURS_REQUESTED = "Neighbours window requested";
 export const NEIGHBOURS_WINDOW_CLOSED = "Neighbours window closed";
@@ -86,6 +88,7 @@ export const SOUND_EXPLOSIONLOW = "Explosion! Bang!";
 export const SOUND_HEAVY_TRAFFIC = "Heavy Traffic sound";
 export const SOUND_HONKHONK = "HonkHonk sound";
 export const SOUND_MONSTER = "Monster sound";
+export const SNOW_FELL = "Snow fell";
 export const SPEED_CHANGE = "Speed change";
 export const SPRITE_DYING = "Sprite dying";
 export const SPRITE_MOVED = "Sprite move";

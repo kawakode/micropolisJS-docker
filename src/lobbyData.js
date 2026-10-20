@@ -304,6 +304,7 @@ var slotCity = function(entry) {
     name: shownName(entry.name),
     ownerName: shownName(entry.ownerName),
     population: count(entry.population),
+    score: Math.min(1000, count(entry.score)),
     role: ROLES.indexOf(entry.role) === -1 ? null : entry.role
   };
 };
@@ -374,6 +375,26 @@ var regionLayout = function(detail) {
       clear: placed !== null && (mine || placed.role === 'owner')
     };
   });
+};
+
+
+// The goals the cities of a region meet together: their populations, added up
+var REGION_GOALS = [50000, 100000, 250000, 500000, 1000000, 2000000];
+
+// How the cities of a region compare, and how far they are together from their next goal: {ranking, total, goal, met}.
+// ranking: the cities, the most populous first (then the best score); goal: the next population to reach together, or
+// null once all are reached; met: how many goals are reached.
+var regionStandings = function(detail) {
+  var ranking = detail.slots.filter(function(slot) { return slot.city !== null; }).map(function(slot) {
+    var city = slot.city;
+    return {name: city.name, ownerName: city.ownerName, population: city.population, score: city.score};
+  });
+  ranking.sort(function(a, b) { return b.population - a.population || b.score - a.score; });
+
+  var total = ranking.reduce(function(sum, city) { return sum + city.population; }, 0);
+  var met = REGION_GOALS.filter(function(goal) { return total >= goal; }).length;
+  return {ranking: ranking, total: total, goal: met < REGION_GOALS.length ? REGION_GOALS[met] : null, met: met,
+          goals: REGION_GOALS.length};
 };
 
 
@@ -495,6 +516,7 @@ var LobbyData = {
   cityDetail: cityDetail,
   regionDetail: regionDetail,
   regionLayout: regionLayout,
+  regionStandings: regionStandings,
   downloadName: downloadName,
   buildSave: buildSave,
   creationRequest: creationRequest

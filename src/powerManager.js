@@ -24,7 +24,7 @@ var COAL_POWER_STRENGTH = 700;
 var NUCLEAR_POWER_STRENGTH = 2000;
 // KawaCity's power plants: cleaner, but smaller
 var GAS_POWER_STRENGTH = 500;
-var SOLAR_POWER_STRENGTH = 250;
+var SOLAR_POWER_STRENGTH = 400;
 var WIND_POWER_STRENGTH = 50;
 
 // The tiles that produce power
@@ -82,8 +82,9 @@ PowerManager.prototype.testForConductive = function(pos, testDir) {
 // rather than as a power source itself
 //
 // KawaCity: supply is the power bought from the neighbouring cities, {capacity, sources} (see Neighbours), if any: it
-// enters the grid by the power lines at their edges of the map. The power left over is noted in spare.
-PowerManager.prototype.doPowerScan = function(census, supply) {
+// enters the grid by the power lines at their edges of the map. The power left over is noted in spare. The weather
+// (see Weather), if given, says how much the solar farms and the wind turbines give.
+PowerManager.prototype.doPowerScan = function(census, supply, weather) {
   // Clear power this._map.
   this.powerGridMap.clear();
 
@@ -91,8 +92,8 @@ PowerManager.prototype.doPowerScan = function(census, supply) {
   var maxPower = census.coalPowerPop * COAL_POWER_STRENGTH +
                  census.nuclearPowerPop * NUCLEAR_POWER_STRENGTH +
                  census.gasPowerPop * GAS_POWER_STRENGTH +
-                 census.solarPowerPop * SOLAR_POWER_STRENGTH +
-                 census.windPowerPop * WIND_POWER_STRENGTH;
+                 census.solarPowerPop * Math.round(SOLAR_POWER_STRENGTH * (weather ? weather.solarFactor() : 1)) +
+                 census.windPowerPop * Math.round(WIND_POWER_STRENGTH * (weather ? weather.windFactor() : 1));
 
   if (supply) {
     maxPower += supply.capacity;

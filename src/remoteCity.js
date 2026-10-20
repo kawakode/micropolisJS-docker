@@ -33,7 +33,7 @@ var HEIGHT = 100;
 
 // The overlays of the minimap the server sends (the power overlay is read from the tiles' POWERBIT)
 var MAP_NAMES = ['populationDensityMap', 'trafficDensityMap', 'pollutionDensityMap', 'crimeRateMap', 'landValueMap',
-                 'policeStationEffectMap', 'fireStationEffectMap', 'rateOfGrowthMap'];
+                 'policeStationEffectMap', 'fireStationEffectMap', 'rateOfGrowthMap', 'educationEffectMap'];
 
 // What the stats hold of the evaluation (with problemVotes and problemOrder), of the budget (the funds and the
 // automatic budget come with the state) and of the census (the averages, then the histories when they changed)
@@ -41,7 +41,9 @@ var EVALUATION_FIELDS = ['cityYes', 'cityPop', 'cityPopDelta', 'cityAssessedValu
                          'cityScoreDelta'];
 var BUDGET_FIELDS = ['policePercent', 'roadPercent', 'firePercent', 'roadSpend', 'policeSpend', 'fireSpend',
                      'roadMaintenanceBudget', 'policeMaintenanceBudget', 'fireMaintenanceBudget', 'cityTax',
-                     'roadEffect', 'policeEffect', 'fireEffect', 'dealsFund', 'taxFund', 'cashFlow'];
+                     'roadEffect', 'policeEffect', 'fireEffect', 'dealsFund', 'upkeepFund', 'debt', 'debtPayment',
+                     'loanFund', 'ordinances', 'ordinanceFund', 'taxFund',
+                     'cashFlow'];
 var CENSUS_FIELDS = ['resPop', 'comPop', 'indPop', 'crimeRamp', 'pollutionRamp', 'landValueAverage',
                      'pollutionAverage', 'crimeAverage', 'totalPop'];
 var HISTORY_FIELDS = ['resHist10', 'resHist120', 'comHist10', 'comHist120', 'indHist10', 'indHist120', 'crimeHist10',
@@ -376,6 +378,10 @@ function RemoteCity(map, simulation) {
   };
   simulation.getCityStatus = function() {
     return copyOf(self.cityStatus);
+  };
+  var ownWeather = simulation.getWeather.bind(simulation);
+  simulation.getWeather = function() {
+    return isObject(self.cityStatus.weather) ? copyOf(self.cityStatus.weather) : ownWeather();
   };
   simulation.neighbours.describe = function() {
     return copyOf(self.neighbours);

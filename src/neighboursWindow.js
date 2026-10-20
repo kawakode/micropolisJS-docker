@@ -162,6 +162,15 @@ var stateOf = function(neighbour, deal, signed) {
 };
 
 
+// What is happening to a neighbour (see Neighbours.EVENTS), and for how long
+var EVENT_TEXT = {
+  boom: 'Economic boom ({months} months left): trade brings twice the business.',
+  recession: 'Recession ({months} months left): trade brings half the business.',
+  powerShortage: 'Short of power ({months} months left): pays double for power, sells none.',
+  twinningRequest: 'Asks to twin ({months} months left): a gift if the twinning is signed.'
+};
+
+
 NeighboursWindow.prototype._render = function() {
   var cards = this._cards();
 
@@ -212,6 +221,9 @@ NeighboursWindow.prototype._cards = function() {
                   '') +
       '<span class="neighbourPopulation">' +
       escape(I18n.t('{n} inhabitants', {n: I18n.formatNumber(n.population)})) + '</span></header>' +
+      (n.event && EVENT_TEXT[n.event.kind] ?
+        '<p class="neighbourEvent ' + escape(n.event.kind) + '">' +
+        escape(I18n.t(EVENT_TEXT[n.event.kind], {months: n.event.months})) + '</p>' : '') +
       '<p class="neighbourLinks">' + link(n.links.transport, I18n.t('Road or railway')) +
       link(n.links.power, I18n.t('Power line')) +
       '</p></div></div><ul class="deals">' + deals.join('') + '</ul></section>';

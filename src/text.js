@@ -88,6 +88,7 @@ neutralMessages[Messages.NEED_STADIUM] = true;
 neutralMessages[Messages.ROAD_NEEDS_FUNDING] = true;
 neutralMessages[Messages.POLICE_NEEDS_FUNDING] = true;
 neutralMessages[Messages.WELCOME] = true;
+neutralMessages[Messages.SNOW_FELL] = true;
 
 var badMessages = {};
 badMessages[Messages.BLACKOUTS_REPORTED] = true;
@@ -131,6 +132,7 @@ messageText[Messages.NEED_MORE_ROADS] = 'More roads required';
 messageText[Messages.NEED_POLICE_STATION] = 'Citizens demand a Police Department';
 messageText[Messages.NEED_SEAPORT] = 'Industry requires a Sea Port';
 messageText[Messages.NEED_STADIUM] = 'Residents demand a Stadium';
+messageText[Messages.SNOW_FELL] = 'Snow has fallen: solar farms give less, and clearing the roads costs more';
 messageText[Messages.ROAD_NEEDS_FUNDING] = 'Roads deteriorating, due to lack of funds';
 messageText[Messages.POLICE_NEEDS_FUNDING] = 'Police departments need funding';
 messageText[Messages.WELCOME] = 'Welcome to KawaCity';

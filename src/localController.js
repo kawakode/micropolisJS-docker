@@ -107,6 +107,11 @@ LocalController.prototype.applyBudget = function(data) {
     game.simulation.budget.firePercent = data.firePercent / 100;
     game.simulation.budget.policePercent = data.policePercent / 100;
     game.simulation.budget.setTax(data.taxPercent - 0);
+    if (data.repay)
+      game.simulation.budget.repay();
+    if (data.borrow > 0)
+      game.simulation.budget.borrow(data.borrow);
+    game.simulation.budget.setOrdinances(data.ordinances);
   }
 
   // The simulation waits for the yearly budget to be confirmed: it must be completed even if the player cancels

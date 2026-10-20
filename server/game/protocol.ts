@@ -7,8 +7,9 @@
 
 import type { ERROR_TEXTS, KICK_TEXTS } from '../../src/apiErrors.js';
 import { Neighbours } from '../../src/neighbours.js';
+import { Ordinances } from '../../src/ordinances.js';
 import { Placements } from '../../src/placements.js';
-import { CITY_HEIGHT, CITY_WIDTH, DISASTER_KINDS, DisasterKind, Point } from './headless';
+import { CITY_HEIGHT, CITY_WIDTH, DISASTER_KINDS, DisasterKind, MAX_LOANS, Point } from './headless';
 import { CHAT_MAX, checkText } from './names';
 
 // The live protocol of the shared cities (DESIGN §5.4): JSON text frames on the WebSocket at /api/ws, each an object
@@ -20,6 +21,8 @@ import { CHAT_MAX, checkText } from './names';
 //   {t: 'tool', seq, tool, from: {x, y}, to: {x, y}}             a tool dragged from one tile to another
 //   {t: 'speed', seq, speed: 1|2|3}   {t: 'pause', seq, paused}
 //   {t: 'budget', seq, roadPercent, firePercent, policePercent, taxPercent}   integers: 0-100, and the tax 0-20
+//   {t: 'loan', seq, borrow, repay}                              loans to take (0-5), and whether to pay off the debt
+//   {t: 'ordinances', seq, mask}                                 the ordinances in force (see src/ordinances.js)
 //   {t: 'settings', seq, autoBudget?, autoBulldoze?, disasters?, level?}
 //   {t: 'disaster', seq, kind}   {t: 'deal', seq, side, kind, signed}
 //   {t: 'chat', text}   {t: 'cursor', x, y, tool, ax, ay}   {t: 'cursor', x: null}
@@ -83,6 +86,19 @@ export interface BudgetMessage {
   taxPercent: number;
 }
 
+export interface LoanMessage {
+  t: 'loan';
+  seq: number | null;
+  borrow: number;
+  repay: boolean;
+}
+
+export interface OrdinancesMessage {
+  t: 'ordinances';
+  seq: number | null;
+  mask: number;
+}
+
 export interface SettingsMessage {
   t: 'settings';
   seq: number | null;
@@ -124,7 +140,7 @@ export interface CursorMessage {
 }
 
 export type CommandMessage = ToolMessage | SpeedMessage | PauseMessage | BudgetMessage | SettingsMessage |
-  DisasterMessage | DealMessage | ChatMessage | CursorMessage;
+  DisasterMessage | DealMessage | ChatMessage | CursorMessage | LoanMessage | OrdinancesMessage;
 
 export type ClientMessage = JoinMessage | CommandMessage;
 
@@ -190,6 +206,14 @@ function parseMessage(message: Record<string, unknown>): ClientMessage | null {
         return null;
       return {t: 'budget', seq, roadPercent, firePercent, policePercent, taxPercent};
     }
+
+    case 'loan':
+      return keysAre(message, ['borrow', 'repay']) && isIntegerIn(message.borrow, 0, MAX_LOANS) &&
+             typeof message.repay === 'boolean' ? {t: 'loan', seq, borrow: message.borrow, repay: message.repay} : null;
+
+    case 'ordinances':
+      return keysAre(message, ['mask']) && isIntegerIn(message.mask, 0, Ordinances.ALL) &&
+             (message.mask & Ordinances.ALL) === message.mask ? {t: 'ordinances', seq, mask: message.mask} : null;
 
     case 'settings': {
       if (!keysAre(message, [], ['autoBudget', 'autoBulldoze', 'disasters', 'level']))

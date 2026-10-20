@@ -1356,6 +1356,41 @@ a.hudButton, a.hudButton:visited {
   color: var(--muted);
 }
 
+/* The loans and the ordinances take the whole width (see BudgetWindow) */
+.budgetSliders .loanFieldset,
+.budgetSliders .ordinanceFieldset {
+  grid-column: 1 / -1;
+}
+
+.ordinanceList {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
+@media (max-width: 600px) {
+  .ordinanceList {
+    grid-template-columns: 1fr;
+  }
+}
+
+#debtInfo {
+  margin: 4px 0 0;
+}
+
+.budgetCheck:not(.hidden) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+.budgetCheck.disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 #flagsTable {
   width: 100%;
   border-collapse: collapse;
@@ -2142,6 +2177,18 @@ kbd {
   color: var(--muted);
 }
 
+/* What is happening to a neighbour (see Neighbours.EVENTS) */
+.neighbourEvent {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--gold);
+}
+
+.neighbourEvent.recession,
+.neighbourEvent.powerShortage {
+  color: var(--muted);
+}
+
 .neighbourLinks {
   display: flex;
   flex-wrap: wrap;
@@ -2430,6 +2477,96 @@ kbd {
 .swatchMoney { background: #6ee0d0; }
 .swatchCrime { background: #e04836; }
 .swatchPollution { background: #b08850; }
+
+/* The city's goals (see Game.updateGoalPanel) */
+
+#goalPanel {
+  padding: 8px 10px 10px;
+}
+
+#goalPanel.hidden,
+#goalList.hidden {
+  display: none;
+}
+
+.goalPanelToggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.goalPanelCount {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+#goalPanelName {
+  margin: 4px 0 2px;
+  font-size: 14px;
+  color: var(--gold);
+}
+
+#goalPanelText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.goalList {
+  max-height: 30vh;
+  overflow-y: auto;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.goalList li.met {
+  color: var(--green);
+}
+
+/* A region's common goal and its ranking (see Lobby) */
+.regionGoal {
+  margin: 0 0 6px;
+}
+
+.regionGoalBar {
+  margin-bottom: 10px;
+}
+
+#regionGoalBar {
+  height: 100%;
+  width: 0;
+  background: var(--gold);
+}
+
+.regionRanking {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rankNumber {
+  min-width: 1.5em;
+  color: var(--gold);
+}
+
+.regionRank {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  padding: 4px 0;
+}
 
 /* Scenarios */
 

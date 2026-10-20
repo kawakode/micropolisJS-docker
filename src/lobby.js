@@ -1047,6 +1047,35 @@ var renderRegionMap = function() {
 };
 
 
+// The common goal of the region's cities, and their ranking
+var renderRegionStandings = function() {
+  var standings = LobbyData.regionStandings(region);
+  $('#regionStandingsSection').toggle(standings.ranking.length > 0);
+
+  var goalText = standings.goal === null ?
+    I18n.t('Together, {total} inhabitants: every goal of the region is reached!',
+           {total: I18n.formatNumber(standings.total)}) :
+    I18n.t('Common goal: {goal} inhabitants together. {total} so far (goals reached: {met} of {goals}).',
+           {goal: I18n.formatNumber(standings.goal), total: I18n.formatNumber(standings.total), met: standings.met,
+            goals: standings.goals});
+  $('#regionGoal').text(goalText);
+  var fraction = standings.goal === null ? 1 : standings.total / standings.goal;
+  $('#regionGoalBar').css('width', Math.round(Math.min(1, fraction) * 100) + '%');
+
+  var list = $('#regionRanking').empty();
+  standings.ranking.forEach(function(city, i) {
+    var item = $('<li class="regionRank">');
+    $('<span class="rankNumber" aria-hidden="true">').text((i + 1) + '.').appendTo(item);
+    $('<bdi class="slotName">').text(city.name).appendTo(item);
+    item.append(sentence($('<span class="slotFact">'), I18n.t('Owner: {name}'), {name: city.ownerName}));
+    $('<span class="slotFact">').text(I18n.t('{population} inhabitants, score {score}',
+                                             {population: I18n.formatNumber(city.population), score: city.score}))
+      .appendTo(item);
+    list.append(item);
+  });
+};
+
+
 var renderRegionMembers = function() {
   var list = $('#regionMembers').empty();
   var mine = region.region.mine;
@@ -1098,6 +1127,7 @@ var renderRegion = function() {
   if (!$('#regionRenameSection').prop('open'))
     $('#regionRenameName').val(detail.name);
 
+  renderRegionStandings();
   renderRegionMap();
   renderRegionMembers();
   renderSentInvitations('#regionInvitations', region.invitations, '#regionCard', '#regionNote', '#regionError',

@@ -152,6 +152,10 @@ function AmbientLife(map, simulation) {
 
   // Whether the map is seen in the isometric view, where chimneys are elsewhere
   this.isometric = false;
+
+  // Snow falling over the view (see setSnow): each flake's place is a fraction of the view, so that it stays in view
+  this.snowing = false;
+  this.flakes = [];
 }
 
 
@@ -825,6 +829,40 @@ AmbientLife.prototype._updateClouds = function(seconds, view) {
 };
 
 
+// --- Snow ---------------------------------------------------------------------------------------------------------
+
+var FLAKES = 140;
+
+// Snow falls while the city's weather says so (see Weather)
+AmbientLife.prototype.setSnow = function(snowing) {
+  this.snowing = !!snowing;
+  if (!this.snowing) {
+    this.flakes = [];
+    return;
+  }
+
+  while (this.flakes.length < FLAKES) {
+    this.flakes.push({x: Math.random(), y: Math.random(), fall: randomBetween(0.04, 0.09),
+                      sway: randomBetween(0, Math.PI * 2), size: Math.random() < 0.3 ? 2 : 1});
+  }
+};
+
+
+AmbientLife.prototype._updateSnow = function(seconds) {
+  for (var i = 0; i < this.flakes.length; i++) {
+    var flake = this.flakes[i];
+    flake.sway += seconds * 1.5;
+    flake.y += flake.fall * seconds;
+    flake.x += (Math.sin(flake.sway) * 0.004 + this._wind.x * 0.0008) * seconds;
+    if (flake.y > 1) {
+      flake.y -= 1;
+      flake.x = Math.random();
+    }
+    flake.x -= Math.floor(flake.x);
+  }
+};
+
+
 // --- Day and night ----------------------------------------------------------------------------------------------
 
 // The colour to multiply the map by, and how bright the lights are (0 to 1), at the current time of day
@@ -898,6 +936,7 @@ AmbientLife.prototype.update = function(elapsed, view, running) {
   this._updateBirds(seconds, view);
   this._updateParticles(seconds);
   this._updateFireworks(seconds);
+  this._updateSnow(seconds);
 };
 
 

@@ -50,7 +50,7 @@ function GameTools(map) {
     avenue: new RoadTool(map, GameMap.ROAD_AVENUE, 25, 100),
     highway: new RoadTool(map, GameMap.ROAD_HIGHWAY, 40, 150),
     wind: new BuildingTool(300, TileValues.WINDTURBINE, map, 1, true),
-    solar: new BuildingTool(3000, TileValues.SOLARPLANT, map, 3, false),
+    solar: new BuildingTool(2000, TileValues.SOLARPLANT, map, 3, false),
     gas: new BuildingTool(2000, TileValues.GASPLANT, map, 3, false),
     school: new BuildingTool(1000, TileValues.SCHOOL, map, 3, false),
     university: new BuildingTool(3000, TileValues.UNIVERSITY, map, 4, false),

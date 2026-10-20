@@ -48,6 +48,7 @@
       <div id="infobar" class="hudStats">
         <div class="stat cityName"><span id="name">My Town</span><span class="statSub" id="cclass">VILLAGE</span></div>
         <div class="stat"><span class="statLabel" data-i18n>Date</span><span class="statValue" id="date">Jan 1900</span></div>
+        <div class="stat optionalStat" id="weatherStat"><span class="statLabel" data-i18n>Weather</span><span class="statValue" id="weather">Fair</span></div>
         <div class="stat optionalStat" id="clockStat"><span class="statLabel" data-i18n>Time</span><span class="statValue" id="clock">06:00</span></div>
         <div class="stat"><span class="statLabel" data-i18n>Funds</span><span class="statValue" id="funds">$20,000</span></div>
         <div class="stat"><span class="statLabel" data-i18n>Population</span><span class="statValue" id="population">0</span></div>
@@ -542,6 +543,13 @@
           <p id="regionNote" class="cardNote" role="status"></p>
           <p id="regionStatus" class="lobbyStatus" role="status"></p>
           <p id="regionFacts" class="lobbyFacts"></p>
+          <!-- How the cities compare, and their common goal (see LobbyData.regionStandings) -->
+          <section id="regionStandingsSection" class="lobbySection" aria-labelledby="regionStandingsTitle">
+            <h3 id="regionStandingsTitle" class="lobbyHeading" data-i18n>Standings</h3>
+            <p id="regionGoal" class="regionGoal"></p>
+            <div class="scenarioBar regionGoalBar"><div id="regionGoalBar"></div></div>
+            <ol id="regionRanking" class="regionRanking"></ol>
+          </section>
           <section class="lobbySection" aria-labelledby="regionMapTitle">
             <h3 id="regionMapTitle" class="lobbyHeading" data-i18n>Map of the region</h3>
             <p class="lobbyHint" data-i18n>Each city is the neighbour of the cities beside it. Every member of the region can build a city on a free place.</p>
@@ -718,6 +726,7 @@
             <option value="landValue" data-i18n>Land value</option>
             <option value="police" data-i18n>Police coverage</option>
             <option value="fire" data-i18n>Fire coverage</option>
+            <option value="education" data-i18n>Education coverage</option>
             <option value="growth" data-i18n>Rate of growth</option>
           </select>
         </div>
@@ -727,6 +736,16 @@
           <p id="scenarioPanelGoal"></p>
           <div class="scenarioBar"><div id="scenarioPanelBar"></div></div>
           <div class="scenarioFigures"><span id="scenarioPanelValue"></span><span id="scenarioPanelTime"></span></div>
+        </div>
+        <!-- The city's goals outside the scenarios (see Achievements): the next one, and all of them when opened -->
+        <div id="goalPanel" class="panel hidden" aria-live="polite">
+          <button type="button" id="goalPanelToggle" class="goalPanelToggle" aria-expanded="false" aria-controls="goalList"
+                  title="Show all the goals" data-i18n-title>
+            <span class="panelTitle" data-i18n>Next goal</span><span id="goalPanelCount" class="goalPanelCount"></span>
+          </button>
+          <p id="goalPanelName"></p>
+          <p id="goalPanelText"></p>
+          <ul id="goalList" class="goalList hidden"></ul>
         </div>
         <!-- What the query tool found: beside the map, which carries on (see QueryWindow) -->
         <div id="queryWindow" class="panel queryPanel hidden" role="region" aria-labelledby="queryHeader" aria-live="polite">
@@ -799,6 +818,9 @@
               <div id="previousInfo" class="budgetData"><span data-i18n>Previous funds</span> <span id="previousFunds"></span></div>
               <div id="currentInfo" class="budgetData"><span data-i18n>Current funds</span> <span id="currentFunds"></span></div>
               <div id="dealsInfo" class="budgetData"><span data-i18n>Neighbour deals</span> <span id="dealsFund"></span></div>
+              <div id="upkeepInfo" class="budgetData"><span data-i18n>Schools upkeep</span> <span id="upkeepFund"></span></div>
+              <div id="loanInfo" class="budgetData"><span data-i18n>Loan repayment</span> <span id="loanFund"></span></div>
+              <div id="ordinanceInfo" class="budgetData"><span data-i18n>Ordinances</span> <span id="ordinanceFund"></span></div>
             </div>
             <div class="budgetSliders">
               <fieldset>
@@ -820,6 +842,19 @@
                 <legend data-i18n>Tax</legend>
                 <input type="range" id="taxRate" min="0" max="20" step="1">
                 <label for="taxRate" class="budgetData" id="taxRateLabel">100% of $100 = $100</label>
+              </fieldset>
+              <!-- Loans, repaid with interest over the years (see Budget.borrow) -->
+              <fieldset class="loanFieldset">
+                <legend data-i18n>Loans</legend>
+                <input type="range" id="loanCount" min="0" max="5" step="1" value="0">
+                <label for="loanCount" class="budgetData" id="loanCountLabel"></label>
+                <p class="budgetData" id="debtInfo"></p>
+                <label class="budgetData budgetCheck" id="repayDebtLabel"><input type="checkbox" id="repayDebt"> <span id="repayDebtText"></span></label>
+              </fieldset>
+              <!-- The ordinances, each with what it costs a year (see Ordinances) -->
+              <fieldset class="ordinanceFieldset">
+                <legend data-i18n>Ordinances</legend>
+                <div id="ordinanceList" class="ordinanceList"></div>
               </fieldset>
             </div>
             <div id="budgetButtons" class="modalButtons">

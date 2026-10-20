@@ -42,6 +42,7 @@ var strings = {
   'Zoom out (-)': 'Dézoomer (-)',
   'Live': 'En direct',
   'Close': 'Fermer',
+  'Schools upkeep': 'Entretien des écoles',
   'Move the map with one finger, even with a tool in hand': 'Déplacer la carte d\'un doigt, même avec un outil en main',
   'Move the map': 'Déplacer la carte',
   'Press this key again and again to go through these tools': 'Appuyez plusieurs fois sur cette touche pour passer d\'un outil à l\'autre',
@@ -145,9 +146,10 @@ var strings = {
   'Power line': 'Ligne électrique',
   'Carries power to zones that don\'t touch a powered zone.': 'Amène le courant aux zones qui ne touchent pas une zone alimentée.',
   'Wind turbine': 'Éolienne',
-  '50 MW, clean. Build them in fields.': '50 MW, propre. À construire en pleine campagne.',
+  '50 MW, clean, more when it is windy. Build them in fields.':
+    '50 MW, propre, davantage par grand vent. À construire en pleine campagne.',
   'Solar farm': 'Centrale solaire',
-  '250 MW, clean.': '250 MW, propre.',
+  '400 MW, clean. Less in winter and under snow.': '400 MW, propre. Moins en hiver et sous la neige.',
   'Gas plant': 'Centrale à gaz',
   '500 MW, a little pollution.': '500 MW, un peu polluante.',
   'Coal plant': 'Centrale à charbon',
@@ -159,9 +161,11 @@ var strings = {
   'Fire station': 'Caserne',
   'Puts fires out faster around it. $100 a year.': 'Éteint plus vite les incendies alentour. 100 $ par an.',
   'School': 'École',
-  'Raises land values and lowers crime nearby.': 'Fait monter les prix fonciers et baisser la criminalité alentour.',
+  'Raises land values and lowers crime nearby. $100 a year.':
+    'Fait monter les prix fonciers et baisser la criminalité alentour. 100 $ par an.',
   'University': 'Université',
-  'Like a school, twice as strong and further reaching.': 'Comme une école, deux fois plus efficace, et de plus loin.',
+  'Like a school, twice as strong and further reaching. $250 a year.':
+    'Comme une école, deux fois plus efficace, et de plus loin. 250 $ par an.',
   'Park': 'Parc',
   'A few trees or a fountain: raises land values.': 'Quelques arbres ou une fontaine : fait monter les prix fonciers.',
   'Garden': 'Jardin',
@@ -196,6 +200,7 @@ var strings = {
   'Land value': 'Valeur foncière',
   'Police coverage': 'Couverture police',
   'Fire coverage': 'Couverture pompiers',
+  'Education coverage': 'Couverture éducation',
   'Rate of growth': 'Croissance',
   'legend|Empty': 'Vide',
   'legend|Dense': 'Dense',
@@ -520,6 +525,110 @@ var strings = {
   '{months} months': '{months} mois',
   'Goal reached: {goal}.': 'Objectif atteint : {goal}.',
   'Goal missed: {goal}.': 'Objectif manqué : {goal}.',
+
+  // A region's standings (see LobbyData.regionStandings)
+  'Standings': 'Classement',
+  'Together, {total} inhabitants: every goal of the region is reached!':
+    'Ensemble, {total} habitants : tous les objectifs de la région sont atteints !',
+  'Common goal: {goal} inhabitants together. {total} so far (goals reached: {met} of {goals}).':
+    'Objectif commun : {goal} habitants ensemble. {total} pour l\'instant (objectifs atteints : {met} sur {goals}).',
+  '{population} inhabitants, score {score}': '{population} habitants, score {score}',
+
+  // Loans (see Budget.borrow)
+  'Loans': 'Emprunts',
+  'Loan repayment': 'Remboursement des emprunts',
+  'No new loan': 'Pas de nouvel emprunt',
+  'No more loans: the debt is at its limit.': 'Plus d\'emprunt possible : la dette est à son maximum.',
+  'Borrow {amount}, repaid {payment} a year for {years} years':
+    'Emprunter {amount}, remboursés {payment} par an pendant {years} ans',
+  'Debt: {debt}, repaid {payment} a year': 'Dette : {debt}, remboursée {payment} par an',
+  'No debt': 'Aucune dette',
+  'Pay off the whole debt now ({debt})': 'Rembourser toute la dette maintenant ({debt})',
+
+  // What happens to the neighbours (see Neighbours.EVENTS)
+  'Economic boom in {name}: trading with it brings twice the business this year.':
+    'Boom économique à {name} : commercer avec elle rapporte deux fois plus cette année.',
+  'Recession in {name}: trading with it brings half the business this year.':
+    'Récession à {name} : commercer avec elle rapporte deux fois moins cette année.',
+  '{name} is short of power: it pays double for the power it buys, and has none to sell, this year.':
+    '{name} manque d\'électricité : elle paie le double le courant qu\'elle achète, et n\'en vend plus, cette année.',
+  '{name} would like to twin with your city: sign the twinning this year for a gift of {gift}.':
+    '{name} aimerait se jumeler avec votre ville : signez le jumelage cette année pour recevoir {gift}.',
+  '{name} thanks you for the twinning, with a gift of {gift}.': '{name} vous remercie du jumelage et vous offre {gift}.',
+  'Economic boom ({months} months left): trade brings twice the business.':
+    'Boom économique (encore {months} mois) : le commerce rapporte deux fois plus.',
+  'Recession ({months} months left): trade brings half the business.':
+    'Récession (encore {months} mois) : le commerce rapporte deux fois moins.',
+  'Short of power ({months} months left): pays double for power, sells none.':
+    'Pénurie d\'électricité (encore {months} mois) : paie le courant le double, n\'en vend plus.',
+  'Asks to twin ({months} months left): a gift if the twinning is signed.':
+    'Demande de jumelage (encore {months} mois) : un cadeau si le jumelage est signé.',
+
+  // Ordinances (see Ordinances)
+  'Ordinances': 'Arrêtés municipaux',
+  '{name} ({cost} a year)': '{name} ({cost} par an)',
+  'Street lighting': 'Éclairage public',
+  'Lit streets: less crime.': 'Des rues éclairées : moins de criminalité.',
+  'Neighbourhood watch': 'Voisins vigilants',
+  'Neighbours look out: a little less crime.': 'Les voisins veillent : un peu moins de criminalité.',
+  'Recycling': 'Recyclage',
+  'Less waste: less pollution.': 'Moins de déchets : moins de pollution.',
+  'Clean air rules': 'Normes antipollution',
+  'Much less pollution, but industry would rather go elsewhere.':
+    'Beaucoup moins de pollution, mais l\'industrie préfère s\'installer ailleurs.',
+  'Tourism campaign': 'Promotion touristique',
+  'Visitors come: more demand for shops.': 'Les visiteurs affluent : plus de demande de commerces.',
+  'Housing grants': 'Aides au logement',
+  'Help to buy a home: more demand for homes.': 'Une aide pour acheter : plus de demande de logements.',
+
+  // The weather (see Weather)
+  'Weather': 'Météo',
+  'Snow': 'Neige',
+  'Calm': 'Calme',
+  'Fair': 'Beau temps',
+  'Windy': 'Venteux',
+  'Solar farms give {solar}% of their power, wind turbines {wind}%.':
+    'Les centrales solaires donnent {solar} % de leur puissance, les éoliennes {wind} %.',
+  'Snow has fallen: solar farms give less, and clearing the roads costs more':
+    'Il a neigé : les centrales solaires produisent moins et le déneigement coûte plus cher',
+
+  // The city's goals (see Achievements)
+  'Next goal': 'Prochain objectif',
+  'Show all the goals': 'Voir tous les objectifs',
+  'All goals met!': 'Tous les objectifs sont atteints !',
+  'Goal met: {name}': 'Objectif atteint : {name}',
+  'First school': 'Première école',
+  'Build a school.': 'Construire une école.',
+  'Green spaces': 'Espaces verts',
+  'Build a big park.': 'Construire un grand parc.',
+  'Safe and sound': 'Sain et sauf',
+  'Have a police station and a fire station.': 'Avoir un commissariat et une caserne de pompiers.',
+  'Home team': 'L\'équipe locale',
+  'Build a stadium.': 'Construire un stade.',
+  'Good neighbours': 'Bon voisinage',
+  'Make a deal with a neighbouring city.': 'Conclure un accord avec une ville voisine.',
+  'Higher learning': 'Études supérieures',
+  'Build a university.': 'Construire une université.',
+  'Open to the sea': 'Ouverte sur la mer',
+  'Build a seaport.': 'Construire un port.',
+  'Taking off': 'Décollage',
+  'Build an airport.': 'Construire un aéroport.',
+  'Clean energy': 'Énergie propre',
+  'Power a city of 2,000 people with the sun and the wind only.':
+    'Alimenter une ville de 2 000 habitants avec le soleil et le vent seulement.',
+  'Quiet streets': 'Rues tranquilles',
+  'Reach 10,000 people with little crime.': 'Atteindre 10 000 habitants avec peu de criminalité.',
+  'Green city': 'Ville verte',
+  'Reach 10,000 people with no coal or gas plant, and little pollution.':
+    'Atteindre 10 000 habitants sans centrale au charbon ni au gaz, avec peu de pollution.',
+  'Regional hub': 'Carrefour régional',
+  'Have three deals with neighbouring cities at once.': 'Avoir trois accords avec des villes voisines en même temps.',
+  'Full coffers': 'Coffres pleins',
+  'Have $100,000 in the bank.': 'Avoir 100 000 $ en caisse.',
+  'Tax haven': 'Paradis fiscal',
+  'Reach 20,000 people with taxes at 5% or less.': 'Atteindre 20 000 habitants avec des impôts à 5 % ou moins.',
+  'Model city': 'Ville modèle',
+  'Reach a score of 800.': 'Atteindre un score de 800.',
   'Title screen': 'Écran titre',
   'Try again': 'Réessayer',
   'Take office': 'Prendre ses fonctions',

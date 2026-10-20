@@ -17,6 +17,7 @@ import { BaseTool } from './baseTool.js';
 import { BudgetWindow } from './budgetWindow.js';
 import { CityPicture } from './cityPicture.js';
 import { Config } from './config.js';
+import { Achievements } from './achievements.js';
 import { CongratsWindow } from './congratsWindow.js';
 import { DebugWindow } from './debugWindow.js';
 import { DisasterWindow } from './disasterWindow.js';
@@ -36,7 +37,6 @@ import { MonsterTV } from './monsterTV.js';
 import { NeighboursWindow } from './neighboursWindow.js';
 import { Notification } from './notification.js';
 import { QueryWindow } from './queryWindow.js';
-import { Random } from './random.ts';
 import { RCI } from './rci.js';
 import { SaveWindow } from './saveWindow.js';
 import { ScreenshotWindow } from './screenshotWindow.js';
@@ -195,7 +195,15 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
       taxRate: this.simulation.budget.cityTax,
       totalFunds: this.simulation.budget.totalFunds,
       taxesCollected: this.simulation.budget.taxFund,
-      dealsFund: this.simulation.budget.dealsFund
+      dealsFund: this.simulation.budget.dealsFund,
+      upkeepFund: this.simulation.budget.upkeepFund,
+      loanFund: this.simulation.budget.loanFund,
+      debt: this.simulation.budget.debt,
+      debtPayment: this.simulation.budget.debtPayment,
+      loansAvailable: this.simulation.budget.loansAvailable(),
+      ordinances: this.simulation.budget.ordinances,
+      ordinanceFund: this.simulation.budget.ordinanceFund,
+      population: this.simulation.evaluation.cityPop
     };
 
     this._windowShown = budgetData;
@@ -280,10 +288,6 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
   // Escape closes dialogs, or deselects the current tool
   this.inputStatus.addEventListener(Messages.ESCAPE_PRESSED, this.handleEscape.bind(this));
 
-  // And date changes
-  // XXX Not yet activated
-  //this.simulation.addEventListener(Messages.DATE_UPDATED, this.onDateChange.bind(this));
-
   this.infoBar = InfoBar('cclass', 'population', 'score', 'funds', 'date', 'name');
   var initialValues;
   if (remote) {
@@ -318,6 +322,14 @@ function Game(gameMap, tileSet, snowTileSet, spriteSheet, difficulty, name, opti
 
     // Celebrate each milestone with fireworks
     this.ambientLife.celebrate(this.gameCanvas.getVisibleWorldRect());
+  }.bind(this));
+
+  // The next goal of the city, and the list of all of them when its title is clicked
+  this._goalListOpen = false;
+  this._goalPanelKey = null;
+  $('#goalPanelToggle').on('click', function() {
+    this._goalListOpen = !this._goalListOpen;
+    this.updateGoalPanel();
   }.bind(this));
 
   // Unhide controls
@@ -462,6 +474,81 @@ Game.prototype.handleScenarioWindowClosure = function(data) {
 };
 
 
+// A goal of the city was met: the game says so, without stopping the city, and celebrates with fireworks. A shared
+// city's goals are met on the server: its copy here learns them from the message.
+Game.prototype._achievementMet = function(data, d) {
+  var achievement = data ? Achievements.byId(data.id) : null;
+  if (achievement === null)
+    return;
+
+  this.simulation.achievements |= 1 << achievement.bit;
+  this.updateGoalPanel();
+
+  if (this.lastBadMessageTime === null || d - this.lastBadMessageTime > disasterTimeout) {
+    this.lastBadMessageTime = null;
+    this._notificationBar.showText(I18n.t('Goal met: {name}', {name: I18n.t(achievement.name)}), 'good');
+  }
+
+  this.ambientLife.celebrate(this.gameCanvas.getVisibleWorldRect());
+};
+
+
+// What happened to a neighbouring city ({kind, name, side, gift}, see Neighbours.takeNews), told without stopping the
+// city; clicking the news opens the neighbours window
+var NEIGHBOUR_NEWS = {
+  boom: 'Economic boom in {name}: trading with it brings twice the business this year.',
+  recession: 'Recession in {name}: trading with it brings half the business this year.',
+  powerShortage: '{name} is short of power: it pays double for the power it buys, and has none to sell, this year.',
+  twinningRequest: '{name} would like to twin with your city: sign the twinning this year for a gift of {gift}.',
+  twinned: '{name} thanks you for the twinning, with a gift of {gift}.'
+};
+
+Game.prototype._neighbourNews = function(data, d) {
+  if (!data || !Object.prototype.hasOwnProperty.call(NEIGHBOUR_NEWS, data.kind) || typeof(data.name) !== 'string')
+    return;
+
+  if (this.lastBadMessageTime !== null && d - this.lastBadMessageTime <= disasterTimeout)
+    return;
+
+  this.lastBadMessageTime = null;
+  var text = I18n.t(NEIGHBOUR_NEWS[data.kind], {name: data.name, gift: I18n.money(data.gift || 0)});
+  var kind = data.kind === 'recession' ? 'neutral' : 'good';
+  this._notificationBar.showAction(text, kind, this.handleNeighboursRequest.bind(this));
+};
+
+
+// Keeps the goal panel up to date: the next goal, how many are met, and the list of all of them when it is open. It
+// is hidden while a scenario runs, which has a goal of its own (see updateScenarioPanel).
+Game.prototype.updateGoalPanel = function() {
+  var mask = this.simulation.achievements;
+  var hidden = this._scenarioPanelText !== '';
+  var key = hidden ? 'hidden' : mask + '|' + this._goalListOpen;
+  if (key === this._goalPanelKey)
+    return;
+
+  this._goalPanelKey = key;
+  $('#goalPanel').toggleClass('hidden', hidden);
+  if (hidden)
+    return;
+
+  var next = Achievements.next(mask);
+  $('#goalPanelCount').text(Achievements.count(mask) + '/' + Achievements.LIST.length);
+  $('#goalPanelName').text(I18n.t(next ? next.name : 'All goals met!'));
+  $('#goalPanelText').text(next ? I18n.t(next.goal) : '');
+  $('#goalPanelToggle').attr('aria-expanded', String(this._goalListOpen));
+
+  var list = $('#goalList').empty().toggleClass('hidden', !this._goalListOpen);
+  if (!this._goalListOpen)
+    return;
+
+  Achievements.LIST.forEach(function(achievement) {
+    var met = Achievements.isMet(mask, achievement);
+    $('<li>').toggleClass('met', met).attr('title', I18n.t(achievement.goal))
+      .text((met ? '\u2713 ' : '\u2022 ') + I18n.t(achievement.name)).appendTo(list);
+  });
+};
+
+
 // Keeps the scenario panel up to date: the goal, how the city is doing, and the time left
 Game.prototype.updateScenarioPanel = function() {
   var scenarioState = this.simulation.getScenario();
@@ -568,17 +655,30 @@ Game.prototype.revealControls = function() {
 };
 
 
+// The weather's wind, by strength (see Weather)
+var WIND_TEXT = ['Calm', 'Fair', 'Windy'];
+
+
 var genericDialogClosure = function() {
   this.dialogOpen = false;
   this._openWindow = null;
 };
 
 
-Game.prototype.onDateChange = function(date) {
-  if (date.month === 10 && Random.getChance(10))
-    this.gameCanvas.changeTileSet(this.snowTileSet);
-  else if (date.month === 1)
-    this.gameCanvas.changeTileSet(this.tileSet);
+// Shows the weather in the heads-up display, and snow on the map while it lies (see Weather)
+Game.prototype.updateWeather = function() {
+  var weather = this.simulation.getWeather();
+  var key = weather.snow + '|' + weather.wind + '|' + weather.solar;
+  if (key === this._weatherKey)
+    return;
+
+  this._weatherKey = key;
+  $('#weather').text(I18n.t(weather.snow ? 'Snow' : WIND_TEXT[weather.wind]));
+  $('#weatherStat').attr('title', I18n.t('Solar farms give {solar}% of their power, wind turbines {wind}%.',
+                                         {solar: weather.solar, wind: weather.windPower}));
+  this.ambientLife.setSnow(weather.snow);
+  if (this.snowTileSet && this.snowTileSet.isValid)
+    this.gameCanvas.changeTileSet(weather.snow ? this.snowTileSet : this.tileSet);
 };
 
 
@@ -940,6 +1040,16 @@ Game.prototype.processFrontEndMessage = function(message) {
 
   this.tickerNews.report(subject, message.data);
 
+  if (subject === Messages.ACHIEVEMENT_MET) {
+    this._achievementMet(message.data, d);
+    return;
+  }
+
+  if (subject === Messages.NEIGHBOUR_NEWS) {
+    this._neighbourNews(message.data, d);
+    return;
+  }
+
   if (Text.goodMessages[subject] !== undefined) {
     var cMessage = null;
 
@@ -1217,7 +1327,9 @@ var commonAnimate = function(timestamp) {
   this.ambientLife.update(elapsed, this.gameCanvas.getVisibleWorldRect(),
                          !this.isPaused && (this.remote || !this.dialogOpen));
   this.updateClock();
+  this.updateWeather();
   this.updateScenarioPanel();
+  this.updateGoalPanel();
   this.ticker.update(elapsed);
 
   var sprites = this.calculateSpritesForPaint(this.gameCanvas);

@@ -20,11 +20,11 @@ const ID3 = D(2);
 // The keys the server takes in the save of a new city (see server/game/saveValidation.ts): any other is refused
 const SERVER_KEYS = new Set([
     "name", "_reachedTown", "_reachedCity", "_reachedCapital", "_reachedMetropolis", "_reachedMegalopolis", "dayNight",
-    "disastersEnabled", "timeOfDay", "autoBulldoze", "_cityTime", "_speed", "_gameLevel", "cityCentreX", "cityCentreY",
+    "disastersEnabled", "timeOfDay", "autoBulldoze", "_cityTime", "_speed", "_gameLevel", "achievements", "weatherSnow", "weatherWind", "snowMonths", "cityCentreX", "cityCentreY",
     "pollutionMaxX", "pollutionMaxY", "width", "height", "cityClass", "cityScore", "cityPop", "resValve", "comValve",
     "indValve", "autoBudget", "totalFunds", "policePercent", "roadPercent", "firePercent", "roadSpend", "policeSpend",
     "fireSpend", "roadMaintenanceBudget", "policeMaintenanceBudget", "fireMaintenanceBudget", "cityTax", "roadEffect",
-    "policeEffect", "fireEffect", "dealsFund", "resPop", "comPop", "indPop", "crimeRamp", "pollutionRamp",
+    "policeEffect", "fireEffect", "dealsFund", "upkeepFund", "debt", "debtPayment", "loanFund", "ordinances", "ordinanceFund", "resPop", "comPop", "indPop", "crimeRamp", "pollutionRamp",
     "landValueAverage", "pollutionAverage", "crimeAverage", "totalPop", "version", "isSavedGame", "everClicked",
     "scenario", "map", "roadClass", "neighbours",
     ...["res", "com", "ind", "crime", "money", "pollution"].flatMap(name => [name + "Hist10", name + "Hist120"])
@@ -262,6 +262,27 @@ describe("The lobby's answers from the server", () => {
         // The region's owner may take any city out of it
         const owned = LobbyData.regionLayout(LobbyData.regionDetail({...answer, region: {...answer.region, mine: true}}) as any);
         expect(owned.map((c: any) => c.clear)).toEqual([true, true, true, false]);
+    });
+
+    it("rank the cities of a region, and say how far they are from their common goal", () => {
+        const answer = {
+            region: {id: ID, name: "Valley", ownerName: "alice", width: 2, height: 2, mine: false, cities: 3},
+            slots: [
+                {x: 0, y: 0, city: {id: ID2, name: "Small", ownerName: "bob", population: 20000, score: 900, role: null}},
+                {x: 1, y: 0, city: {id: ID3, name: "Big", ownerName: "carol", population: 45000, score: 300, role: null}},
+                {x: 0, y: 1, city: {id: D(4), name: "Twin", ownerName: "dan", population: 20000, score: 950,
+                                    role: null}},
+                {x: 1, y: 1, city: null}
+            ],
+            members: []
+        };
+        const standings = LobbyData.regionStandings(LobbyData.regionDetail(answer) as any);
+        expect(standings.ranking.map((c: any) => c.name)).toEqual(["Big", "Twin", "Small"]);
+        expect([standings.total, standings.goal, standings.met]).toEqual([85000, 100000, 1]);
+
+        answer.slots[1].city!.population = 2000000;
+        const done = LobbyData.regionStandings(LobbyData.regionDetail(answer) as any);
+        expect([done.goal, done.met]).toEqual([null, done.goals]);
     });
 
     it("name a copy of a city in ASCII", () => {

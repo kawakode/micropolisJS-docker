@@ -12,6 +12,7 @@ import { GameMap } from '../../src/gameMap.js';
 import { GameTools } from '../../src/gameTools.js';
 import * as Messages from '../../src/messages';
 import { Neighbours } from '../../src/neighbours.js';
+import { Ordinances } from '../../src/ordinances.js';
 import { Placements } from '../../src/placements.js';
 import { Simulation } from '../../src/simulation.js';
 import { BIT_MASK } from '../../src/tileFlags';
@@ -48,6 +49,9 @@ const EXPLOSION_MOVES = Math.round(EXPLOSION_MS * 60 / 1000);
 
 // The most messages kept for the room between two calls of takeMessages: older ones go first
 const MAX_MESSAGES = 200;
+
+// The most loans the budget window takes at once (see Budget.MAX_DEBT)
+export const MAX_LOANS = 5;
 
 // The disasters a player can unleash, as the disaster window names them (see DisasterWindow)
 export const DISASTER_KINDS = ['Monster', 'Fire', 'Flood', 'Crash', 'Meltdown', 'Tornado', 'Earthquake'] as const;
@@ -179,6 +183,9 @@ export interface BudgetObject {
   setAutoBudget(value: boolean): void;
   updateFundEffects(): void;
   doBudgetWindow(): void;
+  borrow(count: number): number;
+  repay(): boolean;
+  setOrdinances(mask: number): void;
 }
 
 export interface EvaluationObject {
@@ -453,6 +460,11 @@ export class HeadlessCity {
     return this.hud.population;
   }
 
+  // The score as the game shows it (see hud)
+  get score(): number {
+    return this.hud.score;
+  }
+
   get cityTime(): number {
     return this.simulation.getCityTime();
   }
@@ -696,6 +708,29 @@ export class HeadlessCity {
   }
 
   // Signs or ends a deal with a neighbour (see Neighbours.setDeal)
+  // The loans of the budget window (see Budget.borrow and Budget.repay): the whole debt repaid, then count loans taken.
+  // Returns false, and changes nothing, if the values are not valid or the debt can't be repaid.
+  applyLoan(borrow: unknown, repay: unknown): boolean {
+    if (!isIntegerIn(borrow, 0, MAX_LOANS) || typeof repay !== 'boolean')
+      return false;
+
+    const budget = this.simulation.budget;
+    if (repay && !budget.repay())
+      return false;
+
+    budget.borrow(borrow as number);
+    return true;
+  }
+
+  // The ordinances in force, as the budget window sets them (see Ordinances): a mask of known ones only
+  applyOrdinances(mask: unknown): boolean {
+    if (!isIntegerIn(mask, 0, Ordinances.ALL) || (mask & Ordinances.ALL) !== mask)
+      return false;
+
+    this.simulation.budget.setOrdinances(mask);
+    return true;
+  }
+
   applyDeal(side: unknown, kind: unknown, signed: unknown): boolean {
     if (!SIDES.includes(side as string) || !KINDS.includes(kind as string) || typeof signed !== 'boolean')
       return false;

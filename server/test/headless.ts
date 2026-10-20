@@ -432,6 +432,34 @@ describe('The commands of a headless city', () => {
     expect(JSON.stringify(budget)).toBe(before);
   });
 
+  test('take loans and pay off the debt, as the budget window does', () => {
+    const city = createHeadlessCity(sampleCity('kowloon'));
+    const budget = city.simulation.budget;
+    budget.totalFunds = 1000;
+
+    expect(city.applyLoan(2, false)).toBe(true);
+    expect([budget.totalFunds, budget.debt, budget.debtPayment]).toEqual([21000, 24000, 2400]);
+    // Not enough money to pay off the debt: nothing changes
+    expect(city.applyLoan(1, true)).toBe(false);
+    expect(budget.debt).toBe(24000);
+
+    for (const [borrow, repay] of [[6, false], [-1, false], [1.5, false], ['1', false], [1, 'yes']] as const)
+      expect(city.applyLoan(borrow, repay)).toBe(false);
+
+    budget.totalFunds = 30000;
+    expect(city.applyLoan(0, true)).toBe(true);
+    expect([budget.totalFunds, budget.debt, budget.debtPayment]).toEqual([6000, 0, 0]);
+  });
+
+  test('set the ordinances in force, known ones only', () => {
+    const city = createHeadlessCity(sampleCity('kowloon'));
+    expect(city.applyOrdinances(5)).toBe(true);
+    expect(city.save().ordinances).toBe(5);
+    for (const bad of [1 << 20, -1, 1.5, '1', null])
+      expect(city.applyOrdinances(bad)).toBe(false);
+    expect(city.simulation.budget.ordinances).toBe(5);
+  });
+
   test('change the settings, all or none', () => {
     const city = createHeadlessCity(sampleCity('kowloon'));
     expect(city.applySettings({autoBudget: false, autoBulldoze: false, disasters: false, level: 2})).toBe(true);

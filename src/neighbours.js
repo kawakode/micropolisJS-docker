@@ -72,6 +72,15 @@ var MAX_NAME_LENGTH = 30;
 // A neighbour this big or bigger counts as big, for the deals
 var BIG_CITY = 100000;
 
+// KawaCity: what may happen to a neighbour of the save, for a year (see closeYear). A boom doubles the demand that
+// trading with it brings, a recession halves it. A neighbour short of power pays double for the power it buys, and
+// has none to sell. A neighbour asking to twin gives a gift if the twinning is in force before the year is out.
+var EVENTS = ['boom', 'recession', 'powerShortage', 'twinningRequest'];
+var EVENT_MONTHS = 12;
+// The chance, each year, that something happens to one of the neighbours
+var EVENT_CHANCE = 1 / 3;
+var TWINNING_GIFT = 2000;
+
 
 var isPowerLine = function(tileValue) {
   return (tileValue >= POWERBASE && tileValue <= LASTPOWER) || tileValue === HROADPOWER || tileValue === VROADPOWER;
@@ -96,8 +105,13 @@ function Neighbours(map, random) {
   this._map = map;
   this._random = random || Math.random;
 
-  // {side, name, population, deals: {kind: signed}, months: {kind: months in force this year}}
+  // {side, name, population, deals: {kind: signed}, months: {kind: months in force this year}, event}, event being
+  // what is happening to the neighbour (see EVENTS): {kind, months left}, or null
   this.list = [];
+
+  // The events started, and the gifts given, since they were last taken (see takeNews)
+  this._news = [];
+  this._gifts = 0;
 
   // The links found at the last look, by side: {transport, power: [the positions of power lines on the edge]}
   this._links = null;
@@ -192,7 +206,7 @@ Neighbours.prototype.generate = function() {
     var name = names.splice(Math.floor(this._random() * names.length), 1)[0];
     var r = this._random();
     return {side: side, name: name, population: Math.round(3000 + r * r * 90000), deals: byKind(false),
-            months: byKind(0)};
+            months: byKind(0), event: null};
   }, this);
   this._links = null;
   this._delivered = {};
@@ -201,9 +215,22 @@ Neighbours.prototype.generate = function() {
 
 Neighbours.prototype.save = function(saveData) {
   saveData.neighbours = this.list.map(function(n) {
-    return {side: n.side, name: n.name, population: n.population, deals: Object.assign({}, n.deals),
-            months: Object.assign({}, n.months)};
+    var saved = {side: n.side, name: n.name, population: n.population, deals: Object.assign({}, n.deals),
+                 months: Object.assign({}, n.months)};
+    if (n.event)
+      saved.event = {kind: n.event.kind, months: n.event.months};
+    return saved;
   });
+};
+
+
+// An event read from a save: null if it is not one
+var cleanEvent = function(event) {
+  if (event === null || typeof(event) !== 'object' || EVENTS.indexOf(event.kind) === -1 ||
+      !Number.isInteger(event.months) || event.months < 1 || event.months > EVENT_MONTHS)
+    return null;
+
+  return {kind: event.kind, months: event.months};
 };
 
 
@@ -234,7 +261,8 @@ Neighbours.prototype.load = function(saveData) {
       deals[kind] = !!(n.deals && n.deals[kind]);
       months[kind] = n.months && typeof(n.months[kind]) === 'number' ? n.months[kind] : 0;
     });
-    return {side: n.side, name: cleanName(n.name), population: n.population, deals: deals, months: months};
+    return {side: n.side, name: cleanName(n.name), population: n.population, deals: deals, months: months,
+            event: cleanEvent(n.event)};
   });
   this._links = null;
   this._delivered = {};
@@ -291,9 +319,19 @@ Neighbours.prototype._getLinks = function() {
 };
 
 
+// What is happening to a neighbour of the save (see EVENTS), or null. A player's city has no events here.
+Neighbours.prototype.eventOf = function(neighbour) {
+  return neighbour.event && this.getRemote(neighbour.side) === null ? neighbour.event.kind : null;
+};
+
+
 // What a deal with the neighbour costs (negative) or earns in a year
 Neighbours.prototype.yearly = function(neighbour, kind) {
-  return DEALS[kind].yearly(this.sizeOf(neighbour));
+  var yearly = DEALS[kind].yearly(this.sizeOf(neighbour));
+  if (kind === 'sellPower' && this.eventOf(neighbour) === 'powerShortage')
+    yearly *= 2;
+
+  return yearly;
 };
 
 
@@ -335,6 +373,10 @@ Neighbours.prototype.dealState = function(neighbour, kind) {
   if (kind === 'sellPower' && !this._delivered[neighbour.side])
     return 'noPower';
 
+  // A neighbour short of power has none to sell
+  if (kind === 'buyPower' && this.eventOf(neighbour) === 'powerShortage')
+    return 'noPower';
+
   return 'active';
 };
 
@@ -374,9 +416,14 @@ Neighbours.prototype.demandBonus = function() {
         return;
 
       var demand = DEALS[kind].demand(this.sizeOf(n));
-      bonus.res += demand.res;
-      bonus.com += demand.com;
-      bonus.ind += demand.ind;
+      var factor = 1;
+      if (kind === 'trade' && this.eventOf(n) === 'boom')
+        factor = 2;
+      else if (kind === 'trade' && this.eventOf(n) === 'recession')
+        factor = 0.5;
+      bonus.res += Math.round(demand.res * factor);
+      bonus.com += Math.round(demand.com * factor);
+      bonus.ind += Math.round(demand.ind * factor);
     }, this);
   }, this);
 
@@ -419,14 +466,65 @@ Neighbours.prototype.deliverPower = function(powerGridMap, spare) {
 };
 
 
-// Counts a month for each deal in force
+// Counts a month for each deal in force, and for the events: a twinning asked for and in force brings its gift
 Neighbours.prototype.countMonth = function() {
   this.list.forEach(function(n) {
     KINDS.forEach(function(kind) {
       if (this._isActive(n, kind))
         n.months[kind] = Math.min(12, n.months[kind] + 1);
     }, this);
+
+    if (!n.event)
+      return;
+
+    if (this.eventOf(n) === 'twinningRequest' && this._isActive(n, 'twinning')) {
+      this._gifts += TWINNING_GIFT;
+      this._news.push({kind: 'twinned', side: n.side, name: n.name, gift: TWINNING_GIFT});
+      n.event = null;
+    } else if (--n.event.months <= 0) {
+      n.event = null;
+    }
   }, this);
+};
+
+
+// Something may happen to one of the neighbours of the save that have nothing happening to them (see EVENTS)
+Neighbours.prototype._startEvent = function() {
+  if (this._random() >= EVENT_CHANCE)
+    return;
+
+  var calm = this.list.filter(function(n) {
+    return !n.event && this.getRemote(n.side) === null;
+  }, this);
+  if (calm.length === 0)
+    return;
+
+  var n = calm[Math.floor(this._random() * calm.length)];
+  var kind = EVENTS[Math.floor(this._random() * EVENTS.length)];
+  // A neighbour already twinned has no need to ask
+  if (kind === 'twinningRequest' && n.deals.twinning)
+    return;
+
+  n.event = {kind: kind, months: EVENT_MONTHS};
+  if (kind === 'boom')
+    n.population = Math.round(n.population * 1.15);
+  else if (kind === 'recession')
+    n.population = Math.max(500, Math.round(n.population * 0.95));
+
+  var news = {kind: kind, side: n.side, name: n.name};
+  if (kind === 'twinningRequest')
+    news.gift = TWINNING_GIFT;
+  this._news.push(news);
+};
+
+
+// What happened to the neighbours since the last call, for the news ([{kind, side, name, gift}]), and the gifts they
+// gave: {news, gifts}
+Neighbours.prototype.takeNews = function() {
+  var result = {news: this._news, gifts: this._gifts};
+  this._news = [];
+  this._gifts = 0;
+  return result;
 };
 
 
@@ -453,6 +551,7 @@ Neighbours.prototype.closeYear = function() {
     n.population = Math.max(500, Math.round(n.population * (1 + growth)));
   }, this);
 
+  this._startEvent();
   return balance;
 };
 
@@ -499,6 +598,7 @@ Neighbours.prototype.describe = function() {
       side: n.side,
       name: this._nameOf(n),
       population: this._populationOf(n),
+      event: this.eventOf(n) !== null ? {kind: n.event.kind, months: n.event.months} : null,
       links: {transport: links[n.side].transport, power: links[n.side].power.length > 0},
       deals: KINDS.map(function(kind) {
         var deal = {kind: kind, signed: n.deals[kind], state: this.dealState(n, kind), yearly: this.yearly(n, kind)};
@@ -588,6 +688,9 @@ Neighbours.prototype.activeDeals = function() {
 
 
 Neighbours.SIDES = SIDES;
+Neighbours.EVENTS = EVENTS;
+Neighbours.EVENT_MONTHS = EVENT_MONTHS;
+Neighbours.TWINNING_GIFT = TWINNING_GIFT;
 Neighbours.KINDS = KINDS;
 Neighbours.POWER_DEAL = POWER_DEAL;
 Neighbours.EXCLUSIVE = EXCLUSIVE;

@@ -13,10 +13,14 @@
 
 import { EventEmitter } from './eventEmitter.js';
 import * as Messages from './messages.ts';
+import { Ordinances } from './ordinances.js';
 import { MiscUtils } from './miscUtils.js';
 
 // Cost of maintaining 1 police station
 var policeMaintenanceCost = 100;
+
+// KawaCity: the yearly upkeep of the buildings that aren't funded by a slider (see collectTax)
+var UPKEEP = {schoolPop: 100, universityPop: 250};
 
 // Cost of maintaining 1 fire station
 var fireMaintenanceCost = 100;
@@ -29,6 +33,14 @@ var railMaintenanceCost = 2;
 
 // KawaCity: the most money a city may have
 var MAX_FUNDS = 2147483647;
+
+// KawaCity: the loans a city may take (see borrow). Each one brings LOAN_AMOUNT now, and costs LOAN_PAYMENT a year
+// for LOAN_YEARS years. The debt may not go over MAX_LOANS loans.
+var LOAN_AMOUNT = 10000;
+var LOAN_PAYMENT = 1200;
+var LOAN_YEARS = 10;
+var MAX_LOANS = 5;
+var MAX_DEBT = MAX_LOANS * LOAN_PAYMENT * LOAN_YEARS;
 
 
 var Budget = EventEmitter(function() {
@@ -50,6 +62,15 @@ var Budget = EventEmitter(function() {
 
   // KawaCity: what the deals with the neighbouring cities earned (or cost, if negative) this year (see Neighbours)
   this.dealsFund = 0;
+  // And what the upkeep of its schools and universities cost this year (negative)
+  this.upkeepFund = 0;
+  // The money still owed for its loans, what is repaid each year, and what was repaid this year (negative)
+  this.debt = 0;
+  this.debtPayment = 0;
+  this.loanFund = 0;
+  // The ordinances in force (a mask, see Ordinances), and what they cost this year (negative)
+  this.ordinances = 0;
+  this.ordinanceFund = 0;
 
   // These values denote how much money is required to fully maintain the relevant services
   this.roadMaintenanceBudget = 0;
@@ -75,7 +96,8 @@ var Budget = EventEmitter(function() {
 
 var saveProps = ['autoBudget', 'totalFunds', 'policePercent', 'roadPercent', 'firePercent', 'roadSpend',
                  'policeSpend', 'fireSpend', 'roadMaintenanceBudget', 'policeMaintenanceBudget',
-                 'fireMaintenanceBudget', 'cityTax', 'roadEffect', 'policeEffect', 'fireEffect', 'dealsFund'];
+                 'fireMaintenanceBudget', 'cityTax', 'roadEffect', 'policeEffect', 'fireEffect', 'dealsFund',
+                 'upkeepFund', 'debt', 'debtPayment', 'loanFund', 'ordinances', 'ordinanceFund'];
 
 Budget.prototype.save = function(saveData) {
   for (var i = 0, l = saveProps.length; i < l; i++)
@@ -87,8 +109,14 @@ Budget.prototype.load = function(saveData) {
   for (var i = 0, l = saveProps.length; i < l; i++)
     this[saveProps[i]] = saveData[saveProps[i]];
 
-  // Saved before there were deals
+  // Saved before there were deals, upkeep or loans
   this.dealsFund = this.dealsFund || 0;
+  this.upkeepFund = this.upkeepFund || 0;
+  this.debt = this.debt || 0;
+  this.debtPayment = this.debtPayment || 0;
+  this.loanFund = this.loanFund || 0;
+  this.ordinances = Ordinances.clean(this.ordinances);
+  this.ordinanceFund = this.ordinanceFund || 0;
 
   this._emitEvent(Messages.AUTOBUDGET_CHANGED, this.autoBudget);
   this._emitEvent(Messages.FUNDS_CHANGED, this.totalFunds);
@@ -132,7 +160,7 @@ Budget.prototype._calculateBestPercentages = function() {
   var policeCost = 0;
 
   // Deals that cost more than the city has can leave nothing to spend, but never less than nothing
-  var cashRemaining = Math.max(0, this.totalFunds + this.taxFund + this.dealsFund);
+  var cashRemaining = Math.max(0, this.totalFunds + this.taxFund + this.otherFunds());
 
   // Spending priorities: road, fire, police
   if (cashRemaining >= this.roadSpend)
@@ -201,7 +229,7 @@ Budget.prototype.doBudgetNow = function(fromWindow) {
   var policeCost = costs.police;
   var fireCost = costs.fire;
   var totalCost = roadCost + policeCost + fireCost;
-  var cashRemaining = this.totalFunds + this.taxFund + this.dealsFund - totalCost;
+  var cashRemaining = this.totalFunds + this.taxFund + this.otherFunds() - totalCost;
 
   // Autobudget
   if ((cashRemaining > 0 && this.autoBudget) || fromWindow) {
@@ -225,7 +253,7 @@ Budget.prototype.doBudgetSpend = function(roadValue, fireValue, policeValue) {
   this.policeSpend = policeValue;
   var total = this.roadSpend + this.fireSpend + this.policeSpend;
 
-  this.spend(-(this.taxFund + this.dealsFund - total));
+  this.spend(-(this.taxFund + this.otherFunds() - total));
   this.updateFundEffects();
 };
 
@@ -252,23 +280,87 @@ Budget.prototype.updateFundEffects = function() {
 };
 
 
-// dealsFund: what the deals with the neighbouring cities earned (or cost) over the year
-Budget.prototype.collectTax = function(gameLevel, census, dealsFund) {
+// What the city earned or paid this year besides taxes and the services of the sliders: its deals, its upkeep, the
+// repayment of its loans and its ordinances
+Budget.prototype.otherFunds = function() {
+  return this.dealsFund + this.upkeepFund + this.loanFund + this.ordinanceFund;
+};
+
+
+Budget.prototype.setOrdinances = function(mask) {
+  this.ordinances = Ordinances.clean(mask);
+};
+
+
+// How many more loans the city may take
+Budget.prototype.loansAvailable = function() {
+  return Math.max(0, Math.floor((MAX_DEBT - this.debt) / (LOAN_PAYMENT * LOAN_YEARS)));
+};
+
+
+// Takes count loans (as many as allowed): the money comes now, and is repaid with interest over the years (see
+// collectTax). Returns how many were taken.
+Budget.prototype.borrow = function(count) {
+  count = Math.min(Math.floor(count) || 0, this.loansAvailable());
+  if (count <= 0)
+    return 0;
+
+  this.debt += count * LOAN_PAYMENT * LOAN_YEARS;
+  this.debtPayment += count * LOAN_PAYMENT;
+  this.spend(-count * LOAN_AMOUNT);
+  return count;
+};
+
+
+// Pays off the whole debt at once, if the city has the money. Returns whether it did.
+Budget.prototype.repay = function() {
+  if (this.debt <= 0 || this.totalFunds < this.debt)
+    return false;
+
+  this.spend(this.debt);
+  this.debt = 0;
+  this.debtPayment = 0;
+  return true;
+};
+
+
+// The loans' repayment of the year: a negative amount
+Budget.prototype._repayYear = function() {
+  var payment = Math.min(this.debtPayment, this.debt);
+  this.debt -= payment;
+  if (this.debt === 0)
+    this.debtPayment = 0;
+
+  return payment > 0 ? -payment : 0;
+};
+
+
+// dealsFund: what the deals with the neighbouring cities earned (or cost) over the year. snowFactor: how much more
+// the roads cost to keep clear after the snow of the year (see Weather.closeYear), 1 by default. population: the
+// city's, for the cost of the ordinances.
+Budget.prototype.collectTax = function(gameLevel, census, dealsFund, snowFactor, population) {
   this.cashFlow = 0;
   this.dealsFund = dealsFund || 0;
+  var upkeep = Object.keys(UPKEEP).reduce(function(total, counter) {
+    return total + (census[counter] || 0) * UPKEEP[counter];
+  }, 0);
+  this.upkeepFund = upkeep > 0 ? -upkeep : 0;
+  this.loanFund = this._repayYear();
+  var ordinanceCost = Ordinances.cost(this.ordinances, population || 0);
+  this.ordinanceFund = ordinanceCost > 0 ? -ordinanceCost : 0;
 
   // How much would it cost to fully fund every service?
   this.policeMaintenanceBudget = census.policeStationPop * policeMaintenanceCost;
   this.fireMaintenanceBudget = census.fireStationPop * fireMaintenanceCost;
 
-  var roadCost = Math.max(0, census.roadTotal + (census.roadUpkeep || 0)) * roadMaintenanceCost;
+  var roadCost = Math.max(0, census.roadTotal + (census.roadUpkeep || 0)) * roadMaintenanceCost * (snowFactor || 1);
   var railCost = census.railTotal * railMaintenanceCost;
   this.roadMaintenanceBudget = Math.floor((roadCost + railCost) * RLevels[gameLevel]);
 
   this.taxFund = Math.floor(Math.floor(census.totalPop * census.landValueAverage / 120) * this.cityTax * FLevels[gameLevel]);
 
   if (census.totalPop > 0) {
-    this.cashFlow = this.taxFund + this.dealsFund -
+    this.cashFlow = this.taxFund + this.otherFunds() -
                     (this.policeMaintenanceBudget + this.fireMaintenanceBudget + this.roadMaintenanceBudget);
     this.doBudgetNow(false);
   } else {
@@ -278,8 +370,8 @@ Budget.prototype.collectTax = function(gameLevel, census, dealsFund) {
     this.policeEffect = this.MAX_POLICESTATION_EFFECT;
     this.fireEffect   = this.MAX_FIRESTATION_EFFECT;
 
-    // The deals are settled all the same
-    this.spend(-this.dealsFund);
+    // The deals and the upkeep are settled all the same
+    this.spend(-this.otherFunds());
   }
 };
 
@@ -314,6 +406,12 @@ Budget.prototype.spend = function(amount) {
 Budget.prototype.shouldDegradeRoad = function() {
   return this.roadEffect < Math.floor(15 * this.MAX_ROAD_EFFECT / 16);
 };
+
+
+Budget.LOAN_AMOUNT = LOAN_AMOUNT;
+Budget.LOAN_PAYMENT = LOAN_PAYMENT;
+Budget.LOAN_YEARS = LOAN_YEARS;
+Budget.MAX_DEBT = MAX_DEBT;
 
 
 export { Budget };

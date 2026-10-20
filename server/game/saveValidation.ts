@@ -5,8 +5,10 @@
  *
  */
 
+import { Budget } from '../../src/budget.js';
 import { Evaluation } from '../../src/evaluation.js';
 import { Neighbours } from '../../src/neighbours.js';
+import { Ordinances } from '../../src/ordinances.js';
 import { Scenarios } from '../../src/scenarios.js';
 import { BIT_MASK, fromClassicValue, ZONEBIT } from '../../src/tileFlags';
 import { AIRPORT, BIGPARK, CHURCH, CHURCH1, CHURCH2, CHURCH3, CHURCH4, CHURCH5, CHURCH6, CHURCH7, FIRESTATION,
@@ -40,6 +42,7 @@ export class SaveError extends Error {
 
 const INT32_MAX = 2 ** 31 - 1;
 const INT32_MIN = -(2 ** 31);
+const MAX_DEBT: number = Budget.MAX_DEBT;
 const TILES = CITY_WIDTH * CITY_HEIGHT;
 const HISTORY_LENGTH = 120;
 // The longest name a save may carry: the city takes the name the player gives it
@@ -49,6 +52,7 @@ const CITY_CLASSES: readonly string[] = ['CC_VILLAGE', 'CC_TOWN', 'CC_CITY', 'CC
                                          'CC_MEGALOPOLIS'].map(key => (Evaluation as unknown as Record<string, string>)[key]);
 const SIDES = Neighbours.SIDES as readonly string[];
 const KINDS = Neighbours.KINDS as readonly string[];
+const EVENTS = Neighbours.EVENTS as readonly string[];
 
 // The save's scalar values, in the order the game writes them: their type and range, and whether a save may leave
 // them out (the game then uses its own value, or the server sets it)
@@ -71,6 +75,10 @@ const RULES: Readonly<Record<string, Rule>> = {
   _cityTime: {type: 'integer', min: 0, max: INT32_MAX},
   _speed: {type: 'integer', min: 0, max: 3},
   _gameLevel: {type: 'integer', min: 0, max: 2, optional: true},
+  achievements: {type: 'integer', min: 0, max: INT32_MAX, optional: true},
+  weatherSnow: {type: 'boolean', optional: true},
+  weatherWind: {type: 'integer', min: 0, max: 2, optional: true},
+  snowMonths: {type: 'integer', min: 0, max: 12, optional: true},
 
   // GameMap (the tiles are checked apart)
   cityCentreX: {type: 'integer', min: 0, max: CITY_WIDTH - 1},
@@ -107,6 +115,12 @@ const RULES: Readonly<Record<string, Rule>> = {
   policeEffect: {type: 'integer', min: 0, max: 1000},
   fireEffect: {type: 'integer', min: 0, max: 1000},
   dealsFund: {type: 'integer', min: INT32_MIN, max: INT32_MAX, optional: true},
+  upkeepFund: {type: 'integer', min: INT32_MIN, max: 0, optional: true},
+  debt: {type: 'integer', min: 0, max: MAX_DEBT, optional: true},
+  debtPayment: {type: 'integer', min: 0, max: MAX_DEBT, optional: true},
+  loanFund: {type: 'integer', min: -MAX_DEBT, max: 0, optional: true},
+  ordinances: {type: 'integer', min: 0, max: Ordinances.ALL, optional: true},
+  ordinanceFund: {type: 'integer', min: INT32_MIN, max: 0, optional: true},
 
   // Census (the histories are checked apart)
   resPop: {type: 'integer', min: 0, max: INT32_MAX},
@@ -266,7 +280,7 @@ function checkNeighbours(value: unknown): Record<string, unknown>[] {
     const field = `neighbours.${side}`;
     check(isPlainObject(neighbour), field);
     const n = neighbour as Record<string, unknown>;
-    check(hasOnlyKeys(n, ['side', 'name', 'population', 'deals', 'months']), field);
+    check(hasOnlyKeys(n, ['side', 'name', 'population', 'deals', 'months', 'event']), field);
     check(n.side === side, field);
 
     const name = checkText(n.name, NEIGHBOUR_NAME_MAX);
@@ -278,6 +292,12 @@ function checkNeighbours(value: unknown): Record<string, unknown>[] {
       result.deals = checkKinds(field + '.deals', n.deals, v => typeof v === 'boolean');
     if (Object.hasOwn(n, 'months'))
       result.months = checkKinds(field + '.months', n.months, v => isIntegerIn(v, 0, 12));
+    if (Object.hasOwn(n, 'event') && n.event !== null) {
+      const event = n.event as Record<string, unknown>;
+      check(isPlainObject(event) && hasOnlyKeys(event, ['kind', 'months']) && EVENTS.includes(event.kind as string) &&
+            isIntegerIn(event.months, 1, Neighbours.EVENT_MONTHS), field + '.event');
+      result.event = {kind: event.kind, months: event.months};
+    }
     return result;
   });
 }
@@ -352,6 +372,7 @@ export function validateSave(input: unknown): CitySave {
 export interface PreparedCity {
   saveText: string;
   population: number;
+  score: number;
   cityTime: number;
   paused: boolean;
   edgeState: Record<string, EdgeState>;
@@ -376,7 +397,8 @@ export function prepareCity(input: unknown, options: PrepareOptions): PreparedCi
     const city = createHeadlessCity(save);
     city.recount();
     const saveText = city.saveText();
-    const prepared = {saveText, population: city.population, cityTime: city.cityTime, paused: city.paused,
+    const prepared = {saveText, population: city.population, score: city.score, cityTime: city.cityTime,
+                      paused: city.paused,
                       edgeState: city.edgeState()};
 
     const trial = createHeadlessCity(JSON.parse(saveText) as CitySave, {paused: false});

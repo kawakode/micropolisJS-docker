@@ -1067,6 +1067,7 @@ GameCanvas.prototype.paint = function(overlay, sprites, isPaused, dataOverlay, l
     this._paintCloudShadows(ctx, life, sky);
     this._paintSkyLife(ctx, life);
     this._paintParticles(ctx, life, true);
+    this._paintSnow(ctx, life);
   }
 
   if (overlay)
@@ -1112,10 +1113,34 @@ GameCanvas.prototype._paintIsometric = function(ctx, overlay, sprites, isPaused,
       IsoView.paintCloudShadows(frame, life, alpha);
     IsoView.paintBirds(frame, life);
     this._paintParticles(ctx, life, true);
+    this._paintSnow(ctx, life);
   }
 
   if (overlay)
     this._paintOverlay(ctx, overlay);
+};
+
+
+// Paints the snow falling over the view (see AmbientLife.setSnow). The isometric view has no snowy tiles: its ground is
+// frosted over instead.
+GameCanvas.prototype._paintSnow = function(ctx, life) {
+  if (!life.snowing)
+    return;
+
+  var width = this._canvas.width;
+  var height = this._canvas.height;
+  if (this._isometric) {
+    ctx.fillStyle = 'rgba(225, 235, 255, 0.22)';
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  var pixel = Math.max(1, Math.round(this._dpr * 2));
+  ctx.fillStyle = '#ffffff';
+  for (var i = 0; i < life.flakes.length; i++) {
+    var flake = life.flakes[i];
+    var size = flake.size * pixel;
+    ctx.fillRect(Math.floor(flake.x * width), Math.floor(flake.y * height), size, size);
+  }
 };
 
 

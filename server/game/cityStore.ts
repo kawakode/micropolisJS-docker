@@ -75,6 +75,7 @@ export interface CityRow {
   owner_id: number;
   name: string;
   population: number;
+  score: number;
   city_time: number;
   paused: number;
   region_id: number | null;
@@ -86,7 +87,7 @@ export interface CityRow {
   played_at: number | null;
 }
 
-const CITY_COLUMNS = `c.id, c.public_id, c.owner_id, c.name, c.population, c.city_time, c.paused, c.region_id,
+const CITY_COLUMNS = `c.id, c.public_id, c.owner_id, c.name, c.population, c.score, c.city_time, c.paused, c.region_id,
                       c.region_x, c.region_y, c.edge_state, c.created_at, c.updated_at, c.played_at`;
 
 // A city as the lobby lists it, for one of its members
@@ -121,6 +122,7 @@ export interface NewCity {
   name: string;
   state: Uint8Array;
   population: number;
+  score: number;
   cityTime: number;
   paused: boolean;
   edgeState: Record<string, EdgeState>;
@@ -131,6 +133,7 @@ export interface NewCity {
 export interface SavedState {
   state: Uint8Array;
   population: number;
+  score: number;
   cityTime: number;
   paused: boolean;
   edgeState: Record<string, EdgeState>;
@@ -223,10 +226,11 @@ export class CityStore {
   // A new city, its owner its first member (with the first colour)
   create(city: NewCity): CityRow {
     const id = this.db.run(
-      `INSERT INTO cities (public_id, owner_id, name, state, population, city_time, paused, region_id, region_x,
-                           region_y, edge_state, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      newPublicId(), city.ownerId, city.name, city.state, city.population, city.cityTime, city.paused ? 1 : 0,
+      `INSERT INTO cities (public_id, owner_id, name, state, population, score, city_time, paused, region_id,
+                           region_x, region_y, edge_state, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      newPublicId(), city.ownerId, city.name, city.state, city.population, city.score, city.cityTime,
+      city.paused ? 1 : 0,
       city.region?.id ?? null, city.region?.x ?? null, city.region?.y ?? null, JSON.stringify(city.edgeState),
       city.now, city.now).lastInsertRowid;
     this.db.run('INSERT INTO city_members (city_id, user_id, role, colour, joined_at) VALUES (?, ?, ?, 0, ?)', id,
@@ -245,9 +249,10 @@ export class CityStore {
   // A room's save of its city. False when the city is gone (the room then closes).
   saveState(id: number, saved: SavedState): boolean {
     return this.db.run(
-      `UPDATE cities SET state = ?, population = ?, city_time = ?, paused = ?, edge_state = ?, updated_at = ?
+      `UPDATE cities SET state = ?, population = ?, score = ?, city_time = ?, paused = ?, edge_state = ?,
+                         updated_at = ?
        WHERE id = ?`,
-      saved.state, saved.population, saved.cityTime, saved.paused ? 1 : 0, JSON.stringify(saved.edgeState), saved.now,
+      saved.state, saved.population, saved.score, saved.cityTime, saved.paused ? 1 : 0, JSON.stringify(saved.edgeState), saved.now,
       id).changes === 1;
   }
 

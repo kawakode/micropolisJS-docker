@@ -189,7 +189,8 @@ var getCityCentreDistance = function(map, x, y) {
 //   * Proximity to undeveloped terrain (who doesn't love a good view?)
 //
 // Pollution is completely determined by the tile types in the block
-var pollutionTerrainLandValueScan = function(map, census, blockMaps) {
+// KawaCity: pollutionFactor (1 by default) multiplies the pollution, as the ordinances say (see Ordinances)
+var pollutionTerrainLandValueScan = function(map, census, blockMaps, pollutionFactor) {
   // We record raw pollution readings for each tile into tempMap1, and then use tempMap2 and tempMap1 to smooth
   // out the pollution in order to construct the new values for the populationDensityMap
   var tempMap1 = blockMaps.tempMap1;
@@ -248,6 +249,8 @@ var pollutionTerrainLandValueScan = function(map, census, blockMaps) {
       }
 
       // Clamp pollution in range 0-255 (at the moment it's range is 0-1020) and record it for later.
+      if (pollutionFactor !== undefined)
+        pollutionLevel = Math.floor(pollutionLevel * pollutionFactor);
       pollutionLevel = Math.min(pollutionLevel, 255);
       tempMap1.set(x, y, pollutionLevel);
 
@@ -332,7 +335,9 @@ var pollutionTerrainLandValueScan = function(map, census, blockMaps) {
 //    * The zone has a low value
 //    * The zone is a slum
 //    * The zone is far away from those pesky police
-var crimeScan = function(census, blockMaps) {
+//
+// KawaCity: crimeFactor (1 by default) multiplies the crime, as the ordinances say (see Ordinances)
+var crimeScan = function(census, blockMaps, crimeFactor) {
   var policeStationMap = blockMaps.policeStationMap;
   var policeStationEffectMap = blockMaps.policeStationEffectMap;
   var crimeRateMap = blockMaps.crimeRateMap;
@@ -378,6 +383,9 @@ var crimeScan = function(census, blockMaps) {
 
         // Educated neighbourhoods are a little safer too
         value -= Math.floor(educationEffectMap.worldGet(x, y) / 4);
+
+        if (crimeFactor !== undefined)
+          value = Math.floor(value * crimeFactor);
 
         // Force in to range 0-250
         value = MiscUtils.clamp(value, 0, 250);

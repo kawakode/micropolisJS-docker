@@ -11,6 +11,7 @@
  *
  */
 
+import { Achievements } from './achievements.js';
 import { BlockMap } from './blockMap.ts';
 import { BlockMapUtils } from './blockMapUtils.js';
 import { Budget } from './budget.js';
@@ -27,6 +28,7 @@ import * as Messages from './messages.ts';
 import { MiscTiles } from './miscTiles.js';
 import { MiscUtils } from './miscUtils.js';
 import { Neighbours } from './neighbours.js';
+import { Ordinances } from './ordinances.js';
 import { PowerManager } from './powerManager.js';
 import { RepairManager } from './repairManager.js';
 import { Residential } from './residential.js';
@@ -38,6 +40,7 @@ import { Stadia } from './stadia.js';
 import { Traffic } from './traffic.js';
 import { Transport } from './transport.js';
 import { Valves } from './valves.js';
+import { Weather } from './weather.js';
 
 // KawaCity: options (optional) is {inert}. An inert simulation is the copy of a city simulated elsewhere (on a server):
 // it holds the city's state, as loaded and then updated from outside, but never changes it by itself (see init).
@@ -56,6 +59,11 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame, op
   // The scenario being played, if any (see Scenarios)
   this._scenario = null;
   this._messageLast = undefined;
+
+  // KawaCity: the goals the city met (a mask, see Achievements). Those a saved city already meets when it opens are
+  // met without a word.
+  this.achievements = 0;
+  this._achievementsQuiet = !!savedGame;
   this._startingYear = 1900;
 
   // Last date sent to front end
@@ -79,6 +87,9 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame, op
 
   // KawaCity: the cities around this one, and the deals made with them
   this.neighbours = new Neighbours(this._map);
+
+  // KawaCity: the sun, the wind and the snow, month by month
+  this.weather = new Weather();
 
   this.blockMaps = {
     // Holds a "distance score" for the block from the city centre, range  -64 to 64
@@ -198,6 +209,7 @@ Simulation.prototype.save = function(saveData) {
     saveData[saveProps[i]] = this[saveProps[i]];
 
   saveData.scenario = this._scenario ? Object.assign({}, this._scenario) : null;
+  saveData.achievements = this.achievements;
 
   this._map.save(saveData);
   this.evaluation.save(saveData);
@@ -205,6 +217,7 @@ Simulation.prototype.save = function(saveData) {
   this.budget.save(saveData);
   this._census.save(saveData);
   this.neighbours.save(saveData);
+  this.weather.save(saveData);
 };
 
 
@@ -213,6 +226,7 @@ Simulation.prototype.load = function(saveData) {
     this[saveProps[i]] = saveData[saveProps[i]];
 
   this._scenario = saveData.scenario ? Object.assign({}, saveData.scenario) : null;
+  this.achievements = Achievements.clean(saveData.achievements);
 
   this._map.load(saveData);
   this.evaluation.load(saveData);
@@ -220,6 +234,7 @@ Simulation.prototype.load = function(saveData) {
   this.budget.load(saveData);
   this._census.load(saveData);
   this.neighbours.load(saveData);
+  this.weather.load(saveData, this.getDate().month);
 };
 
 
@@ -368,8 +383,9 @@ Simulation.prototype.init = function() {
   var simData = this._constructSimData();
   this._mapScanner.mapScan(0, this._map.width, simData);
   this._scanPower();
-  BlockMapUtils.pollutionTerrainLandValueScan(this._map, this._census, this.blockMaps);
-  BlockMapUtils.crimeScan(this._census, this.blockMaps);
+  BlockMapUtils.pollutionTerrainLandValueScan(this._map, this._census, this.blockMaps,
+                                                    Ordinances.effects(this.budget.ordinances).pollution);
+  BlockMapUtils.crimeScan(this._census, this.blockMaps, Ordinances.effects(this.budget.ordinances).crime);
   BlockMapUtils.populationDensityScan(this._map, this.blockMaps);
   BlockMapUtils.fireAnalysis(this.blockMaps);
   this._snapshotCensus();
@@ -397,9 +413,11 @@ var simulate = function(simData) {
           this._simCycle = 0;
 
       this._cityTime++;
+      if ((this._cityTime & 3) === 0)
+        this._newMonthWeather();
 
       if ((this._simCycle & 1) === 0)
-        this._valves.setValves(this._gameLevel, this._census, this.budget, this.neighbours.demandBonus());
+        this._valves.setValves(this._gameLevel, this._census, this.budget, this._demandBonus());
 
       this._clearCensus();
       break;
@@ -428,10 +446,12 @@ var simulate = function(simData) {
         this._census.take120Census(this.budget);
 
       if (this._cityTime % TAX_FREQUENCY === 0)  {
-        this.budget.collectTax(this._gameLevel, this._census, this.neighbours.closeYear());
+        this.budget.collectTax(this._gameLevel, this._census, this.neighbours.closeYear(), this.weather.closeYear(),
+                               this.evaluation.computePopulation(this._census));
         this.evaluation.cityEvaluation(simData);
       }
 
+      this._tellNeighbourNews();
       break;
 
     case 10:
@@ -449,12 +469,13 @@ var simulate = function(simData) {
 
     case 12:
       if ((this._simCycle % speedPollutionTerrainLandValueScan[speedIndex]) === 0)
-        BlockMapUtils.pollutionTerrainLandValueScan(this._map, this._census, this.blockMaps);
+        BlockMapUtils.pollutionTerrainLandValueScan(this._map, this._census, this.blockMaps,
+                                                    Ordinances.effects(this.budget.ordinances).pollution);
       break;
 
     case 13:
       if ((this._simCycle % speedCrimeScan[speedIndex]) === 0)
-        BlockMapUtils.crimeScan(this._census, this.blockMaps);
+        BlockMapUtils.crimeScan(this._census, this.blockMaps, Ordinances.effects(this.budget.ordinances).crime);
       break;
 
     case 14:
@@ -480,7 +501,7 @@ var simulate = function(simData) {
 // Scans the power grid, with the power bought from the neighbouring cities, then delivers the power sold to them
 Simulation.prototype._scanPower = function() {
   this.neighbours.findLinks();
-  this._powerManager.doPowerScan(this._census, this.neighbours.powerSupply());
+  this._powerManager.doPowerScan(this._census, this.neighbours.powerSupply(), this.weather);
   this.neighbours.deliverPower(this._powerManager.powerGridMap, this._powerManager.spare);
 };
 
@@ -522,6 +543,7 @@ Simulation.prototype._sendMessages = function() {
   }
 
   this._checkGrowth();
+  this._checkAchievements();
 
   var totalZonePop = this._census.resZonePop + this._census.comZonePop +
                      this._census.indZonePop;
@@ -658,6 +680,65 @@ Simulation.prototype._sendMessages = function() {
       this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.TRAFFIC_JAMS});
     break;
   }
+};
+
+
+// What the deals with the neighbours and the ordinances add to the demand for zones: {res, com, ind}
+Simulation.prototype._demandBonus = function() {
+  var bonus = this.neighbours.demandBonus();
+  var effects = Ordinances.effects(this.budget.ordinances);
+  return {res: bonus.res + effects.res, com: bonus.com + effects.com, ind: bonus.ind + effects.ind};
+};
+
+
+// What happened to the neighbours is told, and their gifts are added to the funds
+Simulation.prototype._tellNeighbourNews = function() {
+  var taken = this.neighbours.takeNews();
+  if (taken.gifts > 0)
+    this.budget.spend(-taken.gifts);
+
+  taken.news.forEach(function(news) {
+    var data = {kind: news.kind, name: news.name, side: news.side};
+    if (news.gift)
+      data.gift = news.gift;
+    this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.NEIGHBOUR_NEWS, data: data});
+  }, this);
+};
+
+
+// The weather of the new month: snow is told as it falls
+Simulation.prototype._newMonthWeather = function() {
+  if (this.weather.newMonth(this.getDate().month))
+    this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.SNOW_FELL});
+};
+
+
+// The weather, as the game shows it (see Weather.describe)
+Simulation.prototype.getWeather = function() {
+  return this.weather.describe();
+};
+
+
+// What the goals are checked on (see Achievements)
+Simulation.prototype._achievementFacts = function() {
+  return {census: this._census, population: this._cityPopLast, funds: this.budget.totalFunds,
+          tax: this.budget.cityTax, score: this.evaluation.cityScore, deals: this.neighbours.activeDeals()};
+};
+
+
+// Once a month, the goals the city now meets are told, one message each
+Simulation.prototype._checkAchievements = function() {
+  if ((this._cityTime & 3) !== 0)
+    return;
+
+  var met = Achievements.newlyMet(this.achievements, this._achievementFacts());
+  for (var i = 0; i < met.length; i++) {
+    this.achievements |= 1 << met[i].bit;
+    if (!this._achievementsQuiet)
+      this._emitEvent(Messages.FRONT_END_MESSAGE, {subject: Messages.ACHIEVEMENT_MET, data: {id: met[i].id}});
+  }
+
+  this._achievementsQuiet = false;
 };
 
 
@@ -891,6 +972,7 @@ Simulation.prototype.getCityStatus = function() {
     flooding: this.disasterManager.isFlooding(),
     pollutionMax: {x: this._map.pollutionMaxX, y: this._map.pollutionMaxY},
     powerBought: this.neighbours.powerSupply().capacity,
+    weather: this.weather.describe(),
     dealsOnHold: this.neighbours.dealsOnHold().map(function(deal) {
       return Object.assign(deal, this.neighbours.edgeCentre(deal.side));
     }, this)
