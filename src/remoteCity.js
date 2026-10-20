@@ -477,10 +477,11 @@ RemoteCity.prototype._setTile = function(index, raw) {
 
 
 RemoteCity.prototype._setRoadClass = function(index, roadClass) {
-  if (!isIndex(index) || !Number.isInteger(roadClass) || roadClass < 0 || roadClass > GameMap.ROAD_HIGHWAY)
+  // The road class, and the metro tunnel (see GameMap.TUNNEL)
+  if (!isIndex(index) || !Number.isInteger(roadClass) || roadClass < 0 || roadClass > (GameMap.ROAD_HIGHWAY | GameMap.TUNNEL))
     return false;
 
-  this.map.setRoadClass(index % WIDTH, Math.floor(index / WIDTH), roadClass);
+  this.map.setUnderground(index % WIDTH, Math.floor(index / WIDTH), roadClass);
   return true;
 };
 

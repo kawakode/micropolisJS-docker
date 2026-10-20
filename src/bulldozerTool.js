@@ -132,6 +132,14 @@ BulldozerTool.prototype.doTool = function(x, y, blockMaps) {
   var tile = this._worldEffects.getTile(x, y);
   var tileValue = tile.getValue();
 
+  // KawaCity: where nothing is built, the bulldozer fills in the metro tunnel underneath (see Metro)
+  if (tileValue === TileValues.DIRT && this._worldEffects.hasTunnel(x, y)) {
+    this._worldEffects.setTunnel(x, y, false);
+    this.addCost(1);
+    this.result = this.TOOLRESULT_OK;
+    return;
+  }
+
   var zoneSize = 0;
   var deltaX = 0;
   var deltaY = 0;

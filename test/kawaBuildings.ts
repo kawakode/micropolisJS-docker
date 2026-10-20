@@ -267,39 +267,49 @@ describe("The buses", () => {
 
 
 describe("The metro", () => {
-    const transitAt = (stations: number[][]): any => {
+    const transitAt = (stations: number[][], tunnels: number[][] = []): any => {
         const simulation = new (Simulation as any)(new (GameMap as any)(120, 100), 0, Simulation.SPEED_MED);
         const map = simulation._map;
         for (const [x, y] of stations) {
             map.setTile(x, y, METRO, ZONEBIT);
-            map.setTile(x + 1, y, ROADS, 0);
+            map.setTile(x, y - 1, ROADS, 0);
         }
+        for (const [x, y] of tunnels)
+            map.setTunnel(x, y, true);
         simulation._clearCensus();
         simulation._mapScanner.mapScan(0, map.width, simulation._constructSimData());
         BlockMapUtils.crimeScan(simulation._census, simulation.blockMaps);
         return simulation;
     };
 
-    it("only runs between stations linked to each other", () => {
-        const alone = transitAt([[20, 20], [60, 60]]);
+    // A tunnel from (20, 20) to (40, 20)
+    const line = Array.from({length: 21}, (_, i) => [20 + i, 20]);
+
+    it("only runs between stations that a line links", () => {
+        const alone = transitAt([[20, 20], [40, 20]]);
         expect(alone._census.metroPop).toBe(2);
         expect(alone.blockMaps.transitEffectMap.worldGet(20, 20)).toBe(0);
 
-        const linked = transitAt([[20, 20], [30, 30]]);
+        // Under one station and beside the other
+        const linked = transitAt([[20, 20], [40, 21]], line);
         expect(linked.blockMaps.transitEffectMap.worldGet(20, 20)).toBeGreaterThan(0);
-        expect(linked.blockMaps.transitEffectMap.worldGet(30, 30)).toBeGreaterThan(0);
+        expect(linked.blockMaps.transitEffectMap.worldGet(40, 21)).toBeGreaterThan(0);
+
+        // A line that stops short of the second station
+        const short = transitAt([[20, 20], [40, 20]], line.slice(0, 15));
+        expect(short.blockMaps.transitEffectMap.worldGet(20, 20)).toBe(0);
     });
 
     it("runs without a bus depot, and takes more cars off the roads than a bus stop", () => {
         const buses = new (Simulation as any)(new (GameMap as any)(120, 100), 0, Simulation.SPEED_MED);
         buses._map.setTile(20, 20, BUSSTOP, ZONEBIT);
-        buses._map.setTile(21, 20, ROADS, 0);
+        buses._map.setTile(20, 19, ROADS, 0);
         (ZoneUtils as any).putZone(buses._map, 60, 60, BUSDEPOT, true);
         buses._clearCensus();
         buses._mapScanner.mapScan(0, buses._map.width, buses._constructSimData());
         BlockMapUtils.crimeScan(buses._census, buses.blockMaps);
 
-        const metro = transitAt([[20, 20], [30, 30]]);
+        const metro = transitAt([[20, 20], [40, 20]], line);
         expect(metro.blockMaps.transitEffectMap.worldGet(20, 20))
             .toBeGreaterThan(buses.blockMaps.transitEffectMap.worldGet(20, 20));
     });

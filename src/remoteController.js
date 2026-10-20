@@ -520,7 +520,7 @@ RemoteController.prototype.decorateOverlay = function(overlay, now) {
   if (overlay === null)
     return {rects: rects, label: null};
 
-  return {rects: rects.concat(overlay.rects), label: overlay.label};
+  return {rects: rects.concat(overlay.rects), label: overlay.label, tunnels: overlay.tunnels};
 };
 
 

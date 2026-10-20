@@ -42,7 +42,7 @@ const BUTTONS = buttons();
 const MAX_AREA_SIDE = 64;
 const MAX_BUILDINGS = 100;
 const categoryBefore = (toolName: string): string => ({
-    road: "line", dirtroad: "line", avenue: "line", highway: "line", rail: "line", wire: "line",
+    road: "line", dirtroad: "line", avenue: "line", highway: "line", rail: "line", wire: "line", metroline: "line",
     bulldozer: "area", bulldozer3: "area", bulldozer5: "area", bulldozer7: "area", park: "area", garden: "area",
     plaza: "area", trees: "area", water: "area", landfill: "area", query: "single"} as any)[toolName] || "building";
 

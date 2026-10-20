@@ -59,7 +59,8 @@ function GameMap(width, height, defaultValue) {
     data[i] = new Tile(defaultValue);
   this._data = data;
 
-  // KawaCity: the kind of each road (see GameMap.ROAD_*). It only means something where there is a road
+  // KawaCity: the kind of each road (see GameMap.ROAD_*), which only means something where there is a road, and
+  // whether a metro tunnel runs under the tile (GameMap.TUNNEL, see Metro), one byte per tile
   this._roadClass = new Uint8Array(width * height);
 
   // Generally set externally
@@ -97,7 +98,7 @@ GameMap.prototype.load = function(saveData) {
   var roadClass = saveData.roadClass;
   if (typeof(roadClass) === 'string' && roadClass.length === this._roadClass.length) {
     for (i = 0, l = roadClass.length; i < l; i++)
-      this._roadClass[i] = (roadClass.charCodeAt(i) - 48) & 3;
+      this._roadClass[i] = (roadClass.charCodeAt(i) - 48) & 7;
   }
 };
 
@@ -106,13 +107,36 @@ GameMap.prototype.getRoadClass = function(x, y) {
   if (!this.testBounds(x, y))
     return GameMap.ROAD_STREET;
 
-  return this._roadClass[x + y * this.width];
+  return this._roadClass[x + y * this.width] & 3;
 };
 
 
 GameMap.prototype.setRoadClass = function(x, y, roadClass) {
+  if (this.testBounds(x, y)) {
+    var i = x + y * this.width;
+    this._roadClass[i] = (this._roadClass[i] & GameMap.TUNNEL) | roadClass;
+  }
+};
+
+
+// KawaCity: whether a metro tunnel runs under (x, y)
+GameMap.prototype.hasTunnel = function(x, y) {
+  return this.testBounds(x, y) && (this._roadClass[x + y * this.width] & GameMap.TUNNEL) !== 0;
+};
+
+
+GameMap.prototype.setTunnel = function(x, y, tunnel) {
+  if (this.testBounds(x, y)) {
+    var i = x + y * this.width;
+    this._roadClass[i] = tunnel ? this._roadClass[i] | GameMap.TUNNEL : this._roadClass[i] & ~GameMap.TUNNEL;
+  }
+};
+
+
+// The road class and the tunnel of a tile together, as they are saved (for a shared city's copy of the map)
+GameMap.prototype.setUnderground = function(x, y, value) {
   if (this.testBounds(x, y))
-    this._roadClass[x + y * this.width] = roadClass;
+    this._roadClass[x + y * this.width] = value & 7;
 };
 
 
@@ -428,6 +452,7 @@ GameMap.ROAD_STREET = 0;
 GameMap.ROAD_DIRT = 1;
 GameMap.ROAD_AVENUE = 2;
 GameMap.ROAD_HIGHWAY = 3;
+GameMap.TUNNEL = 4;
 
 
 export { GameMap };

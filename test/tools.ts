@@ -252,15 +252,38 @@ describe("The dam", () => {
 
 
 describe("The metro", () => {
-    it("pays for the tunnel to the nearest station within reach", () => {
-        const map = new (GameMap as any)(60, 60, DIRT);
+    it("lays its tunnels under anything, at $100 a tile, once", () => {
+        const map = makeMap();
         const tools = makeTools(map);
         expect(apply(map, tools.metro, 5, 5)).toEqual({result: OK, cost: 500, value: METRO});
-        expect(apply(map, tools.metro, 11, 13)).toEqual({result: OK, cost: 500 + 10 * 100, value: METRO});
-        // The nearest station, not the first one
-        expect(apply(map, tools.metro, 11, 20).cost).toBe(500 + 7 * 100);
-        // Too far from any station: a station of its own, without a tunnel
-        expect(apply(map, tools.metro, 55, 55).cost).toBe(500);
+        expect(apply(map, tools.metroline, 5, 5)).toEqual({result: OK, cost: 100, value: METRO});
+        expect(map.hasTunnel(5, 5)).toBe(true);
+        expect(apply(map, tools.metroline, 5, 5).cost).toBe(0);
+
+        map.setTile(6, 5, RIVER, 0);
+        expect(apply(map, tools.metroline, 6, 5)).toEqual({result: OK, cost: 100, value: RIVER});
+    });
+
+    it("keeps the road above its tunnel, and the tunnel under a road", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+        apply(map, tools.metroline, 5, 5);
+        apply(map, tools.avenue, 5, 5);
+        expect(map.hasTunnel(5, 5)).toBe(true);
+        expect(map.getRoadClass(5, 5)).toBe((GameMap as any).ROAD_AVENUE);
+    });
+
+    it("has its tunnels filled in by the bulldozer, where nothing is built", () => {
+        const map = makeMap();
+        const tools = makeTools(map);
+        apply(map, tools.metroline, 5, 5);
+        apply(map, tools.metro, 5, 5);
+        // The station is demolished first, then the tunnel filled in
+        apply(map, tools.bulldozer, 5, 5);
+        expect(map.hasTunnel(5, 5)).toBe(true);
+        map.setTile(5, 5, DIRT, 0);
+        expect(apply(map, tools.bulldozer, 5, 5)).toEqual({result: OK, cost: 1, value: DIRT});
+        expect(map.hasTunnel(5, 5)).toBe(false);
     });
 });
 

@@ -204,7 +204,7 @@ describe('Crafted saves are refused', () => {
     expect(variant(save => { save.map.push({value: 0}); })).toBe('map');
     expect(variant(save => { save.map = {length: 12000}; })).toBe('map');
     expect(variant(save => { save.roadClass = '0'.repeat(11999); })).toBe('roadClass');
-    expect(variant(save => { save.roadClass = '4' + '0'.repeat(11999); })).toBe('roadClass');
+    expect(variant(save => { save.roadClass = '8' + '0'.repeat(11999); })).toBe('roadClass');
     expect(variant(save => { save.comHist10.push(0); })).toBe('comHist10');
     expect(variant(save => { save.indHist120 = save.indHist120.slice(1); })).toBe('indHist120');
     expect(variant(save => { save.neighbours = save.neighbours?.slice(1) ?? []; })).toBe('neighbours');

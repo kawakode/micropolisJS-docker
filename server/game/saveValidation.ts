@@ -351,7 +351,7 @@ export function validateSave(input: unknown): CitySave {
 
   if (has('roadClass')) {
     const roadClass = save.roadClass;
-    check(typeof roadClass === 'string' && roadClass.length === TILES && /^[0-3]*$/.test(roadClass), 'roadClass');
+    check(typeof roadClass === 'string' && roadClass.length === TILES && /^[0-7]*$/.test(roadClass), 'roadClass');
     clean.roadClass = roadClass;
   } else {
     clean.roadClass = '0'.repeat(TILES);
