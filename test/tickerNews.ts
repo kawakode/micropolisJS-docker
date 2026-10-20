@@ -308,6 +308,8 @@ describe("The news ticker in French", () => {
             crisis,
             makeStatus({resValve: -1500, comValve: -1000, indValve: -1000, populationDelta: -1, funds: 500}, {firePop: 1, unpoweredZoneCount: 1}),
             makeStatus({populationDelta: 1}),
+            makeStatus({}, {firePop: 1, uncoveredFirePop: 1}),
+            makeStatus({}, {firePop: 4, uncoveredFirePop: 2}),
             makeStatus({population: 0}, {resZonePop: 0, comZonePop: 0, indZonePop: 0}),
             makeStatus({}, {coalPowerPop: 0}),
         ];

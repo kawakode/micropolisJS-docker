@@ -12,6 +12,7 @@
  */
 
 import { BaseSprite } from './baseSprite.js';
+import { FireCover } from './fireCover.js';
 import { EXPLOSION_REPORTED, SOUND_EXPLOSIONHIGH } from './messages.ts';
 import { MiscUtils } from './miscUtils.js';
 import { Random } from './random.ts';
@@ -33,8 +34,8 @@ function ExplosionSprite(map, spriteManager, x, y) {
 BaseSprite(ExplosionSprite);
 
 
-// x and y are in pixels
-ExplosionSprite.prototype.startFire = function(x, y) {
+// x and y are in pixels. Firefighters nearby may stop the fire before it starts
+ExplosionSprite.prototype.startFire = function(x, y, blockMaps) {
   x = x >> 4;
   y = y >> 4;
 
@@ -48,6 +49,9 @@ ExplosionSprite.prototype.startFire = function(x, y) {
     return;
 
   if (tile.isZone())
+    return;
+
+  if (!FireCover.catchesFire(blockMaps, x, y))
     return;
 
   this.map.setTo(x, y, TileUtils.randomFire());
@@ -70,11 +74,11 @@ ExplosionSprite.prototype.move = function(spriteCycle, disasterManager, blockMap
   if (this.frame > 6) {
     this.frame = 0;
 
-    this.startFire(this.x, this.y);
-    this.startFire(this.x - 16, this.y - 16);
-    this.startFire(this.x + 16, this.y - 16);
-    this.startFire(this.x - 16, this.y + 16);
-    this.startFire(this.x + 16, this.y + 16);
+    this.startFire(this.x, this.y, blockMaps);
+    this.startFire(this.x - 16, this.y - 16, blockMaps);
+    this.startFire(this.x + 16, this.y - 16, blockMaps);
+    this.startFire(this.x - 16, this.y + 16, blockMaps);
+    this.startFire(this.x + 16, this.y + 16, blockMaps);
   }
 };
 

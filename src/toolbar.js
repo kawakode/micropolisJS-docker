@@ -59,7 +59,7 @@ var TOOLS = {
   police: {name: 'tool|Police', size: 3, cost: 500, colour: '#1d4ed8', key: '8',
            description: 'Lowers crime around it. $100 a year.'},
   fire: {name: 'Fire station', size: 3, cost: 500, colour: '#dc2626', key: '9',
-         description: 'Puts fires out faster around it. $100 a year.'},
+         description: 'Prevents fires around it and puts them out. $100 a year.'},
   school: {name: 'School', size: 3, cost: 1000, colour: '#f97316',
            description: 'Raises land values and lowers crime nearby. $100 a year.'},
   policepost: {name: 'Police post', size: 2, cost: 300, colour: '#3b82f6',

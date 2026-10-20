@@ -159,7 +159,7 @@ var strings = {
   'tool|Police': 'Commissariat',
   'Lowers crime around it. $100 a year.': 'Fait baisser la criminalité alentour. 100 $ par an.',
   'Fire station': 'Caserne',
-  'Puts fires out faster around it. $100 a year.': 'Éteint plus vite les incendies alentour. 100 $ par an.',
+  'Prevents fires around it and puts them out. $100 a year.': 'Prévient les incendies alentour et les éteint. 100 $ par an.',
   'School': 'École',
   'Raises land values and lowers crime nearby. $100 a year.':
     'Fait monter les prix fonciers et baisser la criminalité alentour. 100 $ par an.',
@@ -702,9 +702,10 @@ var strings = {
   'RUMOUR': 'RUMEUR',
   'OPINION': 'TRIBUNE',
   'SATIRE': 'SATIRE',
-  'Major earthquake in {city}! Put out the fires, then rebuild.': 'Violent séisme à {city} ! Éteignez les incendies, puis reconstruisez.',
+  'Major earthquake in {city}! Fires only go out where fire stations reach: cover the ruins, then rebuild.':
+    'Violent séisme à {city} ! Les incendies ne s\'éteignent qu\'à portée des pompiers : couvrez les ruines, puis reconstruisez.',
   'Explosion reported! Fires may break out around it.': 'Explosion signalée ! Des incendies peuvent se déclarer autour.',
-  'Fire reported! Fire stations nearby put fires out faster.': 'Incendie signalé ! Les casernes proches éteignent les feux plus vite.',
+  'Fire reported! Only fire stations nearby can put it out.': 'Incendie signalé ! Seules des casernes proches peuvent l\'éteindre.',
   'Firebombing reported! Fires are breaking out across {city}.': 'Bombardements incendiaires ! Des incendies éclatent partout à {city}.',
   'Flooding reported! The water will recede in time.': 'Inondation signalée ! L\'eau finira par se retirer.',
   'A monster has been sighted in {city}!': 'Un monstre a été aperçu à {city} !',
@@ -749,9 +750,12 @@ var strings = {
     'Un monstre saccage {city} ! Il finira par partir : reconstruisez derrière lui.',
   'A tornado is tearing across {city}! Rebuild once it has blown over.': 'Une tornade balaie {city} ! Reconstruisez une fois qu\'elle sera passée.',
   'Flood water covers part of {city}. It will recede on its own.': 'L\'eau recouvre une partie de {city}. Elle se retirera d\'elle-même.',
-  'A fire is burning! Fire stations nearby put it out faster.': 'Un incendie fait rage ! Les casernes proches l\'éteignent plus vite.',
-  'Fire is spreading over {n} tiles! Fire stations nearby put it out faster.':
-    'Le feu s\'étend sur {n} cases ! Les casernes proches l\'éteignent plus vite.',
+  'A fire is out of reach of the firefighters and will not go out! Build a fire station nearby.':
+    'Un incendie hors de portée des pompiers ne s\'éteindra pas ! Construisez une caserne à proximité.',
+  'Fire is burning out of reach of the firefighters on {n} tiles! Build a fire station nearby.':
+    'Le feu brûle hors de portée des pompiers sur {n} cases ! Construisez une caserne à proximité.',
+  'A fire is burning! The firefighters are on it.': 'Un incendie fait rage ! Les pompiers sont sur place.',
+  'Fire is spreading over {n} tiles! The firefighters are on it.': 'Le feu s\'étend sur {n} cases ! Les pompiers sont sur place.',
   '{city} is broke ({funds})! Raise taxes or cut services in the Budget window.':
     '{city} est à sec ({funds}) ! Augmentez les impôts ou réduisez les services dans la fenêtre Budget.',
   'Only {funds} left in the treasury: spend wisely, or raise taxes.': 'Plus que {funds} en caisse : dépensez avec sagesse, ou augmentez les impôts.',
@@ -792,8 +796,8 @@ var strings = {
   'Citizens demand a fire station: nothing would stop a fire today.':
     'Les habitants réclament une caserne : aujourd\'hui, rien n\'arrêterait un incendie.',
   'Police stations are funded at {percent}%: crime will rise.': 'Les commissariats sont financés à {percent} % : la criminalité va grimper.',
-  'Fire stations are funded at {percent}%: fires will spread further.':
-    'Les casernes sont financées à {percent} % : les incendies s\'étendront davantage.',
+  'Fire stations are funded at {percent}%: fires will break out more often and burn longer.':
+    'Les casernes sont financées à {percent} % : les incendies éclateront plus souvent et dureront plus longtemps.',
   'Roads are funded at {percent}%: they are falling apart.': 'Les routes sont financées à {percent} % : elles tombent en ruine.',
   'Taxes at {tax}% are driving people away from {city}.': 'Des impôts à {tax} % font fuir les habitants de {city}.',
   'Pollution is very high: keep industry away from homes, plant parks and choose clean power.':

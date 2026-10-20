@@ -162,6 +162,7 @@ var Simulation = EventEmitter(function (gameMap, gameLevel, speed, savedGame, op
     tempMap2: new BlockMap(this._map.width, this._map.height, 2),
     tempMap3: new BlockMap(this._map.width, this._map.height, 4)
   };
+  this.disasterManager.blockMaps = this.blockMaps;
 
   this._clearCensus();
 

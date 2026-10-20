@@ -32,9 +32,9 @@ var JOKE_TAGS = ['GOSSIP', 'RUMOUR', 'OPINION', 'SATIRE'];
 
 // News that interrupts the ticker as soon as it comes
 var BREAKING = {};
-BREAKING[Messages.EARTHQUAKE] = 'Major earthquake in {city}! Put out the fires, then rebuild.';
+BREAKING[Messages.EARTHQUAKE] = 'Major earthquake in {city}! Fires only go out where fire stations reach: cover the ruins, then rebuild.';
 BREAKING[Messages.EXPLOSION_REPORTED] = 'Explosion reported! Fires may break out around it.';
-BREAKING[Messages.FIRE_REPORTED] = 'Fire reported! Fire stations nearby put fires out faster.';
+BREAKING[Messages.FIRE_REPORTED] = 'Fire reported! Only fire stations nearby can put it out.';
 BREAKING[Messages.FIREBOMBING] = 'Firebombing reported! Fires are breaking out across {city}.';
 BREAKING[Messages.FLOODING_REPORTED] = 'Flooding reported! The water will recede in time.';
 BREAKING[Messages.MONSTER_SIGHTED] = 'A monster has been sighted in {city}!';
@@ -551,9 +551,15 @@ TickerNews.prototype.cityReport = function(status) {
   if (status.flooding)
     add(ALERT, 'flood', 'Flood water covers part of {city}. It will recede on its own.', null, this._lastFlood);
 
-  if (census.firePop > 0) {
-    add(ALERT, 'fire', census.firePop === 1 ? 'A fire is burning! Fire stations nearby put it out faster.' :
-                       'Fire is spreading over {n} tiles! Fire stations nearby put it out faster.',
+  // Out of reach of the firefighters, a fire never goes out: say so first
+  if (census.uncoveredFirePop > 0) {
+    add(ALERT, 'fire', census.uncoveredFirePop === 1 ?
+                         'A fire is out of reach of the firefighters and will not go out! Build a fire station nearby.' :
+                         'Fire is burning out of reach of the firefighters on {n} tiles! Build a fire station nearby.',
+        {n: census.uncoveredFirePop}, this._lastFire);
+  } else if (census.firePop > 0) {
+    add(ALERT, 'fire', census.firePop === 1 ? 'A fire is burning! The firefighters are on it.' :
+                       'Fire is spreading over {n} tiles! The firefighters are on it.',
         {n: census.firePop}, this._lastFire);
   }
 
@@ -613,7 +619,7 @@ TickerNews.prototype.cityReport = function(status) {
   // The budget
   var funding = [['policeFunding', 'Police stations are funded at {percent}%: crime will rise.', status.policePercent,
                   status.policeMaintenance],
-                 ['fireFunding', 'Fire stations are funded at {percent}%: fires will spread further.', status.firePercent,
+                 ['fireFunding', 'Fire stations are funded at {percent}%: fires will break out more often and burn longer.', status.firePercent,
                   status.fireMaintenance],
                  ['roadFunding', 'Roads are funded at {percent}%: they are falling apart.', status.roadPercent,
                   status.roadMaintenance]];

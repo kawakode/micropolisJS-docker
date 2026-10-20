@@ -12,6 +12,7 @@
  */
 
 import { EventEmitter } from './eventEmitter.js';
+import { FireCover } from './fireCover.js';
 import * as Messages from './messages.ts';
 import { MiscUtils } from './miscUtils.js';
 import { Random } from './random.ts';
@@ -24,6 +25,8 @@ var DisasterManager = EventEmitter(function(map, spriteManager, gameLevel) {
   this._map = map;
   this._spriteManager = spriteManager;
   this._gameLevel = gameLevel;
+  // The simulation's block maps, set once they exist: fire cover decides whether fires break out
+  this.blockMaps = null;
 
   this._floodCount = 0;
   // As in the original game, disasters strike unless the player turns them off
@@ -137,7 +140,7 @@ DisasterManager.prototype.makeEarthquake = function() {
       continue;
 
     if (vulnerable(this._map.getTile(x, y))) {
-      if ((i & 0x3) !== 0)
+      if ((i & 0x3) !== 0 || !FireCover.catchesFire(this.blockMaps, x, y))
         this._map.setTo(x, y, TileUtils.randomRubble());
       else
         this._map.setTo(x, y, TileUtils.randomFire());
@@ -146,7 +149,8 @@ DisasterManager.prototype.makeEarthquake = function() {
 };
 
 
-// Sets fire to a random building (zonesOnly) or anything that burns, trying up to the given number of times
+// Sets fire to a random building (zonesOnly) or anything that burns, trying up to the given number of times. The fire
+// cover of the spot may stop it
 DisasterManager.prototype.setFire = function(times, zonesOnly) {
   times = times || 1;
   zonesOnly = zonesOnly || false;
@@ -164,6 +168,10 @@ DisasterManager.prototype.setFire = function(times, zonesOnly) {
       tile = tile.getValue();
       var lowerLimit = zonesOnly ? TileValues.LHTHR : TileValues.TREEBASE;
       if ((tile > lowerLimit && tile < TileValues.LASTZONE) || isNewBuilding(tile)) {
+        // Firefighters nearby stop most fires before they start
+        if (!FireCover.catchesFire(this.blockMaps, x, y))
+          continue;
+
         this._map.setTo(x, y, TileUtils.randomFire());
         this._emitEvent(Messages.FIRE_REPORTED, {showable: true, x: x, y: y});
         return;
